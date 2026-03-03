@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: oklch(100% 0 0);
+  --color-foreground: oklch(28% 0.04 264);
+
+  --color-card: oklch(100% 0 0);
+  --color-card-foreground: oklch(28% 0.04 264);
+
+  --color-popover: oklch(100% 0 0);
+  --color-popover-foreground: oklch(28% 0.04 264);
+
+  --color-primary: oklch(68% 0.19 264);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-primary-hover: oklch(63% 0.19 264);
+
+  --color-secondary: oklch(95% 0.01 264);
+  --color-secondary-foreground: oklch(28% 0.04 264);
+
+  --color-muted: oklch(96% 0.01 264);
+  --color-muted-foreground: oklch(53% 0.02 264);
+
+  --color-accent: oklch(94% 0.01 264);
+  --color-accent-foreground: oklch(28% 0.04 264);
+
+  --color-destructive: oklch(62% 0.22 25);
+  --color-destructive-foreground: oklch(100% 0 0);
+
+  --color-border: oklch(88% 0.01 264);
+  --color-input: oklch(88% 0.01 264);
+  --color-ring: oklch(68% 0.19 264);
+
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:opacity-90 px-4 py-2 rounded-md font-medium transition-opacity;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-muted px-4 py-2 rounded-md font-medium transition-colors;
+  }
+
+  .btn-destructive {
+    @apply bg-destructive text-destructive-foreground hover:opacity-90 px-4 py-2 rounded-md font-medium transition-opacity;
+  }
+
+  .status-badge {
+    @apply px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-active {
+    @apply bg-green-100 text-green-800;
+  }
+
+  .status-inactive {
+    @apply bg-gray-100 text-gray-800;
+  }
+
+  .status-warning {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+
+  .table-header {
+    @apply bg-muted text-muted-foreground text-left text-sm font-medium;
+  }
+
+  .table-cell {
+    @apply px-4 py-3 text-sm;
+  }
+}

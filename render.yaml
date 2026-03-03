@@ -1,0 +1,184 @@
+# Render.yaml configuration for Warehouse Management System
+# Microservices Architecture Deployment with Docker
+# Using Aiven MySQL Database
+
+services:
+  # API Gateway Service
+  - type: web
+    name: api-gateway-viet-bac
+    env: docker
+    plan: free
+    dockerfilePath: ./backend/api-gateway-viet-bac/Dockerfile
+    dockerContext: ./backend/api-gateway-viet-bac
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SERVER_PORT
+        value: 9000
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JAVA_OPTS
+        value: -Xmx512m -Xms256m -XX:+UseContainerSupport
+
+  # Employee Service
+  - type: web
+    name: employee-service
+    env: docker
+    plan: free
+    dockerfilePath: ./backend/employee-service/Dockerfile
+    dockerContext: ./backend/employee-service
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SERVER_PORT
+        value: 8083
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATASOURCE_URL
+        value: jdbc:mysql://viet-bac-warehouse-viet-bac-warehouse.d.aivencloud.com:13008/employee_service?useSSL=true&requireSSL=true&verifyServerCertificate=false
+      - key: DATASOURCE_USERNAME
+        value: avnadmin
+      - key: DATASOURCE_PASSWORD
+        sync: false # Set in Render Dashboard: AVNS_SuregEwOhBIGLmrn4xC
+      - key: KEYCLOAK_SERVER_URL
+        value: http://localhost:8180
+      - key: KEYCLOAK_REALM
+        value: viet-bac-warehouse
+      - key: KEYCLOAK_CLIENT_ID
+        value: admin-cli
+      - key: KEYCLOAK_USERNAME
+        sync: false
+      - key: KEYCLOAK_PASSWORD
+        sync: false
+      - key: JAVA_OPTS
+        value: -Xmx512m -Xms256m -XX:+UseContainerSupport
+
+  # Product Service
+  - type: web
+    name: product-service
+    env: docker
+    plan: free
+    dockerfilePath: ./backend/product-service/Dockerfile
+    dockerContext: ./backend/product-service
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SERVER_PORT
+        value: 8084
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATASOURCE_URL
+        value: jdbc:mysql://viet-bac-warehouse-viet-bac-warehouse.d.aivencloud.com:13008/product_service?useSSL=true&requireSSL=true&verifyServerCertificate=false
+      - key: DATASOURCE_USERNAME
+        value: avnadmin
+      - key: DATASOURCE_PASSWORD
+        sync: false
+      - key: JAVA_OPTS
+        value: -Xmx512m -Xms256m -XX:+UseContainerSupport
+
+  # Warehouse Service
+  - type: web
+    name: warehouse-service
+    env: docker
+    plan: free
+    dockerfilePath: ./backend/warehouse-service/Dockerfile
+    dockerContext: ./backend/warehouse-service
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SERVER_PORT
+        value: 8082
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATASOURCE_URL
+        value: jdbc:mysql://viet-bac-warehouse-viet-bac-warehouse.d.aivencloud.com:13008/warehouse_service?useSSL=true&requireSSL=true&verifyServerCertificate=false
+      - key: DATASOURCE_USERNAME
+        value: avnadmin
+      - key: DATASOURCE_PASSWORD
+        sync: false
+      - key: JAVA_OPTS
+        value: -Xmx512m -Xms256m -XX:+UseContainerSupport
+
+  # Vehicle Service
+  - type: web
+    name: vehicle-service
+    env: docker
+    plan: free
+    dockerfilePath: ./backend/vehicle-service/Dockerfile
+    dockerContext: ./backend/vehicle-service
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SERVER_PORT
+        value: 8081
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATASOURCE_URL
+        value: jdbc:mysql://viet-bac-warehouse-viet-bac-warehouse.d.aivencloud.com:13008/vehicle_service?useSSL=true&requireSSL=true&verifyServerCertificate=false
+      - key: DATASOURCE_USERNAME
+        value: avnadmin
+      - key: DATASOURCE_PASSWORD
+        sync: false
+      - key: JAVA_OPTS
+        value: -Xmx512m -Xms256m -XX:+UseContainerSupport
+
+  # Plan Service
+  - type: web
+    name: plan-service
+    env: docker
+    plan: free
+    dockerfilePath: ./backend/plan-service/Dockerfile
+    dockerContext: ./backend/plan-service
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SERVER_PORT
+        value: 8087
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATASOURCE_URL
+        value: jdbc:mysql://viet-bac-warehouse-viet-bac-warehouse.d.aivencloud.com:13008/plan_service?useSSL=true&requireSSL=true&verifyServerCertificate=false
+      - key: DATASOURCE_USERNAME
+        value: avnadmin
+      - key: DATASOURCE_PASSWORD
+        sync: false
+      - key: JAVA_OPTS
+        value: -Xmx512m -Xms256m -XX:+UseContainerSupport
+
+  # Transaction Service
+  - type: web
+    name: transaction-service
+    env: docker
+    plan: free
+    dockerfilePath: ./backend/transaction-service/Dockerfile
+    dockerContext: ./backend/transaction-service
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SERVER_PORT
+        value: 8085
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATASOURCE_URL
+        value: jdbc:mysql://viet-bac-warehouse-viet-bac-warehouse.d.aivencloud.com:13008/transaction_service?useSSL=true&requireSSL=true&verifyServerCertificate=false
+      - key: DATASOURCE_USERNAME
+        value: avnadmin
+      - key: DATASOURCE_PASSWORD
+        sync: false
+      - key: JAVA_OPTS
+        value: -Xmx512m -Xms256m -XX:+UseContainerSupport
+
+  # Warehouse Site Service
+  - type: web
+    name: warehouse-site-service
+    env: docker
+    plan: free
+    dockerfilePath: ./backend/warehouse-site-service/Dockerfile
+    dockerContext: ./backend/warehouse-site-service
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SERVER_PORT
+        value: 8086
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATASOURCE_URL
+        value: jdbc:mysql://viet-bac-warehouse-viet-bac-warehouse.d.aivencloud.com:13008/warehouse_site_service?useSSL=true&requireSSL=true&verifyServerCertificate=false
+      - key: DATASOURCE_USERNAME
+        value: avnadmin
+      - key: DATASOURCE_PASSWORD
+        sync: false
+      - key: JAVA_OPTS
+        value: -Xmx512m -Xms256m -XX:+UseContainerSupport

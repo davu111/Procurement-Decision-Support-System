@@ -1,0 +1,20 @@
+package com.ecotel.product_service.dto.response;
+
+
+import com.ecotel.product_service.enums.WarehouseStatus;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.FieldDefaults;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@FieldDefaults(level = lombok.AccessLevel.PRIVATE)
+public class WarehouseResponse {
+    String id;
+    String warehouseName;
+    String location;
+    String siteId;
+    WarehouseStatus status;
+}

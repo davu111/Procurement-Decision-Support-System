@@ -1,0 +1,12 @@
+services:
+  warehouse_mysql:
+    image: mysql:8.0.36
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql
+    ports:
+      - "3342:3306"
+    volumes:
+      - warehouse_mysql_data:/var/lib/mysql
+
+volumes:
+  warehouse_mysql_data:

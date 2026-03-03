@@ -1,0 +1,19 @@
+<project>
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.ecotel</groupId>
+    <artifactId>warehouse-management-system</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>api-gateway-viet-bac</module>
+	    <module>vehicle-service</module>
+        <module>plan-service</module>
+        <module>warehouse-service</module>
+        <module>employee-service</module>
+        <module>product-service</module>
+        <module>transaction-service</module>
+        <module>warehouse-site-service</module>
+        <module>camera-service</module>
+    </modules>
+</project>

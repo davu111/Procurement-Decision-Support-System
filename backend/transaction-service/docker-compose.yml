@@ -1,0 +1,12 @@
+services:
+  transaction_mysql:
+    image: mysql:8.0.36
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql
+    ports:
+      - "3345:3306"
+    volumes:
+      - transaction_mysql_data:/var/lib/mysql
+
+volumes:
+  transaction_mysql_data:

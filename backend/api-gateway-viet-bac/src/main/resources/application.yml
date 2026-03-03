@@ -1,0 +1,156 @@
+spring:
+  application:
+    name: api-gateway-viet-bac
+  main:
+    web-application-type: reactive
+  http:
+    codec:
+      max-in-memory-size: 20MB
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # Vehicle Service
+            - id: vehicle-service
+              uri: ${VEHICLE_SERVICE_URL}
+              predicates:
+                - Path=/api/vehicles/**,/api/drivers/**
+
+            # Plan Service
+            - id: plan-service
+              uri: ${PLAN_SERVICE_URL}
+              predicates:
+                - Path=/api/plans/**
+
+            # Warehouse Service
+            - id: ${WAREHOUSE_SERVICE_URL}
+              uri: "http://warehouse-service:8082"
+              predicates:
+                - Path=/api/warehouses/**,/api/inventories/**
+
+            # Employee Service
+            - id: ${EMPLOYEE_SERVICE_URL}
+              uri: "http://employee-service:8083"
+              predicates:
+                - Path=/api/employees/**
+
+            # Product Service
+            - id: ${PRODUCT_SERVICE_URL}
+              uri: "http://product-service:8084"
+              predicates:
+                - Path=/api/products/**,/api/product-categories/**
+
+            # Transaction Service
+            - id: ${TRANSACTION_SERVICE_URL}
+              uri: "http://transaction-service:8085"
+              predicates:
+                - Path=/api/transactions/**
+
+            # Warehouse Site Service
+            - id: ${WAREHOUSE_SITE_SERVICE_URL}
+              uri: "http://warehouse-site-service:8086"
+              predicates:
+                - Path=/api/warehouse-sites/**
+
+            # Camera Service (REST)
+            - id: camera-service-api
+              uri: ${CAMERA_SERVICE_URL}
+              predicates:
+                - Path=/api/camera/events/**
+
+            # Camera Service (WebSocket)
+            - id: camera-service-ws
+              uri: ${CAMERA_SERVICE_WS_URL}
+              predicates:
+                - Path=/ws/**
+
+            # Swagger UI routes
+            - id: vehicle-service-docs
+              uri: ${VEHICLE_SERVICE_URL}
+              predicates:
+                - Path=/vehicle-service/v3/api-docs
+              filters:
+                - RewritePath=/vehicle-service/(?<segment>.*), /$\{segment}
+
+            - id: plan-service-docs
+              uri: ${PLAN_SERVICE_URL}
+              predicates:
+                - Path=/plan-service/v3/api-docs
+              filters:
+                - RewritePath=/plan-service/(?<segment>.*), /$\{segment}
+
+            - id: warehouse-service-docs
+              uri: ${WAREHOUSE_SERVICE_URL}
+              predicates:
+                - Path=/warehouse-service/v3/api-docs
+              filters:
+                - RewritePath=/warehouse-service/(?<segment>.*), /$\{segment}
+
+            - id: employee-service-docs
+              uri: ${EMPLOYEE_SERVICE_URL}
+              predicates:
+                - Path=/employee-service/v3/api-docs
+              filters:
+                - RewritePath=/employee-service/(?<segment>.*), /$\{segment}
+
+            - id: product-service-docs
+              uri: ${PRODUCT_SERVICE_URL}
+              predicates:
+                - Path=/product-service/v3/api-docs
+              filters:
+                - RewritePath=/product-service/(?<segment>.*), /$\{segment}
+
+            - id: transaction-service-docs
+              uri: ${TRANSACTION_SERVICE_URL}
+              predicates:
+                - Path=/transaction-service/v3/api-docs
+              filters:
+                - RewritePath=/transaction-service/(?<segment>.*), /$\{segment}
+
+            - id: warehouse-site-service-docs
+              uri: ${WAREHOUSE_SITE_SERVICE_URL}
+              predicates:
+                - Path=/warehouse-site-service/v3/api-docs
+              filters:
+                - RewritePath=/warehouse-site-service/(?<segment>.*), /$\{segment}
+
+            - id: camera-service-docs
+              uri: ${CAMERA_SERVICE_URL}
+              predicates:
+                - Path=/camera-service/v3/api-docs
+              filters:
+                - RewritePath=/camera-service/(?<segment>.*), /$\{segment}
+
+server:
+  port: 9000
+  shutdown: graceful # Doi cac request chay xong truoc khi tat server
+  http2:
+    enabled: true
+
+reactor:
+  netty:
+    http:
+      client:
+        connect-timeout: 12000
+        response-timeout: 120s
+        pool:
+          max-connections: 1000
+          acquire-timeout: 10s
+
+frontend:
+  url: ${FRONTEND_URL}
+
+springdoc:
+  swagger-ui:
+    path: /index.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    org.springframework.cloud.gateway: TRACE

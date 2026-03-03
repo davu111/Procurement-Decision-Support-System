@@ -1,0 +1,119 @@
+spring:
+  application:
+    name: api-gateway-viet-bac
+  cloud:
+    gateway:
+      routes:
+        - id: vehicle-service
+          uri: https://vehicle-service-23jl.onrender.com
+          predicates:
+            - Path=/api/vehicles/**
+
+        - id: plan-service
+          uri: https://plan-service-ayc4.onrender.com
+          predicates:
+            - Path=/api/plans/**
+
+        - id: warehouse-service
+          uri: https://warehouse-service-x5ek.onrender.com
+          predicates:
+            - Path=/api/warehouses/**,/api/inventories/**
+
+        - id: employee-service
+          uri: https://employee-service-eipp.onrender.com
+          predicates:
+            - Path=/api/employees/**
+
+        - id: product-service
+          uri: https://product-service-5t4g.onrender.com
+          predicates:
+            - Path=/api/products/**,/api/product-categories/**
+
+        - id: transaction-service
+          uri: https://transaction-service-7y0f.onrender.com
+          predicates:
+            - Path=/api/transactions/**
+
+        - id: warehouse-site-service
+          uri: https://warehouse-site-service.onrender.com
+          predicates:
+            - Path=/api/warehouse-sites/**
+        # Swagger UI routes
+        - id: vehicle-service-docs
+          uri: https://vehicle-service-23jl.onrender.com
+          predicates:
+            - Path=/vehicle-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: plan-service-docs
+          uri: https://plan-service-ayc4.onrender.com
+          predicates:
+            - Path=/plan-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: warehouse-service-docs
+          uri: https://warehouse-service-x5ek.onrender.com
+          predicates:
+            - Path=/warehouse-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: employee-service-docs
+          uri: https://employee-service-eipp.onrender.com
+          predicates:
+            - Path=/employee-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: product-service-docs
+          uri: https://product-service-5t4g.onrender.com
+          predicates:
+            - Path=/product-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: transaction-service-docs
+          uri: https://transaction-service-7y0f.onrender.com
+          predicates:
+            - Path=/transaction-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: warehouse-site-service-docs
+          uri: https://warehouse-site-service.onrender.com
+          predicates:
+            - Path=/warehouse-site-service/**
+          filters:
+            - StripPrefix=1
+
+server:
+  port: 9000
+frontend:
+  url: ${FRONTEND_URL}
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /index.html
+    urls:
+      - name: product-service
+        url: /product-service/v3/api-docs
+      - name: warehouse-service
+        url: /warehouse-service/v3/api-docs
+      - name: plan-service
+        url: /plan-service/v3/api-docs
+      - name: employee-service
+        url: /employee-service/v3/api-docs
+      - name: vehicle-service
+        url: /vehicle-service/v3/api-docs
+      - name: transaction-service
+        url: /transaction-service/v3/api-docs
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+#spring.security.oauth2.resourceserver.jwt.issuer-uri=${OAUTH2_ISSUER_URI}
+#spring.security.oauth2.resourceserver.jwt.jwk-set-uri=${OAUTH2_JWK_SET_URI}

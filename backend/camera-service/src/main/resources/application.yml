@@ -1,0 +1,115 @@
+spring:
+  application:
+    name: camera_service
+  datasource:
+    name: camera_viet-bac_service
+    url: ${DATASOURCE_URL}
+    username: ${DATASOURCE_USERNAME}
+    password: ${DATASOURCE_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # Connection pool size
+      minimum-idle: 20              # Số connection tối thiểu
+      maximum-pool-size: 100        # Số connection tối đa
+
+      # Connection timeout
+      connection-timeout: 30000     # 30s - timeout khi lấy connection
+      idle-timeout: 600000          # 10min - connection idle sẽ bị đóng
+      max-lifetime: 1800000         # 30min - lifetime tối đa của connection
+
+      # Performance tuning
+      auto-commit: false
+      connection-test-query: SELECT 1
+      pool-name: CameraEventHikariPool
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        # Batch processing
+        jdbc:
+          batch_size: 50
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+
+        # Query optimization
+        default_batch_fetch_size: 20
+
+        # Statistics (disable trong production)
+        generate_statistics: false
+
+    # Show SQL (disable trong production)
+    show-sql: false
+
+    # Hibernate DDL auto
+    hibernate:
+      ddl-auto: none
+
+  # Transaction
+  transaction:
+    default-timeout: 30  # 30 seconds timeout cho transaction
+
+  redis:
+    host: ${SPRING_DATA_REDIS_HOST:localhost}
+    port: ${SPRING_DATA_REDIS_PORT:6379}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 2
+
+
+server:
+  # Tomcat thread pool
+  tomcat:
+    threads:
+      max: 100              # Max threads xử lý requests
+      min-spare: 5         # Min threads luôn chạy
+    max-connections: 1000  # Max connections đồng thời
+    accept-count: 100       # Queue size khi đạt max connections
+
+  # Connection timeout
+  connection-timeout: 20000  # 20s
+  port: 8091
+  servlet:
+    context-path: /
+
+# External services
+external:
+  plan-service:
+    url: ${PLAN_SERVICE_URL}
+  employee-service:
+    url: ${EMPLOYEE_SERVICE_URL}
+  vehicle-service:
+    url: ${VEHICLE_SERVICE_URL}
+  api-key: ${EXTERNAL_API_KEY:default-key}
+
+# Camera service configuration
+camera:
+  deduplication:
+    window-seconds: 30
+  validation:
+    max-event-age-minutes: 30
+
+# Logging
+logging:
+  level:
+    com.company.camera: INFO
+    org.springframework: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+  file:
+    name: logs/camera-service.log
+    max-size: 10MB
+    max-history: 30
+
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health,info
+    endpoint:
+      health:
+        show-details: always

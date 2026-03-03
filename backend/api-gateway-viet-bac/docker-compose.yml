@@ -1,0 +1,42 @@
+services:
+  keycloak-mysql:
+    image: mysql:8.0.36
+    ports:
+      - "3350:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql
+      MYSQL_DATABASE: keycloak
+      MYSQL_USER: keycloak
+      MYSQL_PASSWORD: root
+    volumes:
+      - keycloak_mysql_data:/var/lib/mysql
+    networks:
+      - employee-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.3
+    command: [ "start-dev", "--import-realm" ]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: mysql
+      KC_DB_URL: jdbc:mysql://keycloak-mysql:3306/keycloak
+      KC_DB_USERNAME: root
+      KC_DB_PASSWORD: mysql
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_STRICT: false
+      KC_HTTP_ENABLED: true
+      KC_HEALTH_ENABLED: true
+    ports:
+      - "8180:8080"
+    depends_on:
+      - keycloak-mysql
+    networks:
+      - employee-network
+
+volumes:
+  keycloak_mysql_data:
+
+networks:
+  employee-network:
+    external: true

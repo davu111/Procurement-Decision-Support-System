@@ -1,0 +1,377 @@
+services:
+  # ==================== Keycloak Auth Service ====================
+  keycloak-mysql:
+    image: mysql:8.0.36
+    container_name: keycloak-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${KEYCLOAK_MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${KEYCLOAK_MYSQL_DATABASE}
+      MYSQL_USER: ${KEYCLOAK_MYSQL_USER}
+      MYSQL_PASSWORD: ${KEYCLOAK_MYSQL_PASSWORD}
+    ports:
+      - "3350:3306"
+    volumes:
+      - keycloak_mysql_data:/var/lib/mysql
+    networks:
+      - employee-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.3
+    container_name: keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: mysql
+      KC_DB_URL: jdbc:mysql://keycloak-mysql:3306/${KEYCLOAK_MYSQL_DATABASE}
+      KC_DB_USERNAME: ${KEYCLOAK_MYSQL_ROOT_USER}
+      KC_DB_PASSWORD: ${KEYCLOAK_MYSQL_ROOT_PASSWORD}
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_STRICT: false
+      KC_HTTP_ENABLED: true
+      KC_HEALTH_ENABLED: true
+    ports:
+      - "8180:8080"
+    depends_on:
+      keycloak-mysql:
+        condition: service_healthy
+    networks:
+      - employee-network
+
+  # ==================== Redis Cache ====================
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - micro-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 3s
+      retries: 5
+
+  # ==================== Camera Service ====================
+  camera_mysql:
+    image: mysql:8.0.36
+    container_name: camera_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${CAMERA_MYSQL_DATABASE}
+    ports:
+      - "3351:3306"
+    volumes:
+      - camera_mysql_data:/var/lib/mysql
+    networks:
+      - micro-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  camera-service:
+    build: ./camera-service
+    container_name: camera-service
+    ports:
+      - "8091:8091"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://camera_mysql:3306/${CAMERA_MYSQL_DATABASE}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      PLAN_SERVICE_URL: http://plan-service:8081/api
+      EMPLOYEE_SERVICE_URL: http://employee-service:8083/api
+      VEHICLE_SERVICE_URL: http://vehicle-service:8080/api
+    depends_on:
+      camera_mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - micro-net
+
+  # ==================== Employee Service ====================
+  employee_mysql:
+    image: mysql:8.0.36
+    container_name: employee_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${EMPLOYEE_MYSQL_DATABASE}
+    ports:
+      - "3343:3306"
+    volumes:
+      - employee_mysql_data:/var/lib/mysql
+    networks:
+      - employee-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  employee-service:
+    build: ./employee-service
+    container_name: employee-service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://employee_mysql:3306/${EMPLOYEE_MYSQL_DATABASE}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
+    depends_on:
+      employee_mysql:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks:
+      - employee-network
+
+  # ==================== Plan Service ====================
+  plan_mysql:
+    image: mysql:8.0.36
+    container_name: plan_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${PLAN_MYSQL_DATABASE}
+    ports:
+      - "3341:3306"
+    volumes:
+      - plan_mysql_data:/var/lib/mysql
+    networks:
+      - micro-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  plan-service:
+    build: ./plan-service
+    container_name: plan-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://plan_mysql:3306/${PLAN_MYSQL_DATABASE}
+      DRIVER_SERVICE_URL: http://localhost:8080/api
+      PRODUCT_SERVICE_URL: http://localhost:8084/api
+      WAREHOUSE_SERVICE_URL: http://localhost:8082/api
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      plan_mysql:
+        condition: service_healthy
+    networks:
+      - micro-net
+
+  # ==================== Product Service ====================
+  product_mysql:
+    image: mysql:8.0.36
+    container_name: product_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${PRODUCT_MYSQL_DATABASE}
+    ports:
+      - "3344:3306"
+    volumes:
+      - product_mysql_data:/var/lib/mysql
+    networks:
+      - micro-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  product-service:
+    build: ./product-service
+    container_name: product-service
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://product_mysql:3306/${PRODUCT_MYSQL_DATABASE}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      product_mysql:
+        condition: service_healthy
+    networks:
+      - micro-net
+
+  # ==================== Transaction Service ====================
+  transaction_mysql:
+    image: mysql:8.0.36
+    container_name: transaction_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${TRANSACTION_MYSQL_DATABASE}
+    ports:
+      - "3345:3306"
+    volumes:
+      - transaction_mysql_data:/var/lib/mysql
+    networks:
+      - micro-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  transaction-service:
+    build: ./transaction-service
+    container_name: transaction-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://transaction_mysql:3306/${TRANSACTION_MYSQL_DATABASE}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      transaction_mysql:
+        condition: service_healthy
+    networks:
+      - micro-net
+
+  # ==================== Vehicle Service ====================
+  vehicle_mysql:
+    image: mysql:8.0.36
+    container_name: vehicle_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${VEHICLE_MYSQL_DATABASE}
+    ports:
+      - "3340:3306"
+    volumes:
+      - vehicle_mysql_data:/var/lib/mysql
+    networks:
+      - micro-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  vehicle-service:
+    build: ./vehicle-service
+    container_name: vehicle-service
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://vehicle_mysql:3306/${VEHICLE_MYSQL_DATABASE}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      vehicle_mysql:
+        condition: service_healthy
+    networks:
+      - micro-net
+
+  # ==================== Warehouse Service ====================
+  warehouse_mysql:
+    image: mysql:8.0.36
+    container_name: warehouse_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${WAREHOUSE_MYSQL_DATABASE}
+    ports:
+      - "3342:3306"
+    volumes:
+      - warehouse_mysql_data:/var/lib/mysql
+    networks:
+      - micro-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  warehouse-service:
+    build: ./warehouse-service
+    container_name: warehouse-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://warehouse_mysql:3306/${WAREHOUSE_MYSQL_DATABASE}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      warehouse_mysql:
+        condition: service_healthy
+    networks:
+      - micro-net
+
+  # ==================== Warehouse Site Service ====================
+  warehouse-site_mysql:
+    image: mysql:8.0.36
+    container_name: warehouse-site_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${WAREHOUSE_SITE_MYSQL_DATABASE}
+    ports:
+      - "3346:3306"
+    volumes:
+      - warehouse-site_mysql_data:/var/lib/mysql
+    networks:
+      - micro-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  warehouse-site-service:
+    build: ./warehouse-site-service
+    container_name: warehouse-site-service
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://warehouse-site_mysql:3306/${WAREHOUSE_SITE_MYSQL_DATABASE}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      warehouse-site_mysql:
+        condition: service_healthy
+    networks:
+      - micro-net
+
+  # ==================== API Gateway ====================
+  api-gateway:
+    build: ./api-gateway-viet-bac
+    container_name: api-gateway
+    ports:
+      - "9000:9000"
+    environment:
+      KEYCLOAK_SERVER_URL: http://keycloak:8180
+      CAMERA_SERVICE_URL: http://camera-service:8091
+      EMPLOYEE_SERVICE_URL: http://employee-service:8083
+      PRODUCT_SERVICE_URL: http://product-service:8084
+      PLAN_SERVICE_URL: http://plan-service:8081
+      TRANSACTION_SERVICE_URL: http://transaction-service:8085
+      VEHICLE_SERVICE_URL: http://vehicle-service:8080
+      WAREHOUSE_SERVICE_URL: http://warehouse-service:8082
+      WAREHOUSE_SITE_SERVICE_URL: http://warehouse-site-service:8086
+      CAMERA_SERVICE_WS_URL: ws://camera-service:8091
+      FRONTEND_URL: http://localhost:5173
+    networks:
+      - micro-net
+      - employee-network
+    extra_hosts:
+      - "camera-service:host-gateway"
+
+volumes:
+  keycloak_mysql_data:
+  camera_mysql_data:
+  redis_data:
+  employee_mysql_data:
+  plan_mysql_data:
+  product_mysql_data:
+  transaction_mysql_data:
+  vehicle_mysql_data:
+  warehouse_mysql_data:
+  warehouse-site_mysql_data:
+
+networks:
+  micro-net:
+    driver: bridge
+  employee-network:
+    driver: bridge

@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: plan_service
+  datasource:
+    name: plan_viet-bac_service
+    url: ${DATASOURCE_URL}
+    username: ${DATASOURCE_USERNAME}
+    password: ${DATASOURCE_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+    ddl-auto: none
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+springdoc:
+  api-docs:
+    path: /plan-service/v3/api-docs
+  swagger-ui:
+    path: /plan-service/swagger/swagger-ui.html
+    disable-swagger-default-url: true
+
+external:
+  driver-service:
+    url: ${DRIVER_SERVICE_URL}
+  product-service:
+    url: ${PRODUCT_SERVICE_URL}
+  warehouse-service:
+    url: ${WAREHOUSE_SERVICE_URL}
+#  security:
+#    oauth2:
+#      resourceserver:
+#        jwt:
+#          issuer-uri: ${OAUTH2_ISSUER_URI}
+#          jwk-set-uri: ${OAUTH2_JWK_SET_URI}
+server:
+  port: 8081

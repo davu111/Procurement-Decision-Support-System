@@ -1,0 +1,91 @@
+# ======================================
+# Java Spring Boot
+# ======================================
+/target/
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties
+**/build/
+**/out/
+**/.classpath
+**/.project
+**/.settings/
+**/*.iml
+**/.idea/
+
+# Logs
+**/logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment / Config
+*.env
+application-*.yml
+application-*.properties
+.secret/
+*.keystore
+
+# ======================================
+# Node / ReactJS / Tailwind
+# ======================================
+**/node_modules/
+**/dist/
+**/build/
+**/.next/
+**/.nuxt/
+**/.cache/
+**/coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tsbuildinfo
+
+# Tailwind
+**/postcss.config.js
+**/tailwind.config.js
+
+# Environment
+**/.env
+**/.env.local
+**/.env.development
+**/.env.production
+
+# ======================================
+# Docker
+# ======================================
+/docker/mysql/data/
+**/docker-compose.override.yml
+**/docker-compose.local.yml
+**/.docker/
+**/.env.docker
+*.sdi
+
+# Docker build artifacts
+**/*.pid
+**/*.tar
+**/*.bak
+
+### Docker ###
+# Bỏ qua toàn bộ file và thư mục Docker
+docker/
+
+volume-data/
+
+
+
+# ======================================
+# IntelliJ IDEA
+# ======================================
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# ======================================
+# VSCode (nếu dùng)
+# ======================================
+.vscode/
+.history/

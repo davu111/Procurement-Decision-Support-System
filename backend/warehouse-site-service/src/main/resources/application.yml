@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: warehouse-site_service
+  datasource:
+    name: warehouse-site_viet-bac_service
+    url: ${DATASOURCE_URL}
+    username: ${DATASOURCE_USERNAME}
+    password: ${DATASOURCE_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+    ddl-auto: none
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+#  security:
+#    oauth2:
+#      resourceserver:
+#        jwt:
+#          issuer-uri: ${OAUTH2_ISSUER_URI}
+#          jwk-set-uri: ${OAUTH2_JWK_SET_URI}
+server:
+  port: 8086

@@ -1,0 +1,17 @@
+services:
+  employee_mysql:
+    image: mysql:8.0.36
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql
+    ports:
+      - "3343:3306"
+    volumes:
+      - employee_mysql_data:/var/lib/mysql
+    networks:
+      - employee-network
+
+volumes:
+  employee_mysql_data:
+networks:
+  employee-network:
+    external: true

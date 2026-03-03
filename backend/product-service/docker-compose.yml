@@ -1,0 +1,12 @@
+services:
+  product_mysql:
+    image: mysql:8.0.36
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql
+    ports:
+      - "3344:3306"
+    volumes:
+      - product_mysql_data:/var/lib/mysql
+
+volumes:
+  product_mysql_data:
