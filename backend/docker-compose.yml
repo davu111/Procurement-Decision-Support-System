@@ -57,17 +57,17 @@ services:
       timeout: 3s
       retries: 5
 
-  # ==================== Camera Service ====================
-  camera_mysql:
+  # ==================== Inventory Optimization Service ====================
+  inventory_optimization_mysql:
     image: mysql:8.0.36
-    container_name: camera_mysql
+    container_name: inventory_optimization_mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${CAMERA_MYSQL_DATABASE}
+      MYSQL_DATABASE: ${INVENTORY_OPTIMIZATION_MYSQL_DATABASE}
     ports:
       - "3351:3306"
     volumes:
-      - camera_mysql_data:/var/lib/mysql
+      - inventory_optimization_mysql_data:/var/lib/mysql
     networks:
       - micro-net
     healthcheck:
@@ -75,13 +75,13 @@ services:
       timeout: 20s
       retries: 10
 
-  camera-service:
-    build: ./camera-service
-    container_name: camera-service
+  inventory-optimization-service:
+    build: ./inventory-optimization-service
+    container_name: inventory-optimization-service
     ports:
       - "8091:8091"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://camera_mysql:3306/${CAMERA_MYSQL_DATABASE}
+      SPRING_DATASOURCE_URL: jdbc:mysql://inventory_optimization_mysql:3306/${INVENTORY_OPTIMIZATION_MYSQL_DATABASE}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis
