@@ -1,22 +1,12 @@
-package com.ecotel.product_service.config;
+package com.ecotel.inventory_optimization_service.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -27,8 +17,8 @@ public class SecurityConfig {
     };
 
     private static final String[] SWAGGER_WHITELIST = {
-            "/product-service/v3/api-docs/**",
-            "/product-service/swagger-ui/**",
+            "/inventory-optimization-service/v3/api-docs/**",
+            "/inventory-optimization-service/swagger-ui/**",
     };
 
     @Bean

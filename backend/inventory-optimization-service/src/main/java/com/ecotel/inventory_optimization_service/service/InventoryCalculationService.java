@@ -29,12 +29,12 @@ public class InventoryCalculationService {
      * Tính toán tối ưu theo mô hình bổ sung dần (Gradual Replenishment Model)
      */
     public InventoryCalculationResult calculate(InventoryParameter param) {
-        BigDecimal Q = param.getDemandQ();         // nhu cầu trong kỳ
-        BigDecimal K = param.getSupplyRateK();     // tốc độ bổ sung trong kỳ
-        BigDecimal A = param.getFixedOrderCostA(); // chi phí đặt hàng cố định
-        BigDecimal C = param.getProduct().getUnitPrice(); // đơn giá
-        BigDecimal I = param.getStorageCostCoefficientI(); // hệ số bảo quản (đã quy đổi về kỳ)
-        BigDecimal L = param.getLeadTimeL();       // lead time (cùng đơn vị kỳ)
+        BigDecimal Q = param.getDemandQ();                  // nhu cầu trong kỳ
+        BigDecimal K = param.getSnapshotSupplyRateK();      // K snapshot từ supplier
+        BigDecimal A = param.getSnapshotFixedOrderCostA();  // A snapshot từ supplier
+        BigDecimal C = param.getSnapshotUnitPriceC();       // C snapshot từ supplier
+        BigDecimal I = param.getStorageCostCoefficientI();  // hệ số bảo quản (đã quy đổi về kỳ)
+        BigDecimal L = param.getSnapshotLeadTimeL();        // L snapshot từ supplier
 
         validate(Q, K, A, C, I, L);
 

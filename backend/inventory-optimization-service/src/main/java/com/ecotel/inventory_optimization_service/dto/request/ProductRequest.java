@@ -22,9 +22,5 @@ public class ProductRequest {
     @Size(max = 50, message = "Đơn vị tính tối đa 50 ký tự")
     private String unit;
 
-    @NotNull(message = "Đơn giá không được trống")
-    @DecimalMin(value = "0.0001", message = "Đơn giá phải > 0")
-    private BigDecimal unitPrice;
-
     private String description;
 }

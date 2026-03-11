@@ -1,4 +1,4 @@
-package com.ecotel.product_service.config;
+package com.ecotel.inventory_optimization_service.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
@@ -15,19 +15,16 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Product Service API")
+                        .title("Inventory Optimization Service API")
                         .version("1.0")
-                        .description("Product management microservice"))
+                        .description("Inventory Optimization management microservice"))
                 .servers(List.of(
                         new Server()
                                 .url("http://localhost:9000")
                                 .description("Via API Gateway"),
                         new Server()
-                                .url("http://localhost:8084")
-                                .description("Direct to Service"),
-                        new Server()
-                                .url("https://api-gateway-viet-bac.onrender.com/plan-service")
-                                .description("API Gateway")
+                                .url("http://localhost:8091")
+                                .description("Direct to Service")
                 ));
     }
 }

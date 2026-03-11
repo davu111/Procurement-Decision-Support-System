@@ -39,9 +39,9 @@ const Header = ({ currentPage = "Trang chủ", menu }) => {
       path: "/hang-hoa",
     },
     {
-      label: "Phương tiện",
+      label: "Nhà cung cấp",
       icon: Truck,
-      path: "/phuong-tien",
+      path: "/nha-cung-cap",
     },
     {
       label: "Kho hàng",

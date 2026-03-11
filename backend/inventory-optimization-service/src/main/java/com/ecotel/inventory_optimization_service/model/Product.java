@@ -33,9 +33,6 @@ public class Product {
     @Column(length = 50)
     private String unit; // đơn vị tính (tấn, kg, thùng...)
 
-    @Column(name = "unit_price", nullable = false, precision = 18, scale = 4)
-    private BigDecimal unitPrice; // C - đơn giá
-
     @Column(length = 500)
     private String description;
 

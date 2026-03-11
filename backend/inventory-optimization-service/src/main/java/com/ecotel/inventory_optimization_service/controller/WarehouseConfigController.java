@@ -3,7 +3,10 @@ package com.ecotel.inventory_optimization_service.controller;
 import com.ecotel.inventory_optimization_service.dto.request.WarehouseConfigRequest;
 import com.ecotel.inventory_optimization_service.dto.response.ApiResponse;
 import com.ecotel.inventory_optimization_service.exception.ResourceNotFoundException;
+import com.ecotel.inventory_optimization_service.model.InventoryParameter;
+import com.ecotel.inventory_optimization_service.model.Product;
 import com.ecotel.inventory_optimization_service.model.WarehouseConfig;
+import com.ecotel.inventory_optimization_service.repository.InventoryParameterRepository;
 import com.ecotel.inventory_optimization_service.repository.ProductRepository;
 import com.ecotel.inventory_optimization_service.repository.WarehouseConfigRepository;
 import jakarta.validation.Valid;
@@ -21,6 +24,7 @@ public class WarehouseConfigController {
 
     private final WarehouseConfigRepository configRepository;
     private final ProductRepository productRepository;
+    private final InventoryParameterRepository inventoryParameterRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<WarehouseConfig>>> getAll() {
@@ -33,9 +37,10 @@ public class WarehouseConfigController {
 
         // Lấy đơn giá trung bình để tính I nếu không truyền vào
         BigDecimal avgPrice = request.getAvgUnitPriceForCalculation();
+        List<Long> productIds = productRepository.findByIsActiveTrue().stream().map(Product::getId).toList();
         if (avgPrice == null) {
-            avgPrice = productRepository.findByIsActiveTrue().stream()
-                    .map(p -> p.getUnitPrice())
+            avgPrice = inventoryParameterRepository.findByProductIdIn(productIds).stream()
+                    .map(InventoryParameter::getSnapshotUnitPriceC)
                     .reduce(BigDecimal.ZERO, BigDecimal::add)
                     .divide(BigDecimal.valueOf(Math.max(productRepository.findByIsActiveTrue().size(), 1)),
                             4, java.math.RoundingMode.HALF_UP);

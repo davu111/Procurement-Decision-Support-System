@@ -24,46 +24,46 @@ spring:
                 - Path=/api/plans/**
 
             # Warehouse Service
-            - id: ${WAREHOUSE_SERVICE_URL}
-              uri: "http://warehouse-service:8082"
+            - id: warehouse-service
+              uri: ${WAREHOUSE_SERVICE_URL}
               predicates:
                 - Path=/api/warehouses/**,/api/inventories/**
 
             # Employee Service
-            - id: ${EMPLOYEE_SERVICE_URL}
-              uri: "http://employee-service:8083"
+            - id: employee-service
+              uri: ${EMPLOYEE_SERVICE_URL}
               predicates:
                 - Path=/api/employees/**
 
             # Product Service
-            - id: ${PRODUCT_SERVICE_URL}
-              uri: "http://product-service:8084"
+            - id: product-service
+              uri: ${PRODUCT_SERVICE_URL}
               predicates:
                 - Path=/api/products/**,/api/product-categories/**
 
             # Transaction Service
-            - id: ${TRANSACTION_SERVICE_URL}
-              uri: "http://transaction-service:8085"
+            - id: transaction-service
+              uri: ${TRANSACTION_SERVICE_URL}
               predicates:
                 - Path=/api/transactions/**
 
             # Warehouse Site Service
-            - id: ${WAREHOUSE_SITE_SERVICE_URL}
-              uri: "http://warehouse-site-service:8086"
+            - id: warehouse-site-service
+              uri: ${WAREHOUSE_SITE_SERVICE_URL}
               predicates:
                 - Path=/api/warehouse-sites/**
 
-            # Camera Service (REST)
-            - id: camera-service-api
-              uri: ${CAMERA_SERVICE_URL}
+            # Supplier Service
+            - id: supplier-service
+              uri: ${SUPPLIER_SERVICE_URL}
               predicates:
-                - Path=/api/camera/events/**
+                - Path=/api/suppliers/**, /api/supplier-products/**
 
-            # Camera Service (WebSocket)
-            - id: camera-service-ws
-              uri: ${CAMERA_SERVICE_WS_URL}
+            # Inventory Optimization Service (REST)
+            - id: inventory-optimization-service
+              uri: ${INVENTORY_OPTIMIZATION_SERVICE_URL}
               predicates:
-                - Path=/ws/**
+                - Path=/api/inventory/**, /api/consumption-history/**, /api/inventory-products/**, /api/warehouse-config/**
 
             # Swagger UI routes
             - id: vehicle-service-docs
@@ -115,12 +115,12 @@ spring:
               filters:
                 - RewritePath=/warehouse-site-service/(?<segment>.*), /$\{segment}
 
-            - id: camera-service-docs
-              uri: ${CAMERA_SERVICE_URL}
+            - id: inventory-optimization-service-docs
+              uri: ${INVENTORY_OPTIMIZATION_SERVICE_URL}
               predicates:
-                - Path=/camera-service/v3/api-docs
+                - Path=/inventory-optimization-service/v3/api-docs
               filters:
-                - RewritePath=/camera-service/(?<segment>.*), /$\{segment}
+                - RewritePath=/inventory-optimization-service/(?<segment>.*), /$\{segment}
 
 server:
   port: 9000

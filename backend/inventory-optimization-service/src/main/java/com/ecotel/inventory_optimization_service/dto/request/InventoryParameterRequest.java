@@ -28,20 +28,15 @@ public class InventoryParameterRequest {
     @DecimalMin(value = "0.0001", message = "Q phải > 0")
     private BigDecimal demandQ;
 
-    @NotNull(message = "Tốc độ bổ sung K không được trống")
-    @DecimalMin(value = "0.0001", message = "K phải > 0")
-    private BigDecimal supplyRateK;
-
-    @NotNull(message = "Chi phí đặt hàng A không được trống")
-    @DecimalMin(value = "0.0001", message = "A phải > 0")
-    private BigDecimal fixedOrderCostA;
-
     @NotNull(message = "Hệ số bảo quản I không được trống")
     @DecimalMin(value = "0.0001", message = "I phải > 0")
     @DecimalMax(value = "1.0", message = "I phải <= 1 (100%)")
     private BigDecimal storageCostCoefficientI;
 
-    @NotNull(message = "Lead time L không được trống")
-    @DecimalMin(value = "0", message = "L phải >= 0")
-    private BigDecimal leadTimeL;
+    // K, A, C, L không cần nhập - lấy tự động từ Supplier Service
+    // Chỉ dùng khi fallback manual (Supplier Service down và không có kỳ trước)
+    private BigDecimal manualSupplyRateK;
+    private BigDecimal manualFixedOrderCostA;
+    private BigDecimal manualUnitPriceC;
+    private BigDecimal manualLeadTimeDays; // ngày - sẽ được quy đổi
 }

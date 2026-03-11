@@ -6,7 +6,7 @@ import Plan from "./pages/PlanNew";
 import Product from "./pages/Product";
 import Warehouse from "./pages/Warehouse";
 import Category from "./pages/Category";
-import Vehicle from "./pages/Vehicle";
+import Supplier from "./pages/Supplier";
 // import Setting from "./pages/Setting";
 
 function App() {
@@ -18,7 +18,7 @@ function App() {
       <Route path="/hang-hoa" element={<Product />} />
       <Route path="/kho-hang" element={<Warehouse />} />
       <Route path="/danh-muc" element={<Category />} />
-      <Route path="/phuong-tien" element={<Vehicle />} />
+      <Route path="/nha-cung-cap" element={<Supplier />} />
       {/* <Route path="/cai-dat" element={<Setting />} />  */}
     </Routes>
   );

@@ -16,7 +16,6 @@ public class ProductResponse {
     private String code;
     private String name;
     private String unit;
-    private BigDecimal unitPrice;
     private String description;
     private Boolean isActive;
     private LocalDateTime createdAt;

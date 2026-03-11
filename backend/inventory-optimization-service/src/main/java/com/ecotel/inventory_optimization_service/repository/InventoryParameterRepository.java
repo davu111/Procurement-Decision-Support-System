@@ -25,4 +25,12 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
             @Param("unit") PlanningUnit unit);
 
     List<InventoryParameter> findByProductIdOrderByPlanStartDateDesc(Long productId);
+    /**
+     * Fallback: lấy kỳ kế hoạch gần nhất của cùng sản phẩm + đơn vị kỳ
+     * Dùng khi Supplier Service không phản hồi
+     */
+    Optional<InventoryParameter> findTopByProductIdAndPlanningUnitOrderByPlanStartDateDesc(
+            Long productId, PlanningUnit planningUnit);
+
+    Optional<InventoryParameter> findByProductIdIn(List<Long> productIds);
 }

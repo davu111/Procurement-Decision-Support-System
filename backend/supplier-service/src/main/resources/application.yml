@@ -1,8 +1,8 @@
 spring:
   application:
-    name: product_service
+    name: supplier_service
   datasource:
-    name: product_viet-bac_service
+    name: supplier_viet-bac_service
     url: ${DATASOURCE_URL}
     username: ${DATASOURCE_USERNAME}
     password: ${DATASOURCE_PASSWORD}
@@ -16,9 +16,9 @@ spring:
       max-request-size: 10MB
 springdoc:
   api-docs:
-    path: /product-service/v3/api-docs
+    path: /supplier-service/v3/api-docs
   swagger-ui:
-    path: /product-service/swagger/swagger-ui.html
+    path: /supplier-service/swagger/swagger-ui.html
     disable-swagger-default-url: true
 #  security:
 #    oauth2:
@@ -27,4 +27,4 @@ springdoc:
 #          issuer-uri: ${OAUTH2_ISSUER_URI}
 #          jwk-set-uri: ${OAUTH2_JWK_SET_URI}
 server:
-  port: 8084
+  port: 8087

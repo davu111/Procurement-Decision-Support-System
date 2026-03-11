@@ -1,4 +1,4 @@
-package com.ecotel.inventory_optimization_service.config;
+package com.ecotel.supplier_service.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,8 +17,8 @@ public class SecurityConfig {
     };
 
     private static final String[] SWAGGER_WHITELIST = {
-            "/inventory-optimization-service/v3/api-docs/**",
-            "/inventory-optimization-service/swagger-ui/**",
+            "/supplier-service/v3/api-docs/**",
+            "/supplier-service/swagger-ui/**",
     };
 
     @Bean
