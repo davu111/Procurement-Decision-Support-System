@@ -1,21 +1,73 @@
-import React, { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Filter, Plus } from "lucide-react";
+import { useState, useMemo } from "react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { mockPlans } from "../data/mockPlanData";
 import Header from "../components/all/Header";
 import PlanPopup from "../components/plan/PlanPopup";
-import { mockPlans } from "../data/mockPlanData";
+
+// Hàm thuật toán chia line
+const organizeTasksIntoLines = (plans) => {
+  const lines = [];
+
+  // Sắp xếp plans theo startDate trước
+  const sortedPlans = [...plans].sort(
+    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+  );
+
+  sortedPlans.forEach((plan) => {
+    let inserted = false;
+
+    // Duyệt từng line
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const line = lines[lineIndex];
+
+      // Kiểm tra nếu plan.endDate < savedPlan(0).startDate
+      if (new Date(plan.endDate) < new Date(line[0].startDate)) {
+        line.unshift(plan);
+        inserted = true;
+        break;
+      }
+
+      // Kiểm tra nếu plan.startDate > savedPlan(cuối).endDate
+      if (new Date(plan.startDate) > new Date(line[line.length - 1].endDate)) {
+        line.push(plan);
+        inserted = true;
+        break;
+      }
+
+      // Kiểm tra vị trí giữa các phần tử
+      for (let i = 0; i < line.length - 1; i++) {
+        if (
+          new Date(plan.startDate) > new Date(line[i].endDate) &&
+          new Date(plan.endDate) < new Date(line[i + 1].startDate)
+        ) {
+          line.splice(i + 1, 0, plan);
+          inserted = true;
+          break;
+        }
+      }
+
+      if (inserted) break;
+    }
+
+    // Nếu chưa chèn được vào line nào, tạo line mới
+    if (!inserted) {
+      lines.push([plan]);
+    }
+  });
+
+  return lines;
+};
 
 function Plan() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedCell, setSelectedCell] = useState(null);
   const [popupPosition, setPopupPosition] = useState(null);
-  const [viewDensity, setViewDensity] = useState("comfortable"); // compact, comfortable, spacious
-  const [maxVisibleTasks, setMaxVisibleTasks] = useState(4);
-  const [expandedDays, setExpandedDays] = useState(new Set());
+  const [viewDensity, setViewDensity] = useState("comfortable");
   const [showPlanPopup, setShowPlanPopup] = useState(false);
-  const [planPopupMode, setPlanPopupMode] = useState("create");
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [planPopupMode, setPlanPopupMode] = useState("create");
 
-  // Sample tasks data - includes overlapping schedules to demonstrate the solution
+  // Khởi tạo tasks từ mockData và tổ chức thành lines
   const [tasks] = useState(
     mockPlans.map((plan) => ({
       id: plan.id,
@@ -24,11 +76,17 @@ function Plan() {
       endDate: plan.endDate,
       color: plan.color,
       category: "Development",
-      planData: plan, // Store the full plan data
+      planData: plan,
     }))
   );
 
+  // Tính toán lines một lần khi component mount
+  const taskLines = useMemo(() => {
+    return organizeTasksIntoLines(tasks);
+  }, [tasks]);
+
   const [filterCategories, setFilterCategories] = useState(new Set());
+  const [filterStatus, setFilterStatus] = useState(new Set());
 
   // Get all unique categories
   const categories = useMemo(() => {
@@ -37,9 +95,31 @@ function Plan() {
 
   // Filter tasks
   const filteredTasks = useMemo(() => {
-    if (filterCategories.size === 0) return tasks;
-    return tasks.filter((t) => filterCategories.has(t.category));
-  }, [tasks, filterCategories]);
+    let result = tasks;
+
+    // Filter by category
+    if (filterCategories.size > 0) {
+      result = result.filter((t) => filterCategories.has(t.category));
+    }
+
+    // Filter by status
+    if (filterStatus.size > 0) {
+      result = result.filter((t) => filterStatus.has(t.planData.status));
+    }
+
+    return result;
+  }, [tasks, filterCategories, filterStatus]);
+
+  // Tính toán filtered lines
+  const filteredLines = useMemo(() => {
+    if (filterCategories.size === 0 && filterStatus.size === 0)
+      return taskLines;
+
+    const filtered = filteredTasks.map((t) => t.id);
+    return taskLines
+      .map((line) => line.filter((task) => filtered.includes(task.id)))
+      .filter((line) => line.length > 0);
+  }, [taskLines, filteredTasks, filterCategories, filterStatus]);
 
   // Calendar calculations
   const year = currentDate.getFullYear();
@@ -90,48 +170,14 @@ function Plan() {
     });
   };
 
-  // Get task layer index - determines vertical position
-  const getTaskLayerIndex = (task, day, allTasksInWeek) => {
-    // Get all tasks that overlap with this specific task across their full date ranges
-    const taskStart = new Date(task.startDate);
-    const taskEnd = new Date(task.endDate);
-    taskStart.setHours(0, 0, 0, 0);
-    taskEnd.setHours(23, 59, 59, 999);
-
-    // Get tasks that overlap with this one - check against ALL filtered tasks, not just dayTasks
-    const overlappingTasks = filteredTasks.filter((t) => {
-      if (t.id === task.id) return false;
-      const tStart = new Date(t.startDate);
-      const tEnd = new Date(t.endDate);
-      tStart.setHours(0, 0, 0, 0);
-      tEnd.setHours(23, 59, 59, 999);
-
-      // Tasks overlap only if one starts before the other ends
-      // If one ends exactly when another starts, they don't overlap
-      return tStart <= taskEnd || tEnd >= taskStart;
-    });
-
-    // Sort overlapping tasks by start date, then by ID
-    const sortedOverlapping = [...overlappingTasks].sort((a, b) => {
-      const aStart = new Date(a.startDate).getTime();
-      const bStart = new Date(b.startDate).getTime();
-      if (aStart !== bStart) return aStart - bStart;
-      return a.id - b.id;
-    });
-
-    // Find this task's position in sorted list
-    const thisTaskStart = new Date(task.startDate).getTime();
-    let layer = 0;
-    for (const t of sortedOverlapping) {
-      const tStart = new Date(t.startDate).getTime();
-      if (
-        tStart < thisTaskStart ||
-        (tStart === thisTaskStart && t.id < task.id)
-      ) {
-        layer++;
+  // Lấy line index của task (thay thế getTaskLayerIndex)
+  const getTaskLineIndex = (task) => {
+    for (let i = 0; i < filteredLines.length; i++) {
+      if (filteredLines[i].some((t) => t.id === task.id)) {
+        return i;
       }
     }
-    return layer;
+    return 0;
   };
 
   // Check if task starts on this date
@@ -141,7 +187,7 @@ function Plan() {
     return date.toDateString() === start.toDateString();
   };
 
-  // Check if this is a continuation day for a task (first day of a week where task is ongoing)
+  // Check if this is a continuation day for a task
   const isTaskContinuation = (task, day) => {
     const date = new Date(year, month, day);
     const start = new Date(task.startDate);
@@ -151,17 +197,13 @@ function Plan() {
     end.setHours(23, 59, 59, 999);
     date.setHours(12, 0, 0, 0);
 
-    // Check if task is active on this day
     if (date < start || date > end) return false;
-
-    // Task started on this day - not a continuation
     if (date.toDateString() === start.toDateString()) return false;
 
-    // Check if this is the first day of a week (Monday)
     const dayOfWeek = new Date(year, month, day).getDay();
     const adjustedDayOfWeek = (dayOfWeek - 1 + 7) % 7;
 
-    return adjustedDayOfWeek === 0; // Monday is first day of week
+    return adjustedDayOfWeek === 0;
   };
 
   // Calculate task span in days for current week view
@@ -170,61 +212,33 @@ function Plan() {
     const start = new Date(task.startDate);
     const end = new Date(task.endDate);
 
-    // Normalize dates
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
     date.setHours(0, 0, 0, 0);
 
-    // For task start day or continuation day, calculate span to end of week
     if (isTaskStart(task, day) || isTaskContinuation(task, day)) {
-      // Find the actual start for this rendering (could be task start or week start)
       const renderStart = isTaskStart(task, day)
         ? date
         : new Date(year, month, day);
       renderStart.setHours(0, 0, 0, 0);
 
-      // Month boundaries
       const monthStart = new Date(firstDayOfMonth);
       monthStart.setHours(0, 0, 0, 0);
       const monthEnd = new Date(lastDayOfMonth);
       monthEnd.setHours(23, 59, 59, 999);
 
-      // Actual end date
       const actualEnd = end < monthEnd ? end : monthEnd;
-
-      // Calculate total days
       const diffTime = actualEnd - renderStart;
       const totalDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-      // Calculate days until end of week (Sunday)
       const dayOfWeek = renderStart.getDay();
-      const adjustedDayOfWeek = (dayOfWeek - 1 + 7) % 7; // Monday = 0
-      const daysUntilSunday = 7 - adjustedDayOfWeek; // Days from current day to Sunday (inclusive)
+      const adjustedDayOfWeek = (dayOfWeek - 1 + 7) % 7;
+      const daysUntilSunday = 7 - adjustedDayOfWeek;
 
       return Math.min(totalDays, daysUntilSunday);
     }
 
     return 0;
-  };
-
-  // Get full task span across entire month (for positioning calculations)
-  const getFullTaskSpan = (task) => {
-    const start = new Date(task.startDate);
-    const end = new Date(task.endDate);
-
-    start.setHours(0, 0, 0, 0);
-    end.setHours(23, 59, 59, 999);
-
-    const monthStart = new Date(firstDayOfMonth);
-    monthStart.setHours(0, 0, 0, 0);
-    const monthEnd = new Date(lastDayOfMonth);
-    monthEnd.setHours(23, 59, 59, 999);
-
-    const actualStart = start > monthStart ? start : monthStart;
-    const actualEnd = end < monthEnd ? end : monthEnd;
-
-    const diffTime = actualEnd - actualStart;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   };
 
   const prevMonth = () => {
@@ -255,6 +269,16 @@ function Plan() {
     setFilterCategories(newFilters);
   };
 
+  const toggleStatusFilter = (status) => {
+    const newFilters = new Set(filterStatus);
+    if (newFilters.has(status)) {
+      newFilters.delete(status);
+    } else {
+      newFilters.add(status);
+    }
+    setFilterStatus(newFilters);
+  };
+
   const getTaskHeight = () => {
     if (viewDensity === "compact") return "h-5";
     if (viewDensity === "comfortable") return "h-6";
@@ -267,16 +291,6 @@ function Plan() {
     return "text-sm";
   };
 
-  const toggleDayExpansion = (day) => {
-    const newExpanded = new Set(expandedDays);
-    if (newExpanded.has(day)) {
-      newExpanded.delete(day);
-    } else {
-      newExpanded.add(day);
-    }
-    setExpandedDays(newExpanded);
-  };
-
   const openTaskPlanPopup = (task) => {
     setPlanPopupMode("edit");
     setSelectedPlan(task.planData);
@@ -286,8 +300,7 @@ function Plan() {
   return (
     <>
       <Header currentPage="Kế hoạch" menu="admin" />
-
-      {/* Main content */}
+      {/* Main Content */}
       <div className="min-h-screen bg-white p-4">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -316,43 +329,62 @@ function Plan() {
             </div>
           </div>
 
-          {/* Filter Categories */}
-          <div className="mb-4 flex items-center gap-2 flex-wrap">
-            <Filter className="w-4 h-4 text-indigo-600" />
-            <span className="text-sm text-gray-600">Lọc:</span>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => toggleFilter(cat)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  filterCategories.has(cat)
-                    ? "bg-indigo-600 text-white"
-                    : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-            {filterCategories.size > 0 && (
-              <button
-                onClick={() => setFilterCategories(new Set())}
-                className="px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-700 hover:bg-gray-300"
-              >
-                Xóa bộ lọc
-              </button>
-            )}
+          {/* Filter Section */}
+          <div className="mb-6 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+            <div className="space-y-3">
+              {/* Status Filter */}
+              <div>
+                <label className="block text-sm font-semibold text-indigo-900 mb-2">
+                  Lọc theo trạng thái:
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => toggleStatusFilter("pending")}
+                    className={`px-2 py-1 rounded-lg font-medium transition-all ${
+                      filterStatus.has("pending")
+                        ? "bg-yellow-500 text-white shadow-md"
+                        : "bg-white text-yellow-600 border-2 border-yellow-500 hover:bg-yellow-50"
+                    }`}
+                  >
+                    Chưa thực hiện
+                  </button>
+                  <button
+                    onClick={() => toggleStatusFilter("in-progress")}
+                    className={`px-2 py-1 rounded-lg font-medium transition-all ${
+                      filterStatus.has("in-progress")
+                        ? "bg-blue-500 text-white shadow-md"
+                        : "bg-white text-blue-600 border-2 border-blue-500 hover:bg-blue-50"
+                    }`}
+                  >
+                    Đang thực hiện
+                  </button>
+                  <button
+                    onClick={() => toggleStatusFilter("completed")}
+                    className={`px-2 py-1 rounded-lg font-medium transition-all ${
+                      filterStatus.has("completed")
+                        ? "bg-green-500 text-white shadow-md"
+                        : "bg-white text-green-600 border-2 border-green-500 hover:bg-green-50"
+                    }`}
+                  >
+                    Đã hoàn thành
+                  </button>
+                  {filterStatus.size > 0 && (
+                    <button
+                      onClick={() => setFilterStatus(new Set())}
+                      className="px-2 py-1 rounded-lg font-medium bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    >
+                      Xóa lọc
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Calendar Grid View */}
-          <div
-            className="bg-white border border-indigo-100 rounded-lg shadow-sm"
-            style={{ overflow: "visible", position: "relative" }}
-          >
+          <div className="bg-white border border-indigo-100 rounded-lg shadow-sm">
             {/* Day Headers */}
-            <div
-              className="grid grid-cols-7 bg-indigo-50 border-b border-indigo-100"
-              style={{ position: "relative", zIndex: 20 }}
-            >
+            <div className="grid grid-cols-7 bg-indigo-50 border-b border-indigo-100">
               {dayNames.map((day) => (
                 <div
                   key={day}
@@ -364,60 +396,24 @@ function Plan() {
             </div>
 
             {/* Calendar Days */}
-            <div
-              className="grid grid-cols-7"
-              style={{ position: "relative", overflow: "visible" }}
-            >
+            <div className="grid grid-cols-7">
               {calendarDays.map((day, index) => {
                 const dayTasks = getTasksForDate(day);
-                // Tasks that start in this cell or are continuation segments starting this week
                 const barTasks = dayTasks.filter(
                   (task) =>
                     isTaskStart(task, day) || isTaskContinuation(task, day)
                 );
 
-                // QUAN TRỌNG: Kiểm tra expanded state - dùng dayTasks.length để đếm tất cả task đi qua ngày
-                const isExpanded = expandedDays.has(day);
-                const effectiveMaxVisible = isExpanded
-                  ? dayTasks.length
-                  : maxVisibleTasks;
-
-                // Chỉ lấy số lượng task cần hiển thị từ dayTasks (tất cả task đi qua ngày)
-                const visibleTasks = dayTasks.slice(0, effectiveMaxVisible);
-                const hiddenCount = Math.max(
-                  0,
-                  dayTasks.length - effectiveMaxVisible
-                );
-
-                // Tính chiều cao dựa trên số task HIỂN THỊ thực tế
                 const taskHeightPx =
                   viewDensity === "compact"
                     ? 24
                     : viewDensity === "comfortable"
                     ? 28
                     : 32;
-                const baseHeight = 60; // Header của ngày
-                const additionalHeight =
-                  visibleTasks.length > 0
-                    ? Math.max(
-                        ...visibleTasks.map((task) =>
-                          getTaskLayerIndex(task, day, dayTasks)
-                        )
-                      ) + 1
-                    : 0;
-                const buttonHeight = hiddenCount > 0 ? 28 : 0;
+                const baseHeight = 60;
+                const additionalHeight = filteredLines.length;
                 const minHeight =
-                  baseHeight + additionalHeight * taskHeightPx + buttonHeight;
-
-                // Calculate max layer across visible tasks for cell height
-                const maxLayer =
-                  visibleTasks.length > 0
-                    ? Math.max(
-                        ...visibleTasks.map((task) =>
-                          getTaskLayerIndex(task, day, dayTasks)
-                        )
-                      )
-                    : 0;
+                  baseHeight + additionalHeight * taskHeightPx + 10;
 
                 return (
                   <div
@@ -433,10 +429,7 @@ function Plan() {
                   >
                     {day && (
                       <>
-                        <div
-                          className="flex items-center justify-between mb-2"
-                          style={{ position: "relative", zIndex: 10 }}
-                        >
+                        <div className="flex items-center justify-between mb-2">
                           <div
                             className={`text-sm font-semibold ${
                               isToday(day)
@@ -451,26 +444,11 @@ function Plan() {
                         <div
                           className="relative"
                           style={{
-                            zIndex: 1,
-                            overflow: "visible",
-                            position: "relative",
                             minHeight: `${additionalHeight * taskHeightPx}px`,
                           }}
                         >
-                          {visibleTasks.map((task) => {
-                            // Chỉ vẽ task bar nếu task bắt đầu hoặc tiếp tục ở ngày này
-                            if (
-                              !isTaskStart(task, day) &&
-                              !isTaskContinuation(task, day)
-                            ) {
-                              return null;
-                            }
-
-                            const layerIndex = getTaskLayerIndex(
-                              task,
-                              day,
-                              dayTasks
-                            );
+                          {barTasks.map((task) => {
+                            const lineIndex = getTaskLineIndex(task);
                             const span = getTaskSpan(task, day);
 
                             return (
@@ -482,13 +460,12 @@ function Plan() {
                                 style={{
                                   position: "absolute",
                                   left: "8px",
-                                  top: `${taskHeightPx * layerIndex}px`,
+                                  top: `${taskHeightPx * lineIndex}px`,
                                   width: `calc(${span * 100}% + ${
                                     span - 1
                                   }px - 16px)`,
-                                  zIndex: 50 - layerIndex,
+                                  zIndex: 50 - lineIndex,
                                   minWidth: "60px",
-                                  pointerEvents: "auto",
                                 }}
                                 title={`${
                                   task.title
@@ -502,54 +479,6 @@ function Plan() {
                             );
                           })}
                         </div>
-
-                        {/* "More tasks" indicator - ĐẶT BÊN NGOÀI div của tasks */}
-                        {hiddenCount > 0 && (
-                          <div
-                            className="mt-1"
-                            style={{
-                              position: "relative",
-                              zIndex: 15,
-                              marginTop: `${
-                                additionalHeight * taskHeightPx + 4
-                              }px`,
-                            }}
-                          >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-
-                                const rect =
-                                  e.currentTarget.getBoundingClientRect();
-                                const popupHeight = 400;
-                                const viewportHeight = window.innerHeight;
-
-                                let top = rect.bottom;
-
-                                // Nếu popup bị tràn xuống dưới viewport → hiển thị phía trên
-                                if (
-                                  rect.bottom + popupHeight >
-                                  viewportHeight
-                                ) {
-                                  top = rect.top - popupHeight;
-                                }
-
-                                // Đảm bảo popup không vượt khỏi phía trên màn hình
-                                top = Math.max(top, 0);
-
-                                setPopupPosition({
-                                  top,
-                                  left: rect.left,
-                                });
-
-                                setSelectedCell({ day, tasks: dayTasks });
-                              }}
-                              className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 hover:bg-indigo-100 px-2 py-1 rounded transition-colors w-full text-left"
-                            >
-                              {`+${hiddenCount} mục khác`}
-                            </button>
-                          </div>
-                        )}
                       </>
                     )}
                   </div>
@@ -561,7 +490,6 @@ function Plan() {
           {/* Popup for more tasks */}
           {selectedCell && popupPosition && (
             <>
-              {/* Backdrop để đóng popup */}
               <div
                 className="fixed inset-0 z-40"
                 onClick={() => {
@@ -569,7 +497,6 @@ function Plan() {
                   setPopupPosition(null);
                 }}
               />
-              {/* Popup nhỏ */}
               <div
                 className="fixed bg-white rounded-lg shadow-2xl z-50 border border-indigo-100 max-w-xs w-80"
                 style={{
@@ -581,7 +508,6 @@ function Plan() {
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Header */}
                 <div className="border-b border-indigo-100 p-3 flex justify-between items-center bg-indigo-50 rounded-t-lg">
                   <h3 className="text-sm font-bold text-indigo-900">
                     Ngày {selectedCell.day} {monthNames[month]}
@@ -591,13 +517,12 @@ function Plan() {
                       setSelectedCell(null);
                       setPopupPosition(null);
                     }}
-                    className="text-gray-400 hover:text-gray-600 text-lg leading-none w-5 h-5 flex items-center justify-center"
+                    className="text-gray-400 hover:text-gray-600 text-lg"
                   >
                     ✕
                   </button>
                 </div>
 
-                {/* Tasks List */}
                 <div className="overflow-y-auto flex-1 p-3">
                   <div className="space-y-2">
                     {selectedCell.tasks.map((task) => (
@@ -609,9 +534,6 @@ function Plan() {
                         <div className="text-xs opacity-95 mt-0.5">
                           {task.startDate.toLocaleDateString("vi-VN")} -{" "}
                           {task.endDate.toLocaleDateString("vi-VN")}
-                        </div>
-                        <div className="text-xs opacity-80 mt-0.5 bg-black bg-opacity-20 inline-block px-1.5 py-0.5 rounded">
-                          {task.category}
                         </div>
                       </div>
                     ))}
@@ -628,7 +550,7 @@ function Plan() {
               setSelectedPlan(null);
               setShowPlanPopup(true);
             }}
-            className="cursor-pointer fixed bottom-8 right-8 bg-white text-indigo-600 rounded-full p-4 shadow-lg transition-all hover:shadow-xl z-40 flex items-center justify-center"
+            className="cursor-pointer fixed bottom-8 right-8 bg-white text-indigo-600 rounded-full p-4 shadow-lg transition-all hover:shadow-xl z-100 flex items-center justify-center"
             title="Thêm kế hoạch"
           >
             <Plus className="w-6 h-6" />
@@ -651,4 +573,5 @@ function Plan() {
     </>
   );
 }
+
 export default Plan;

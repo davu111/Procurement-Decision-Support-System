@@ -4,8 +4,10 @@ import com.ecotel.inventory_optimization_service.dto.request.InventoryParameterR
 import com.ecotel.inventory_optimization_service.dto.response.ApiResponse;
 import com.ecotel.inventory_optimization_service.dto.response.ForecastSuggestionResponse;
 import com.ecotel.inventory_optimization_service.dto.response.InventoryCalculationResult;
+import com.ecotel.inventory_optimization_service.dto.response.OrderScheduleResponse;
 import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import com.ecotel.inventory_optimization_service.repository.OrderScheduleRepository;
+import com.ecotel.inventory_optimization_service.service.OrderScheduleService;
 import com.ecotel.inventory_optimization_service.service.impl.InventoryPlanningService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +24,8 @@ import java.util.List;
 public class InventoryPlanningController {
 
     private final InventoryPlanningService planningService;
-    private final OrderScheduleRepository scheduleRepository;
+    private final OrderScheduleService scheduleService;
+
 
     /**
      * POST /api/inventory/calculate
@@ -53,10 +56,10 @@ public class InventoryPlanningController {
      * Lấy lịch kế hoạch đặt hàng toàn bộ theo khoảng thời gian
      */
     @GetMapping("/schedule")
-    public ResponseEntity<ApiResponse<List<?>>> getSchedule(
+    public ResponseEntity<ApiResponse<List<OrderScheduleResponse>>> getSchedule(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        var schedules = scheduleRepository.findByOrderDateBetween(from, to);
+        List<OrderScheduleResponse> schedules = scheduleService.getSchedule(from, to);
         return ResponseEntity.ok(ApiResponse.success(schedules));
     }
 
@@ -65,11 +68,11 @@ public class InventoryPlanningController {
      * Lịch kế hoạch theo mặt hàng cụ thể
      */
     @GetMapping("/schedule/{productId}")
-    public ResponseEntity<ApiResponse<List<?>>> getScheduleByProduct(
+    public ResponseEntity<ApiResponse<List<OrderScheduleResponse>>> getScheduleByProduct(
             @PathVariable Long productId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        var schedules = scheduleRepository.findByProductIdAndOrderDateBetween(productId, from, to);
+        List<OrderScheduleResponse> schedules = scheduleService.getScheduleByProductId(productId, from, to);
         return ResponseEntity.ok(ApiResponse.success(schedules));
     }
 }

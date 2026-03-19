@@ -2,7 +2,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import "./index.css";
 
 import Home from "./pages/Home";
-import Plan from "./pages/PlanNew";
+import Plan from "./pages/Plan";
+import OptimizationPlan from "./pages/OptimizationPlan";
 import Product from "./pages/Product";
 import Warehouse from "./pages/Warehouse";
 import Category from "./pages/Category";
@@ -19,6 +20,7 @@ function App() {
       <Route path="/kho-hang" element={<Warehouse />} />
       <Route path="/danh-muc" element={<Category />} />
       <Route path="/nha-cung-cap" element={<Supplier />} />
+      <Route path="/toan-uu" element={<OptimizationPlan />} />
       {/* <Route path="/cai-dat" element={<Setting />} />  */}
     </Routes>
   );

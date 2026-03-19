@@ -31,6 +31,9 @@ public class SupplierProduct {
     @Column(name = "product_id", nullable = false)
     private Long productId;
 
+    @Column(name = "product_name")
+    private String productName;
+
     @Column(name = "max_supply_per_month", nullable = false, precision = 18, scale = 4)
     private BigDecimal maxSupplyPerMonth;   // K - năng lực cung cấp tối đa/tháng
 

@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   LogOut,
+  Activity,
 } from "lucide-react";
 
 // Simple Header Component
@@ -52,6 +53,11 @@ const Header = ({ currentPage = "Trang chủ", menu }) => {
       label: "Kế hoạch",
       icon: CalendarRange,
       path: "/ke-hoach",
+    },
+    {
+      label: "Tối ưu tồn kho",
+      icon: Activity,
+      path: "/toan-uu",
     },
     {
       label: "Cài đặt",

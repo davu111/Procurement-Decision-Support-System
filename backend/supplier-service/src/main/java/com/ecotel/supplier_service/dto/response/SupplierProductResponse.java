@@ -13,6 +13,7 @@ public class SupplierProductResponse {
     private String supplierCode;
     private String supplierName;
     private Long productId;
+    private String productName;
     private BigDecimal maxSupplyPerMonth;
     private BigDecimal fixedOrderCost;
     private BigDecimal unitPrice;
