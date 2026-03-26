@@ -1,11 +1,32 @@
-import { mockProducts, mockOrderSchedules } from '@/data/mockData';
+// import { mockProducts, mockOrderSchedules } from '@/data/mockData';
+import type { Product } from '@/types/inventory-opt/product';
+import type { OrderSchedule } from '@/types/inventory-opt/order-schedule';
+import api from '@/api/axiosConfig';
 import { formatDate, getUrgencyInfo, formatNumber } from '@/utils/helpers';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 export default function ProductsPage() {
   const navigate = useNavigate();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orderSchedules, setOrderSchedules] = useState<OrderSchedule[]>([]);
+
+  useEffect(() => {
+    api.get('/inventory-products')
+      .then(response => setProducts(response.data))
+      .catch(error => console.error('Error fetching products:', error));
+
+    api.get('/order-schedules', {
+      params: {
+    from: '2025-01-01',
+    to: '2026-12-31'
+  }
+    })
+      .then(response => setOrderSchedules(response.data))
+      .catch(error => console.error('Error fetching order schedules:', error));
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -15,8 +36,8 @@ export default function ProductsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {mockProducts.map(product => {
-          const orders = mockOrderSchedules.filter(o => o.productId === product.id);
+        {products.map(product => {
+          const orders = orderSchedules.filter(o => o.productId === product.id);
           const urgency = getUrgencyInfo(orders);
           const pendingOrders = orders.filter(o => !o.actualOrderDate).length;
 

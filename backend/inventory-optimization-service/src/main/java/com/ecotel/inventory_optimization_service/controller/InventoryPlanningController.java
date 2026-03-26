@@ -24,8 +24,6 @@ import java.util.List;
 public class InventoryPlanningController {
 
     private final InventoryPlanningService planningService;
-    private final OrderScheduleService scheduleService;
-
 
     /**
      * POST /api/inventory/calculate
@@ -49,30 +47,5 @@ public class InventoryPlanningController {
             @RequestParam(defaultValue = "MONTH") PlanningUnit planningUnit) {
         ForecastSuggestionResponse suggestion = planningService.getSuggestion(productId, planningUnit);
         return ResponseEntity.ok(ApiResponse.success(suggestion));
-    }
-
-    /**
-     * GET /api/inventory/schedule?from=2025-01-01&to=2025-12-31
-     * Lấy lịch kế hoạch đặt hàng toàn bộ theo khoảng thời gian
-     */
-    @GetMapping("/schedule")
-    public ResponseEntity<ApiResponse<List<OrderScheduleResponse>>> getSchedule(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        List<OrderScheduleResponse> schedules = scheduleService.getSchedule(from, to);
-        return ResponseEntity.ok(ApiResponse.success(schedules));
-    }
-
-    /**
-     * GET /api/inventory/schedule/{productId}?from=...&to=...
-     * Lịch kế hoạch theo mặt hàng cụ thể
-     */
-    @GetMapping("/schedule/{productId}")
-    public ResponseEntity<ApiResponse<List<OrderScheduleResponse>>> getScheduleByProduct(
-            @PathVariable Long productId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        List<OrderScheduleResponse> schedules = scheduleService.getScheduleByProductId(productId, from, to);
-        return ResponseEntity.ok(ApiResponse.success(schedules));
     }
 }

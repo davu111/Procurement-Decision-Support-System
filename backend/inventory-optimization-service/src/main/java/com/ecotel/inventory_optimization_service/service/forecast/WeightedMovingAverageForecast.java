@@ -1,9 +1,12 @@
 package com.ecotel.inventory_optimization_service.service.forecast;
 
+import com.ecotel.inventory_optimization_service.dto.response.ForecastPoint;
 import com.ecotel.inventory_optimization_service.dto.response.ForecastResult;
 import com.ecotel.inventory_optimization_service.enums.ForecastModel;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -16,87 +19,103 @@ import java.util.List;
 @Component
 public class WeightedMovingAverageForecast implements ForecastStrategy {
 
-    // Trọng số: tổng = 1.0, kỳ gần nhất được tin cậy hơn
-    private static final double[] WEIGHTS_3 = {0.50, 0.30, 0.20}; // 3 điểm
-    private static final double[] WEIGHTS_2 = {0.65, 0.35};        // 2 điểm
-    private static final double[] WEIGHTS_1 = {1.00};               // 1 điểm
+    private static final double[] WEIGHTS_3 = {0.50, 0.30, 0.20};
+    private static final double[] WEIGHTS_2 = {0.65, 0.35};
+    private static final double[] WEIGHTS_1 = {1.00};
 
     @Override
-    public ForecastResult forecast(List<Double> historicalData) {
+    public ForecastResult forecast(List<Double> historicalData,
+                                   LocalDate lastPeriodStart,
+                                   int periodsAhead,
+                                   String planningUnit) {
         int n = historicalData.size();
         if (n == 0) throw new IllegalArgumentException("Không có dữ liệu lịch sử");
 
         double[] weights = selectWeights(n);
-        double[] recentData = getRecentData(historicalData, weights.length);
-
-        double forecastValue = 0;
-        for (int i = 0; i < weights.length; i++) {
-            forecastValue += weights[i] * recentData[i];
-        }
-
         double mape = calculateMape(historicalData, weights);
 
+        // WMA không có seasonal model → dùng sliding window cho mỗi kỳ tiếp
+        // Mỗi kỳ dự đoán, append giá trị dự đoán vào window để tính kỳ sau
+        List<Double> window = new ArrayList<>(historicalData);
+        List<ForecastPoint> forecastPoints = new ArrayList<>();
+        double firstForecastValue = 0;
+
+        for (int step = 0; step < periodsAhead; step++) {
+            double[] recent = getRecentData(window, weights.length);
+            double fv = 0;
+            for (int i = 0; i < weights.length; i++) fv += weights[i] * recent[i];
+            fv = Math.max(fv, 0);
+
+            if (step == 0) firstForecastValue = fv;
+
+            double band = Double.isNaN(mape) ? fv * 0.15 : fv * (mape / 100.0);
+            String period = stepToPeriodLabel(lastPeriodStart, step + 1, planningUnit);
+
+            forecastPoints.add(ForecastPoint.builder()
+                    .period(period)
+                    .forecastValue(Math.round(fv * 10000.0) / 10000.0)
+                    .upperBound(Math.round((fv + band) * 10000.0) / 10000.0)
+                    .lowerBound(Math.round(Math.max(0, fv - band) * 10000.0) / 10000.0)
+                    .build());
+
+            // Dùng giá trị dự đoán làm input cho kỳ tiếp theo
+            window.add(fv);
+        }
+
         return ForecastResult.builder()
-                .forecastValue(forecastValue)
+                .forecastValue(firstForecastValue)
+                .forecastPoints(forecastPoints)
                 .modelUsed(ForecastModel.WMA)
                 .mape(mape)
                 .dataPointsUsed(n)
-                .description(buildDescription(weights, recentData, forecastValue))
+                .description(buildDescription(weights, getRecentData(historicalData, weights.length), firstForecastValue))
                 .build();
     }
 
-    private double[] selectWeights(int dataCount) {
-        if (dataCount >= 3) return WEIGHTS_3;
-        if (dataCount == 2) return WEIGHTS_2;
+    private double[] selectWeights(int n) {
+        if (n >= 3) return WEIGHTS_3;
+        if (n == 2) return WEIGHTS_2;
         return WEIGHTS_1;
     }
 
     private double[] getRecentData(List<Double> data, int count) {
         int size = data.size();
         double[] recent = new double[count];
-        // Lấy từ mới nhất → cũ nhất
-        for (int i = 0; i < count; i++) {
-            recent[i] = data.get(size - 1 - i);
-        }
+        for (int i = 0; i < count; i++) recent[i] = data.get(size - 1 - i);
         return recent;
     }
 
-    /**
-     * Tính MAPE bằng cross-validation đơn giản (leave-last-one-out)
-     */
     private double calculateMape(List<Double> data, double[] weights) {
         if (data.size() < weights.length + 1) return Double.NaN;
-
-        double totalError = 0;
-        int count = 0;
-
+        double totalError = 0; int count = 0;
         for (int t = weights.length; t < data.size(); t++) {
             double predicted = 0;
-            for (int i = 0; i < weights.length; i++) {
-                predicted += weights[i] * data.get(t - 1 - i);
-            }
+            for (int i = 0; i < weights.length; i++) predicted += weights[i] * data.get(t - 1 - i);
             double actual = data.get(t);
-            if (actual != 0) {
-                totalError += Math.abs((actual - predicted) / actual);
-                count++;
-            }
+            if (actual != 0) { totalError += Math.abs((actual - predicted) / actual); count++; }
         }
-
         return count > 0 ? (totalError / count) * 100 : Double.NaN;
     }
 
-    private String buildDescription(double[] weights, double[] recentData, double forecast) {
+    private String buildDescription(double[] weights, double[] recent, double forecast) {
         StringBuilder sb = new StringBuilder("WMA: ");
         for (int i = 0; i < weights.length; i++) {
-            sb.append(String.format("%.0f%%×%.2f", weights[i] * 100, recentData[i]));
+            sb.append(String.format("%.0f%%×%.2f", weights[i]*100, recent[i]));
             if (i < weights.length - 1) sb.append(" + ");
         }
         sb.append(String.format(" = %.4f", forecast));
         return sb.toString();
     }
 
-    @Override
-    public ForecastModel getModelType() {
-        return ForecastModel.WMA;
+    private String stepToPeriodLabel(LocalDate last, int steps, String planningUnit) {
+        LocalDate next = switch (planningUnit.toUpperCase()) {
+            case "QUARTER" -> last.plusMonths(3L * steps);
+            case "YEAR"    -> last.plusYears(steps);
+            default        -> last.plusMonths(steps);
+        };
+        return String.format("%d-%02d", next.getYear(), next.getMonthValue());
     }
+
+    @Override
+    public ForecastModel getModelType() { return ForecastModel.WMA; }
 }

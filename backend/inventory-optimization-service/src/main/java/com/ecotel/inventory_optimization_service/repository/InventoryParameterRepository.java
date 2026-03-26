@@ -14,7 +14,9 @@ import java.util.Optional;
 @Repository
 public interface InventoryParameterRepository extends JpaRepository<InventoryParameter, Long> {
 
-    List<InventoryParameter> findByProductId(Long productId);
+    // Lay kỳ kế hoạch cụ thể cho sản phẩm + đơn vị kỳ gan nhat theo updated_at
+    Optional<InventoryParameter> findTopByProductIdAndPlanningUnitOrderByUpdatedAtDesc(
+            Long productId, PlanningUnit planningUnit);
 
     Optional<InventoryParameter> findByProductIdAndPlanStartDateAndPlanningUnit(
             Long productId, LocalDate planStartDate, PlanningUnit planningUnit);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { mockProducts } from '@/data/mockData';
+import api from '@/api/axiosConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

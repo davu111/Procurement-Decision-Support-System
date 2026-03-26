@@ -1,10 +1,13 @@
 package com.ecotel.inventory_optimization_service.service.forecast;
 
+import com.ecotel.inventory_optimization_service.dto.response.ForecastPoint;
 import com.ecotel.inventory_optimization_service.dto.response.ForecastResult;
 import com.ecotel.inventory_optimization_service.enums.ForecastModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -21,125 +24,135 @@ import java.util.List;
 @Component
 public class HoltWintersForecast implements ForecastStrategy {
 
-    @Value("${app.inventory.holt-winters.alpha:0.3}")
-    private double alpha;
-
-    @Value("${app.inventory.holt-winters.beta:0.1}")
-    private double beta;
-
-    @Value("${app.inventory.holt-winters.gamma:0.2}")
-    private double gamma;
-
-    @Value("${app.inventory.holt-winters.season-length:12}")
-    private int seasonLength;
+    @Value("${app.inventory.holt-winters.alpha:0.3}") private double alpha;
+    @Value("${app.inventory.holt-winters.beta:0.1}")  private double beta;
+    @Value("${app.inventory.holt-winters.gamma:0.2}") private double gamma;
+    @Value("${app.inventory.holt-winters.season-length:12}") private int seasonLength;
 
     @Override
-    public ForecastResult forecast(List<Double> historicalData) {
+    public ForecastResult forecast(List<Double> historicalData,
+                                   LocalDate lastPeriodStart,
+                                   int periodsAhead,
+                                   String planningUnit) {
         int n = historicalData.size();
+
         if (n < seasonLength) {
-            // Chưa đủ 1 chu kỳ mùa vụ → fallback về WMA với cảnh báo
+            // Fallback: chưa đủ 1 chu kỳ
+            double avg = simpleAverage(historicalData);
+            List<ForecastPoint> pts = new ArrayList<>();
+            for (int step = 0; step < periodsAhead; step++) {
+                String period = stepToPeriodLabel(lastPeriodStart, step + 1, planningUnit);
+                pts.add(ForecastPoint.builder()
+                        .period(period).forecastValue(avg)
+                        .upperBound(avg * 1.15).lowerBound(avg * 0.85)
+                        .build());
+            }
             return ForecastResult.builder()
-                    .forecastValue(simpleAverage(historicalData))
-                    .modelUsed(ForecastModel.HOLT_WINTERS)
-                    .mape(Double.NaN)
+                    .forecastValue(avg).forecastPoints(pts)
+                    .modelUsed(ForecastModel.HOLT_WINTERS).mape(Double.NaN)
                     .dataPointsUsed(n)
-                    .description("Holt-Winters fallback: chưa đủ " + seasonLength + " điểm để học mùa vụ, dùng trung bình đơn giản")
+                    .description("Holt-Winters fallback: chưa đủ " + seasonLength + " điểm")
                     .build();
         }
 
         double[] data = historicalData.stream().mapToDouble(Double::doubleValue).toArray();
-
-        // Khởi tạo
         double[] level = new double[n];
         double[] trend = new double[n];
-        double[] seasonal = new double[n];
-        double[] forecast = new double[n];
+        double[] seasonal = new double[n + periodsAhead]; // extend để forecast
+        double[] forecastArr = new double[n];
 
         initializeComponents(data, level, trend, seasonal);
 
-        // Huấn luyện
         for (int t = seasonLength; t < n; t++) {
-            double prevLevel = level[t - 1];
-            double prevTrend = trend[t - 1];
-            double prevSeasonal = seasonal[t - seasonLength];
-
-            level[t] = alpha * (data[t] / prevSeasonal) + (1 - alpha) * (prevLevel + prevTrend);
-            trend[t] = beta * (level[t] - prevLevel) + (1 - beta) * prevTrend;
-            seasonal[t] = gamma * (data[t] / level[t]) + (1 - gamma) * prevSeasonal;
-            forecast[t] = (prevLevel + prevTrend) * prevSeasonal;
+            double prevL = level[t-1], prevT = trend[t-1], prevS = seasonal[t-seasonLength];
+            level[t]    = alpha * (data[t] / prevS) + (1-alpha) * (prevL + prevT);
+            trend[t]    = beta  * (level[t] - prevL) + (1-beta)  * prevT;
+            seasonal[t] = gamma * (data[t] / level[t]) + (1-gamma) * prevS;
+            forecastArr[t] = (prevL + prevT) * prevS;
         }
 
-        // Dự đoán kỳ tiếp theo (h=1)
-        double lastLevel = level[n - 1];
-        double lastTrend = trend[n - 1];
-        // Lấy chỉ số mùa vụ tương ứng kỳ tiếp theo
-        int seasonIndex = (n % seasonLength == 0) ? 0 : (n % seasonLength);
-        double nextSeasonal = seasonal[n - seasonLength + seasonIndex];
+        double mape = calculateMape(data, forecastArr, seasonLength);
 
-        double forecastValue = (lastLevel + lastTrend) * nextSeasonal;
-        forecastValue = Math.max(forecastValue, 0); // không âm
+        double lastL = level[n-1];
+        double lastT = trend[n-1];
 
-        double mape = calculateMape(data, forecast, seasonLength);
+        // Forecast h kỳ tiếp theo: F(n+h) = (L + h*T) * S(n-m + (n+h)%m)
+        List<ForecastPoint> forecastPoints = new ArrayList<>();
+        double firstForecastValue = 0;
+
+        for (int step = 0; step < periodsAhead; step++) {
+            int h = step + 1;
+            int seasonIdx = (n + step) % seasonLength;
+            double nextS = seasonal[n - seasonLength + seasonIdx];
+            double fv = Math.max((lastL + h * lastT) * nextS, 0);
+
+            if (step == 0) firstForecastValue = fv;
+
+            double band = Double.isNaN(mape) ? fv * 0.1 : fv * (mape / 100.0);
+            String period = stepToPeriodLabel(lastPeriodStart, h, planningUnit);
+
+            forecastPoints.add(ForecastPoint.builder()
+                    .period(period)
+                    .forecastValue(Math.round(fv * 10000.0) / 10000.0)
+                    .upperBound(Math.round((fv + band) * 10000.0) / 10000.0)
+                    .lowerBound(Math.round(Math.max(0, fv - band) * 10000.0) / 10000.0)
+                    .build());
+        }
 
         return ForecastResult.builder()
-                .forecastValue(forecastValue)
-                .modelUsed(ForecastModel.HOLT_WINTERS)
-                .mape(mape)
+                .forecastValue(firstForecastValue)
+                .forecastPoints(forecastPoints)
+                .modelUsed(ForecastModel.HOLT_WINTERS).mape(mape)
                 .dataPointsUsed(n)
                 .description(String.format(
-                        "Holt-Winters (α=%.2f, β=%.2f, γ=%.2f, m=%d): Level=%.4f, Trend=%.4f, Seasonal=%.4f → Dự đoán=%.4f",
-                        alpha, beta, gamma, seasonLength, lastLevel, lastTrend, nextSeasonal, forecastValue))
+                        "Holt-Winters (α=%.2f,β=%.2f,γ=%.2f,m=%d): L=%.4f,T=%.4f → kỳ1=%.4f",
+                        alpha, beta, gamma, seasonLength, lastL, lastT, firstForecastValue))
                 .build();
     }
 
-    /**
-     * Khởi tạo Level, Trend, Seasonal từ chu kỳ đầu tiên
-     */
     private void initializeComponents(double[] data, double[] level, double[] trend, double[] seasonal) {
-        // Level ban đầu = trung bình chu kỳ đầu tiên
         double initialLevel = 0;
         for (int i = 0; i < seasonLength; i++) initialLevel += data[i];
         initialLevel /= seasonLength;
 
-        // Trend ban đầu ≈ 0 (chưa đủ dữ liệu để ước lượng tốt)
         double initialTrend = 0;
         if (data.length >= 2 * seasonLength) {
-            double secondCycleAvg = 0;
-            for (int i = seasonLength; i < 2 * seasonLength; i++) secondCycleAvg += data[i];
-            secondCycleAvg /= seasonLength;
-            initialTrend = (secondCycleAvg - initialLevel) / seasonLength;
+            double secondAvg = 0;
+            for (int i = seasonLength; i < 2*seasonLength; i++) secondAvg += data[i];
+            secondAvg /= seasonLength;
+            initialTrend = (secondAvg - initialLevel) / seasonLength;
         }
-
-        // Seasonal index ban đầu = data[i] / initialLevel
         for (int i = 0; i < seasonLength; i++) {
             seasonal[i] = data[i] / initialLevel;
-        }
-
-        // Điền level và trend cho các vị trí đầu
-        for (int i = 0; i < seasonLength; i++) {
             level[i] = initialLevel;
             trend[i] = initialTrend;
         }
     }
 
     private double calculateMape(double[] actual, double[] forecast, int startFrom) {
-        double totalError = 0;
-        int count = 0;
+        double total = 0; int count = 0;
         for (int i = startFrom; i < actual.length; i++) {
             if (actual[i] != 0 && forecast[i] != 0) {
-                totalError += Math.abs((actual[i] - forecast[i]) / actual[i]);
+                total += Math.abs((actual[i] - forecast[i]) / actual[i]);
                 count++;
             }
         }
-        return count > 0 ? (totalError / count) * 100 : Double.NaN;
+        return count > 0 ? (total / count) * 100 : Double.NaN;
     }
 
     private double simpleAverage(List<Double> data) {
         return data.stream().mapToDouble(Double::doubleValue).average().orElse(0);
     }
 
-    @Override
-    public ForecastModel getModelType() {
-        return ForecastModel.HOLT_WINTERS;
+    private String stepToPeriodLabel(LocalDate last, int steps, String planningUnit) {
+        LocalDate next = switch (planningUnit.toUpperCase()) {
+            case "QUARTER" -> last.plusMonths(3L * steps);
+            case "YEAR"    -> last.plusYears(steps);
+            default        -> last.plusMonths(steps);
+        };
+        return String.format("%d-%02d", next.getYear(), next.getMonthValue());
     }
+
+    @Override
+    public ForecastModel getModelType() { return ForecastModel.HOLT_WINTERS; }
 }

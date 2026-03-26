@@ -3,6 +3,8 @@ package com.ecotel.inventory_optimization_service.dto.response;
 import com.ecotel.inventory_optimization_service.enums.ForecastModel;
 import lombok.*;
 
+import java.util.List;
+
 /**
  * Kết quả dự đoán từ các mô hình forecast
  */
@@ -20,4 +22,9 @@ public class ForecastResult {
     private boolean mapeWarning;     // true nếu MAPE > ngưỡng cảnh báo
     private String nextModelUpgrade; // thông tin để nâng cấp mô hình
     private double[] seasonalIndices; // hệ số mùa vụ (chỉ có ở SeasonalRegression)
+    /**
+     * Danh sách dự đoán nhiều kỳ
+     * Mỗi phần tử: { period (YYYY-MM), forecastValue, upperBound, lowerBound }
+     */
+    private List<ForecastPoint> forecastPoints;
 }

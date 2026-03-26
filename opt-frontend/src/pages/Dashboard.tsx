@@ -1,22 +1,43 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import KpiCard from '@/components/common/KpiCard';
 import OrderAlertTable from '@/components/common/OrderAlertTable';
-import { mockProducts, mockOrderSchedules } from '@/data/mockData';
+// import { mockProducts, mockOrderSchedules } from '@/data/mockData';
+import type { Product } from '@/types/inventory-opt/product';
+import type { OrderSchedule } from '@/types/inventory-opt/order-schedule';
+import api from '@/api/axiosConfig';
 import { getUrgencyInfo } from '@/utils/helpers';
 import { AlertTriangle, Clock, CheckCircle, Package } from 'lucide-react';
 
 export default function Dashboard() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orderSchedules, setOrderSchedules] = useState<OrderSchedule[]>([]);
+
+  useEffect(() => {
+    api.get('/inventory-products')
+      .then(response => setProducts(response.data))
+      .catch(error => console.error('Error fetching products:', error));
+
+    api.get('/order-schedules', {
+      params: {
+    from: '2025-01-01',
+    to: '2026-12-31'
+  }
+    })
+      .then(response => setOrderSchedules(response.data))
+      .catch(error => console.error('Error fetching order schedules:', error));
+  }, []);
+  
   const stats = useMemo(() => {
     let red = 0, yellow = 0, green = 0;
-    mockProducts.forEach(p => {
-      const orders = mockOrderSchedules.filter(o => o.productId === p.id);
+    products.forEach(p => {
+      const orders = orderSchedules.filter(o => o.productId === p.id);
       const u = getUrgencyInfo(orders);
       if (u.level === 'red') red++;
       else if (u.level === 'yellow') yellow++;
       else green++;
     });
-    return { red, yellow, green, total: mockProducts.length };
-  }, []);
+    return { red, yellow, green, total: products.length };
+  }, [products, orderSchedules]);
 
   return (
     <div className="space-y-6">
@@ -33,8 +54,8 @@ export default function Dashboard() {
       </div>
 
       <OrderAlertTable
-        orders={mockOrderSchedules}
-        products={mockProducts.map(p => ({ id: p.id, name: p.name, unit: p.unit }))}
+        orders={orderSchedules}
+        products={products.map(p => ({ id: p.id, name: p.name, unit: p.unit }))}
       />
     </div>
   );

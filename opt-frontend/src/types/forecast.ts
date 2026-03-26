@@ -1,5 +1,5 @@
 export interface ConsumptionRecord {
-  productCode: string;
+  productId: number;
   periodStartDate: string;
   periodEndDate: string;
   actualConsumption: number;
@@ -25,7 +25,7 @@ export interface ValidationError {
   row: number;
   field: string;
   message: string;
-  type: 'hard' | 'soft';
+  type: "hard" | "soft";
 }
 
 export interface ImportResult {
@@ -35,19 +35,23 @@ export interface ImportResult {
   totalRows: number;
 }
 
-export type ForecastModel = 'WMA' | 'HOLT_WINTERS' | 'SEASONAL_REGRESSION';
+export type ForecastModel =
+  | "MANUAL"
+  | "WMA"
+  | "HOLT_WINTERS"
+  | "SEASONAL_REGRESSION";
 
 export interface ForecastPoint {
   period: string;
+  forecastValue: number | null;
   actual: number | null;
   planned: number | null;
-  forecast: number | null;
   upperBound: number | null;
   lowerBound: number | null;
 }
 
 export interface ForecastResult {
-  productCode: string;
+  productId: number;
   productName: string;
   model: ForecastModel;
   mape: number;
@@ -62,30 +66,40 @@ export interface ForecastResult {
   lowMonth: { month: number; pct: number } | null;
 }
 
-export type MapeLevel = 'high' | 'medium' | 'low';
+export type MapeLevel = "high" | "medium" | "low";
 
 export function getMapeLevel(mape: number): MapeLevel {
-  if (mape < 10) return 'high';
-  if (mape <= 20) return 'medium';
-  return 'low';
+  if (mape < 10) return "high";
+  if (mape <= 20) return "medium";
+  return "low";
 }
 
 export function getModelForDataPoints(count: number): ForecastModel {
-  if (count < 6) return 'WMA';
-  if (count <= 18) return 'HOLT_WINTERS';
-  return 'SEASONAL_REGRESSION';
+  if (count < 6) return "WMA";
+  if (count <= 18) return "HOLT_WINTERS";
+  return "SEASONAL_REGRESSION";
 }
 
 export function getModelLabel(model: ForecastModel): string {
   switch (model) {
-    case 'WMA': return 'Weighted Moving Average';
-    case 'HOLT_WINTERS': return 'Holt-Winters';
-    case 'SEASONAL_REGRESSION': return 'Seasonal Regression';
+    case "MANUAL":
+      return "Nhập tay";
+    case "WMA":
+      return "Weighted Moving Average";
+    case "HOLT_WINTERS":
+      return "Holt-Winters";
+    case "SEASONAL_REGRESSION":
+      return "Seasonal Regression";
   }
 }
 
-export function getDataQualityMessage(count: number): { icon: string; message: string } {
-  if (count < 6) return { icon: '⚠️', message: 'Cần thêm dữ liệu để dự đoán tốt hơn' };
-  if (count <= 18) return { icon: 'ℹ️', message: 'Đủ dữ liệu cho dự đoán có trend theo mùa' };
-  return { icon: '✓', message: 'Mô hình đầy đủ, kết quả tin cậy' };
+export function getDataQualityMessage(count: number): {
+  icon: string;
+  message: string;
+} {
+  if (count < 6)
+    return { icon: "⚠️", message: "Cần thêm dữ liệu để dự đoán tốt hơn" };
+  if (count <= 18)
+    return { icon: "ℹ️", message: "Đủ dữ liệu cho dự đoán có trend theo mùa" };
+  return { icon: "✓", message: "Mô hình đầy đủ, kết quả tin cậy" };
 }
