@@ -48,4 +48,10 @@ public class SupplierController {
         supplierService.deactivate(UUID.fromString(id));
         return ResponseEntity.ok(ApiResponse.success(null, "Đã vô hiệu hóa nhà cung cấp"));
     }
+
+    @PatchMapping("/active/{id}")
+    public ResponseEntity<ApiResponse<Void>> activate(@PathVariable String id) {
+        supplierService.active(UUID.fromString(id));
+        return ResponseEntity.ok(ApiResponse.success(null, "Đã hiệu hóa nhà cung cấp"));
+    }
 }

@@ -5,7 +5,6 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor
@@ -21,8 +20,26 @@ public class InventoryParameterRequest {
     @NotNull(message = "Đơn vị kỳ kế hoạch không được trống")
     private PlanningUnit planningUnit;
 
-    @NotNull(message = "Ngày bắt đầu kỳ không được trống")
-    private LocalDate planStartDate;
+    /**
+     * Kỳ kế hoạch cụ thể người dùng chọn — ý nghĩa tùy planningUnit:
+     *   MONTH   → số tháng (1-12)
+     *   QUARTER → số quý  (1-4)
+     *   YEAR    → năm     (ví dụ 2025)
+     *
+     * Không nhận planStartDate trực tiếp từ client nữa.
+     * planStartDate và scheduleStartDate được tính tự động trong service.
+     */
+    @NotNull(message = "Kỳ kế hoạch không được trống")
+    @Min(value = 1, message = "Kỳ kế hoạch không hợp lệ")
+    private Integer targetPeriod;
+
+    /**
+     * Năm của kỳ kế hoạch.
+     * Với YEAR thì targetPeriod == targetYear, giữ riêng để rõ nghĩa.
+     */
+    @NotNull(message = "Năm kế hoạch không được trống")
+    @Min(value = 2020, message = "Năm không hợp lệ")
+    private Integer targetYear;
 
     @NotNull(message = "Nhu cầu Q không được trống")
     @DecimalMin(value = "0.0001", message = "Q phải > 0")

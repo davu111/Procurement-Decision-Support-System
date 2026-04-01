@@ -23,7 +23,7 @@ public class SupplierService {
     private final SupplierMapper supplierMapper;
 
     public List<SupplierResponse> getAll() {
-        return supplierRepository.findByIsActiveTrue()
+        return supplierRepository.findAll()
                 .stream().map(supplierMapper::toSupplierResponse).collect(Collectors.toList());
     }
 
@@ -57,6 +57,13 @@ public class SupplierService {
     public void deactivate(UUID id) {
         Supplier supplier = findById(id);
         supplier.setIsActive(false);
+        supplierRepository.save(supplier);
+    }
+
+    @Transactional
+    public void active(UUID id) {
+        Supplier supplier = findById(id);
+        supplier.setIsActive(true);
         supplierRepository.save(supplier);
     }
 

@@ -7,7 +7,6 @@ import com.ecotel.inventory_optimization_service.dto.response.ForecastSuggestion
 import com.ecotel.inventory_optimization_service.dto.response.InventoryCalculationResult;
 import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import com.ecotel.inventory_optimization_service.exception.ResourceNotFoundException;
-import com.ecotel.inventory_optimization_service.mapper.InventoryPlanningMapper;
 import com.ecotel.inventory_optimization_service.model.*;
 import com.ecotel.inventory_optimization_service.repository.*;
 import com.ecotel.inventory_optimization_service.service.InventoryCalculationService;
@@ -17,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -40,16 +38,18 @@ public class InventoryPlanningService {
     private final ForecastOrchestrator forecastOrchestrator;
     private final SupplierServiceClient supplierServiceClient;
 
-    /**
-     * Tạo hoặc cập nhật tham số và tính toán kết quả tối ưu.
-     * Luồng lấy K, A, C, L:
-     *   1. Gọi Supplier Service → lấy snapshot mới nhất (SUPPLIER_SERVICE)
-     *   2. Nếu thất bại → tìm kỳ kế hoạch gần nhất cùng sản phẩm (PREVIOUS_PERIOD)
-     *   3. Nếu không có kỳ trước → dùng manual từ request (MANUAL)
-     *   4. Nếu manual cũng thiếu → báo lỗi
-     */
     @Transactional
     public InventoryCalculationResult createAndCalculate(InventoryParameterRequest request) {
+        LocalDate today = LocalDate.now();
+
+        // 1. Validate không lập kế hoạch cho quá khứ
+        PeriodResolver.validateNotPast(request, today);
+
+        // 2. Tính planStartDate (DB key) và scheduleStartDate (ngày sinh lịch)
+        PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(request, today);
+        LocalDate planStartDate      = resolved.planStartDate();
+        LocalDate scheduleStartDate  = resolved.scheduleStartDate();
+
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Mặt hàng", request.getProductId()));
 
@@ -61,13 +61,14 @@ public class InventoryPlanningService {
         // Tìm hoặc tạo InventoryParameter
         InventoryParameter param = parameterRepository
                 .findByProductIdAndPlanStartDateAndPlanningUnit(
-                        request.getProductId(), request.getPlanStartDate(), request.getPlanningUnit())
+                        request.getProductId(), planStartDate, request.getPlanningUnit())
                 .orElse(new InventoryParameter());
 
         param.setProduct(product);
         param.setWarehouseConfig(config);
         param.setPlanningUnit(request.getPlanningUnit());
-        param.setPlanStartDate(request.getPlanStartDate());
+        param.setPlanStartDate(planStartDate);           // ngày đầu kỳ — DB key
+        param.setScheduleStartDate(scheduleStartDate);   // ngày sinh lịch — hôm nay hoặc đầu kỳ tương lai
         param.setDemandQ(request.getDemandQ());
         param.setStorageCostCoefficientI(
                 normalizeI(request.getStorageCostCoefficientI(), request.getPlanningUnit()));
@@ -127,80 +128,7 @@ public class InventoryPlanningService {
     }
 
     // -------------------------------------------------------
-    // SNAPSHOT RESOLUTION
-    // -------------------------------------------------------
-
-    /**
-     * Resolve K, A, C, L theo thứ tự ưu tiên:
-     *   1. Supplier Service (REST call)
-     *   2. Kỳ kế hoạch gần nhất của cùng sản phẩm (fallback)
-     *   3. Manual từ request
-     */
-    private SnapshotData resolveSnapshot(InventoryParameterRequest request) {
-        PlanningUnit unit = request.getPlanningUnit();
-
-        // Bước 1: Gọi Supplier Service
-        Optional<SupplierProductData> supplierOpt =
-                supplierServiceClient.getByProductId(request.getProductId());
-
-        if (supplierOpt.isPresent()) {
-            SupplierProductData sp = supplierOpt.get();
-            log.info("Dùng dữ liệu SUPPLIER_SERVICE cho productId={}", request.getProductId());
-            return SnapshotData.builder()
-                    .supplierProductId(UUID.fromString(sp.getId()))
-                    .supplyRateK(convertKToPlanningUnit(sp.getMaxSupplyPerMonth(), unit))
-                    .fixedOrderCostA(sp.getFixedOrderCost())
-                    .unitPriceC(sp.getUnitPrice())
-                    .leadTimeL(convertLeadTimeToPlanningUnit(sp.getCommittedLeadTimeDays(), unit))
-                    .source("SUPPLIER_SERVICE")
-                    .build();
-        }
-
-        // Bước 2: Fallback → kỳ kế hoạch gần nhất
-        Optional<InventoryParameter> previousOpt = parameterRepository
-                .findTopByProductIdAndPlanningUnitOrderByPlanStartDateDesc(
-                        request.getProductId(), unit);
-
-        if (previousOpt.isPresent()) {
-            InventoryParameter prev = previousOpt.get();
-            log.warn("Supplier Service không phản hồi. Dùng PREVIOUS_PERIOD cho productId={}, kỳ={}",
-                    request.getProductId(), prev.getPlanStartDate());
-            return SnapshotData.builder()
-                    .supplierProductId(prev.getSupplierProductId())
-                    .supplyRateK(prev.getSnapshotSupplyRateK())
-                    .fixedOrderCostA(prev.getSnapshotFixedOrderCostA())
-                    .unitPriceC(prev.getSnapshotUnitPriceC())
-                    .leadTimeL(prev.getSnapshotLeadTimeL())
-                    .source("PREVIOUS_PERIOD")
-                    .build();
-        }
-
-        // Bước 3: Fallback → manual từ request
-        if (request.getManualSupplyRateK() != null
-                && request.getManualFixedOrderCostA() != null
-                && request.getManualUnitPriceC() != null
-                && request.getManualLeadTimeDays() != null) {
-            log.warn("Dùng dữ liệu MANUAL cho productId={}", request.getProductId());
-            return SnapshotData.builder()
-                    .supplierProductId(null)
-                    .supplyRateK(request.getManualSupplyRateK())
-                    .fixedOrderCostA(request.getManualFixedOrderCostA())
-                    .unitPriceC(request.getManualUnitPriceC())
-                    .leadTimeL(convertLeadTimeToPlanningUnit(
-                            request.getManualLeadTimeDays().intValue(), unit))
-                    .source("MANUAL")
-                    .build();
-        }
-
-        throw new IllegalStateException(
-                "Không thể lấy dữ liệu nhà cung cấp (K, A, C, L) cho sản phẩm id="
-                        + request.getProductId()
-                        + ". Supplier Service không phản hồi, không có kỳ trước, "
-                        + "và không có dữ liệu manual trong request.");
-    }
-
-    // -------------------------------------------------------
-    // ORDER SCHEDULE GENERATION
+    // ORDER SCHEDULE — dùng scheduleStartDate thay vì planStartDate
     // -------------------------------------------------------
 
     private void generateOrderSchedule(InventoryParameter param, InventoryCalculationResult result) {
@@ -209,18 +137,19 @@ public class InventoryPlanningService {
 
         scheduleRepository.deleteByInventoryResultId(savedResult.getId());
 
-        LocalDate startDate = param.getPlanStartDate();
-        LocalDate endDate = getPlanEndDate(startDate, param.getPlanningUnit());
+        // Sinh lịch từ scheduleStartDate (hôm nay hoặc đầu kỳ tương lai)
+        // Kết thúc tại cuối kỳ kế hoạch tính từ planStartDate
+        LocalDate scheduleStart = param.getScheduleStartDate();
+        LocalDate planEnd       = getPlanEndDate(param.getPlanStartDate(), param.getPlanningUnit());
 
         List<OrderSchedule> schedules = new ArrayList<>();
         int sequence = 1;
-        LocalDate orderDate = startDate;
+        LocalDate orderDate = scheduleStart;
 
-        while (!orderDate.isAfter(endDate)) {
+        while (!orderDate.isAfter(planEnd)) {
             long leadTimeDays = convertToDays(param.getSnapshotLeadTimeL(), param.getPlanningUnit());
             LocalDate deliveryDate = orderDate.plusDays(leadTimeDays);
 
-            // estimatedCost = A + C * S*
             BigDecimal estimatedCost = param.getSnapshotFixedOrderCostA()
                     .add(param.getSnapshotUnitPriceC().multiply(result.getOptimalOrderQtyS()));
 
@@ -243,7 +172,76 @@ public class InventoryPlanningService {
     }
 
     // -------------------------------------------------------
-    // UNIT CONVERSION HELPERS
+    // SNAPSHOT RESOLUTION
+    // -------------------------------------------------------
+
+    /**
+     * Resolve K, A, C, L theo thứ tự ưu tiên:
+     *   1. Supplier Service (REST call)
+     *   2. Kỳ kế hoạch gần nhất của cùng sản phẩm (fallback)
+     *   3. Manual từ request
+     */
+    private SnapshotData resolveSnapshot(InventoryParameterRequest request) {
+        PlanningUnit unit = request.getPlanningUnit();
+
+        // Bước 1: Gọi Supplier Service
+        Optional<SupplierProductData> supplierOpt =
+                supplierServiceClient.getByProductId(request.getProductId());
+
+        if (supplierOpt.isPresent()) {
+            SupplierProductData sp = supplierOpt.get();
+            log.info("Dùng SUPPLIER_SERVICE cho productId={}", request.getProductId());
+            return SnapshotData.builder()
+                    .supplierProductId(UUID.fromString(sp.getId()))
+                    .supplyRateK(convertKToPlanningUnit(sp.getMaxSupplyPerMonth(), unit))
+                    .fixedOrderCostA(sp.getFixedOrderCost())
+                    .unitPriceC(sp.getUnitPrice())
+                    .leadTimeL(convertLeadTimeToPlanningUnit(sp.getCommittedLeadTimeDays(), unit))
+                    .source("SUPPLIER_SERVICE")
+                    .build();
+        }
+
+        Optional<InventoryParameter> previousOpt = parameterRepository
+                .findTopByProductIdAndPlanningUnitOrderByPlanStartDateDesc(
+                        request.getProductId(), unit);
+
+        if (previousOpt.isPresent()) {
+            InventoryParameter prev = previousOpt.get();
+            log.warn("Dùng PREVIOUS_PERIOD cho productId={}, kỳ={}",
+                    request.getProductId(), prev.getPlanStartDate());
+            return SnapshotData.builder()
+                    .supplierProductId(prev.getSupplierProductId())
+                    .supplyRateK(prev.getSnapshotSupplyRateK())
+                    .fixedOrderCostA(prev.getSnapshotFixedOrderCostA())
+                    .unitPriceC(prev.getSnapshotUnitPriceC())
+                    .leadTimeL(prev.getSnapshotLeadTimeL())
+                    .source("PREVIOUS_PERIOD")
+                    .build();
+        }
+
+        if (request.getManualSupplyRateK() != null
+                && request.getManualFixedOrderCostA() != null
+                && request.getManualUnitPriceC() != null
+                && request.getManualLeadTimeDays() != null) {
+            log.warn("Dùng MANUAL cho productId={}", request.getProductId());
+            return SnapshotData.builder()
+                    .supplierProductId(null)
+                    .supplyRateK(request.getManualSupplyRateK())
+                    .fixedOrderCostA(request.getManualFixedOrderCostA())
+                    .unitPriceC(request.getManualUnitPriceC())
+                    .leadTimeL(convertLeadTimeToPlanningUnit(
+                            request.getManualLeadTimeDays().intValue(), unit))
+                    .source("MANUAL")
+                    .build();
+        }
+
+        throw new IllegalStateException(
+                "Không thể lấy K, A, C, L cho sản phẩm id=" + request.getProductId()
+                        + ". Supplier Service không phản hồi, không có kỳ trước, không có manual.");
+    }
+
+    // -------------------------------------------------------
+    // HELPERS
     // -------------------------------------------------------
 
     /** K nhập theo tháng → quy đổi về đơn vị kỳ */
@@ -284,11 +282,11 @@ public class InventoryPlanningService {
         };
     }
 
-    private LocalDate getPlanEndDate(LocalDate start, PlanningUnit unit) {
+    private LocalDate getPlanEndDate(LocalDate planStart, PlanningUnit unit) {
         return switch (unit) {
-            case MONTH   -> start.plusMonths(1).minusDays(1);
-            case QUARTER -> start.plusMonths(3).minusDays(1);
-            case YEAR    -> start.plusYears(1).minusDays(1);
+            case MONTH   -> planStart.plusMonths(1).minusDays(1);
+            case QUARTER -> planStart.plusMonths(3).minusDays(1);
+            case YEAR    -> planStart.plusYears(1).minusDays(1);
         };
     }
 

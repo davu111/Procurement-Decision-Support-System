@@ -48,7 +48,10 @@ public class InventoryParameter {
     private PlanningUnit planningUnit;
 
     @Column(name = "plan_start_date", nullable = false)
-    private LocalDate planStartDate;
+    private LocalDate planStartDate;        // Ngày đầu kỳ — DB key, luôn là ngày 1 của kỳ
+
+    @Column(name = "schedule_start_date")
+    private LocalDate scheduleStartDate;    // Ngày bắt đầu sinh lịch — hôm nay hoặc đầu kỳ tương lai
 
     // Q - người dùng nhập hoặc AI đề xuất
     @Column(name = "demand_q", nullable = false, precision = 18, scale = 4)

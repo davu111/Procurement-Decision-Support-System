@@ -26,7 +26,7 @@ public class SupplierProductService {
     private final SupplierProductMapper supplierProductMapper;
 
     public List<SupplierProductResponse> getBySupplierId(UUID supplierId) {
-        return supplierProductRepository.findBySupplierIdAndIsActiveTrue(supplierId)
+        return supplierProductRepository.findBySupplierId(supplierId)
                 .stream().map(supplierProductMapper::toSupplierProductResponse).collect(Collectors.toList());
     }
 
@@ -40,7 +40,7 @@ public class SupplierProductService {
      */
     public SupplierProductResponse getByProductId(Long productId) {
         SupplierProduct sp = supplierProductRepository
-                .findByProductIdAndIsActiveTrue(productId)
+                .findByProductId(productId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Không tìm thấy thông tin nhà cung cấp cho sản phẩm id: " + productId));
         return supplierProductMapper.toSupplierProductResponse(sp);
@@ -75,6 +75,13 @@ public class SupplierProductService {
     public void deactivate(UUID id) {
         SupplierProduct sp = findById(id);
         sp.setIsActive(false);
+        supplierProductRepository.save(sp);
+    }
+
+    @Transactional
+    public void activate(UUID id) {
+        SupplierProduct sp = findById(id);
+        sp.setIsActive(true);
         supplierProductRepository.save(sp);
     }
 

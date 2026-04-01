@@ -12,6 +12,8 @@ import NewPlanPage from "@/pages/NewPlanPage";
 import ConsumptionPage from "@/pages/ConsumptionPage";
 import SettingsPage from "@/pages/SettingsPage";
 import ForecastPage from "@/pages/ForecastPage";
+import SuppliersPage from "@/pages/SuppliersPage";
+import SupplierDetailPage from "@/pages/SupplierDetailPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +33,8 @@ const App = () => (
             <Route path="/new-plan" element={<NewPlanPage />} />
             <Route path="/consumption" element={<ConsumptionPage />} />
             <Route path="/forecast" element={<ForecastPage />} />
+            <Route path="/suppliers" element={<SuppliersPage />} />
+            <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

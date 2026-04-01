@@ -21,4 +21,6 @@ public interface SupplierProductRepository extends JpaRepository<SupplierProduct
 
     // Tìm tất cả sản phẩm đang active
     List<SupplierProduct> findByIsActiveTrue();
+
+    Optional<SupplierProduct> findByProductId(Long productId);
 }

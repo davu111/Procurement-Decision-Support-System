@@ -28,6 +28,10 @@ const MONTHS = [
 ];
 const DAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
+const CELL_SIZE = 18.5; // px (h-3 w-3 ~ 12px)
+const GAP = 3; // gap-0.5 ~ 2px
+const CELL_TOTAL = CELL_SIZE + GAP;
+
 function getDaysInYear(year: number) {
   const days: Date[] = [];
   const start = new Date(year, 0, 1);
@@ -60,16 +64,18 @@ export default function HeatmapPage() {
   );
   const days = useMemo(() => getDaysInYear(year), [year]);
 
-  // Group by week
+  // Group by week — tuần bắt đầu Thứ 2 (getDay()===1), kết thúc Chủ Nhật (getDay()===0)
   const weeks: Date[][] = useMemo(() => {
     const w: Date[][] = [];
     let currentWeek: Date[] = [];
-    const firstDay = days[0].getDay();
-    // Pad first week
-    for (let i = 0; i < firstDay; i++) currentWeek.push(null as any);
+    const firstDay = days[0].getDay(); // 0=CN, 1=T2,...,6=T7
+    // Tuần bắt đầu T2: CN=0 → pad 6, T2=1 → pad 0, T3=2 → pad 1, ...
+    const padCount = firstDay === 0 ? 6 : firstDay - 1;
+    for (let i = 0; i < padCount; i++) currentWeek.push(null as any);
     days.forEach((d) => {
       currentWeek.push(d);
-      if (d.getDay() === 6) {
+      if (d.getDay() === 0) {
+        // CN = cuối tuần
         w.push(currentWeek);
         currentWeek = [];
       }
@@ -77,6 +83,23 @@ export default function HeatmapPage() {
     if (currentWeek.length > 0) w.push(currentWeek);
     return w;
   }, [days]);
+
+  // Tính vị trí month labels dựa trên cột tuần thực tế
+  const monthColOffsets = useMemo(() => {
+    const offsets: { month: number; colStart: number; colSpan: number }[] = [];
+    weeks.forEach((week, wi) => {
+      const firstReal = week.find((d) => d != null);
+      if (!firstReal) return;
+      const m = firstReal.getMonth();
+      const last = offsets[offsets.length - 1];
+      if (!last || last.month !== m) {
+        offsets.push({ month: m, colStart: wi, colSpan: 1 });
+      } else {
+        last.colSpan++;
+      }
+    });
+    return offsets;
+  }, [weeks]);
 
   const hoveredOrders = hoveredDate ? grouped[hoveredDate] : null;
   const selectedOrders = selectedDate ? grouped[selectedDate] : null;
@@ -100,9 +123,6 @@ export default function HeatmapPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Lịch đặt hàng</h1>
-          <p className="text-muted-foreground mt-1">
-            Tổng quan đơn hàng theo năm
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -123,28 +143,42 @@ export default function HeatmapPage() {
         </div>
       </div>
 
-      <div className="bg-card rounded-lg border p-6 overflow-x-auto">
+      <div className="bg-card rounded-lg border p-6 overflow-x-auto w-max">
         {/* Month labels */}
-        <div className="flex gap-0.5 mb-2 ml-8">
-          {MONTHS.map((m, i) => (
-            <div
-              key={m}
-              className="text-xs text-muted-foreground"
-              style={{ width: `${100 / 12}%` }}
-            >
-              {m}
-            </div>
-          ))}
+        {/* Month labels — căn theo cột tuần thực tế */}
+        <div
+          className="flex mb-2 relative"
+          style={{ minHeight: 16, gap: GAP, marginLeft: CELL_TOTAL * 2 }}
+        >
+          <div className="flex" style={{ gap: GAP }}>
+            {monthColOffsets.map(({ month, colStart, colSpan }) => (
+              <div
+                key={month}
+                className="text-xs text-muted-foreground overflow-hidden"
+                style={{
+                  // mỗi cột = h-3 w-3 + gap-0.5 = 12 + 2 = 14px
+                  width: colSpan * CELL_TOTAL - GAP,
+                  flexShrink: 0,
+                }}
+              >
+                {MONTHS[month]}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Grid */}
         <div className="flex gap-1">
           {/* Day labels */}
-          <div className="flex flex-col gap-0.5 mr-1">
+          <div className="flex flex-col mr-1" style={{ gap: GAP }}>
             {DAYS.map((d) => (
               <div
                 key={d}
-                className="h-3 text-[10px] text-muted-foreground flex items-center"
+                className="flex items-center"
+                style={{
+                  height: CELL_SIZE,
+                  fontSize: 10,
+                }}
               >
                 {d}
               </div>
@@ -152,9 +186,9 @@ export default function HeatmapPage() {
           </div>
 
           {/* Weeks */}
-          <div className="flex gap-0.5 flex-1">
+          <div className="flex" style={{ gap: GAP }}>
             {weeks.map((week, wi) => (
-              <div key={wi} className="flex flex-col gap-0.5">
+              <div key={wi} className="flex flex-col" style={{ gap: GAP }}>
                 {week.map((day, di) => {
                   if (!day) return <div key={di} className="h-3 w-3" />;
                   const dateStr = day.toISOString().split("T")[0];
@@ -164,10 +198,14 @@ export default function HeatmapPage() {
                     <div
                       key={di}
                       className={cn(
-                        "h-3 w-3 rounded-sm cursor-pointer transition-all hover:ring-2 hover:ring-ring",
+                        "rounded-sm cursor-pointer transition-all hover:ring-2 hover:ring-ring",
                         intensityClasses[intensity],
                         selectedDate === dateStr && "ring-2 ring-primary",
                       )}
+                      style={{
+                        width: CELL_SIZE,
+                        height: CELL_SIZE,
+                      }}
                       onMouseEnter={() => setHoveredDate(dateStr)}
                       onMouseLeave={() => setHoveredDate(null)}
                       onClick={() =>
