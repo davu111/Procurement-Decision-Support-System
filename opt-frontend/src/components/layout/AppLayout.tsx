@@ -18,7 +18,6 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Bảng điều khiển" },
-  { to: "/heatmap", icon: CalendarDays, label: "Lịch đặt hàng" },
   { to: "/products", icon: Package, label: "Mặt hàng" },
   { to: "/new-plan", icon: PlusCircle, label: "Kỳ kế hoạch mới" },
   { to: "/consumption", icon: ClipboardList, label: "Nhập tiêu thụ" },

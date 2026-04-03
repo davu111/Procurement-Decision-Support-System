@@ -27,7 +27,6 @@ const App = () => (
         <AppLayout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/heatmap" element={<HeatmapPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/:id" element={<ProductDetail />} />
             <Route path="/new-plan" element={<NewPlanPage />} />

@@ -21,10 +21,11 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
     Optional<InventoryParameter> findByProductIdAndPlanStartDateAndPlanningUnit(
             Long productId, LocalDate planStartDate, PlanningUnit planningUnit);
 
-    @Query("SELECT p FROM InventoryParameter p WHERE p.planStartDate = :startDate AND p.planningUnit = :unit")
-    List<InventoryParameter> findByPlanStartDateAndPlanningUnit(
-            @Param("startDate") LocalDate startDate,
-            @Param("unit") PlanningUnit unit);
+    Optional<InventoryParameter> findByProductIdAndPlanStartDateBetweenAndPlanningUnit(
+            Long productId,
+            LocalDate startDate,
+            LocalDate endDate,
+            PlanningUnit unit);
 
     List<InventoryParameter> findByProductIdOrderByPlanStartDateDesc(Long productId);
     /**
