@@ -1,25 +1,40 @@
 package com.ecotel.inventory_optimization_service.repository;
 
-import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import com.ecotel.inventory_optimization_service.model.ConsumptionHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
 public interface ConsumptionHistoryRepository extends JpaRepository<ConsumptionHistory, Long> {
 
-    List<ConsumptionHistory> findByProductIdAndPlanningUnitOrderByPeriodStartDateAsc(
-            Long productId, PlanningUnit planningUnit);
+    /**
+     * Lấy toàn bộ lịch sử tiêu thụ của sản phẩm, sắp xếp tăng dần.
+     * Forecast model dùng hàm này — không cần planningUnit nữa.
+     */
+    List<ConsumptionHistory> findByProductIdOrderByPeriodStartDateAsc(Long productId);
 
-    @Query("SELECT COUNT(c) FROM ConsumptionHistory c WHERE c.product.id = :productId AND c.planningUnit = :unit")
-    int countByProductIdAndPlanningUnit(@Param("productId") Long productId, @Param("unit") PlanningUnit unit);
+    /**
+     * Đếm số kỳ lịch sử — dùng để chọn mô hình (WMA / HW / SR).
+     */
+    int countByProductId(Long productId);
 
-    @Query("SELECT c FROM ConsumptionHistory c WHERE c.product.id = :productId AND c.planningUnit = :unit " +
-            "ORDER BY c.periodStartDate DESC")
-    List<ConsumptionHistory> findRecentByProductIdAndPlanningUnit(
-            @Param("productId") Long productId, @Param("unit") PlanningUnit unit);
+    /**
+     * Lấy lịch sử trong khoảng thời gian (dùng cho chart / báo cáo).
+     */
+    @Query("""
+        SELECT c FROM ConsumptionHistory c
+        WHERE c.product.id = :productId
+          AND c.periodStartDate >= :from
+          AND c.periodStartDate <= :to
+        ORDER BY c.periodStartDate ASC
+    """)
+    List<ConsumptionHistory> findByProductIdAndDateRange(
+            @Param("productId") Long productId,
+            @Param("from") LocalDate from,
+            @Param("to")        LocalDate to);
 }

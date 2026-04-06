@@ -1,91 +1,79 @@
 package com.ecotel.inventory_optimization_service.service.impl;
 
 import com.ecotel.inventory_optimization_service.dto.request.InventoryParameterRequest;
-import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import lombok.experimental.UtilityClass;
 
 import java.time.LocalDate;
-import java.time.Month;
+import java.time.YearMonth;
 
 /**
- * Tính planStartDate và scheduleStartDate từ targetPeriod + targetYear.
+ * Tính planStartDate, planEndDate, scheduleStartDate từ startMonth/endMonth/year.
  *
- * planStartDate  = ngày đầu tiên của kỳ được chọn → dùng làm DB key
- * scheduleStartDate = ngày bắt đầu sinh lịch đặt hàng:
- *   - Nếu kỳ được chọn là kỳ hiện tại → ngày hôm nay
- *   - Nếu kỳ được chọn là kỳ tương lai → ngày đầu tiên của kỳ đó
+ * planStartDate    = ngày 1 của startMonth  → DB key
+ * planEndDate      = ngày cuối của endMonth → giới hạn sinh lịch
+ * scheduleStartDate:
+ *   startMonth == tháng hiện tại → hôm nay
+ *   startMonth > tháng hiện tại  → planStartDate
  */
 @UtilityClass
 public class PeriodResolver {
 
-    public record ResolvedPeriod(LocalDate planStartDate, LocalDate scheduleStartDate) {}
+    public record ResolvedPeriod(
+            LocalDate planStartDate,
+            LocalDate planEndDate,
+            LocalDate scheduleStartDate
+    ) {}
 
     public ResolvedPeriod resolve(InventoryParameterRequest request, LocalDate today) {
-        PlanningUnit unit = request.getPlanningUnit();
-        int period = request.getTargetPeriod();
-        int year   = request.getTargetYear();
+        validate(request, today);
 
-        LocalDate planStartDate     = toPlanStartDate(unit, period, year);
-        LocalDate currentPeriodStart = currentPeriodStart(unit, today);
+        LocalDate planStartDate = LocalDate.of(request.getYear(), request.getStartMonth(), 1);
+        LocalDate planEndDate   = YearMonth.of(request.getYear(), request.getEndMonth()).atEndOfMonth();
 
-        // Nếu kỳ được chọn là kỳ hiện tại → bắt đầu lịch từ hôm nay
-        // Nếu là kỳ tương lai → bắt đầu từ ngày đầu của kỳ đó
-        LocalDate scheduleStartDate = planStartDate.isEqual(currentPeriodStart)
+        // Nếu startMonth là tháng hiện tại → bắt đầu lịch từ hôm nay
+        LocalDate currentMonthStart = today.withDayOfMonth(1);
+        LocalDate scheduleStartDate = planStartDate.isEqual(currentMonthStart)
                 ? today
                 : planStartDate;
 
-        return new ResolvedPeriod(planStartDate, scheduleStartDate);
+        return new ResolvedPeriod(planStartDate, planEndDate, scheduleStartDate);
     }
 
     /**
-     * Validate: không cho lập kế hoạch cho kỳ đã qua.
-     * Ném IllegalArgumentException nếu targetPeriod < kỳ hiện tại.
+     * Validate đầu vào:
+     *   1. startMonth <= endMonth (trong cùng năm)
+     *   2. Không lập kế hoạch cho quá khứ (startMonth < tháng hiện tại)
      */
-    public void validateNotPast(InventoryParameterRequest request, LocalDate today) {
-        PlanningUnit unit = request.getPlanningUnit();
-        int period = request.getTargetPeriod();
-        int year   = request.getTargetYear();
+    public void validate(InventoryParameterRequest request, LocalDate today) {
+        int startMonth = request.getStartMonth();
+        int endMonth   = request.getEndMonth();
+        int year       = request.getYear();
 
-        LocalDate planStartDate      = toPlanStartDate(unit, period, year);
-        LocalDate currentPeriodStart = currentPeriodStart(unit, today);
-
-        if (planStartDate.isBefore(currentPeriodStart)) {
-            String periodLabel = formatPeriodLabel(unit, period, year);
+        if (startMonth > endMonth) {
             throw new IllegalArgumentException(
-                    "Không thể lập kế hoạch cho kỳ đã qua: " + periodLabel);
+                    "Tháng bắt đầu (" + startMonth + ") không thể lớn hơn tháng kết thúc (" + endMonth + ")");
+        }
+
+        // Kỳ bắt đầu không được trong quá khứ
+        LocalDate planStartDate      = LocalDate.of(year, startMonth, 1);
+        LocalDate currentMonthStart  = today.withDayOfMonth(1);
+
+        if (planStartDate.isBefore(currentMonthStart)) {
+            throw new IllegalArgumentException(
+                    "Không thể lập kế hoạch cho tháng " + startMonth + "/" + year
+                            + " — tháng này đã qua");
         }
     }
 
-    // -------------------------------------------------------
-    // Tính ngày đầu tiên của kỳ được chọn (dùng làm DB key)
-    // -------------------------------------------------------
-    public LocalDate toPlanStartDate(PlanningUnit unit, int period, int year) {
-        return switch (unit) {
-            case MONTH   -> LocalDate.of(year, period, 1);
-            case QUARTER -> LocalDate.of(year, (period - 1) * 3 + 1, 1);
-            case YEAR    -> LocalDate.of(year, Month.JANUARY, 1);
-        };
-    }
-
-    // -------------------------------------------------------
-    // Tính ngày đầu tiên của kỳ HIỆN TẠI (làm ngưỡng chặn)
-    // -------------------------------------------------------
-    private LocalDate currentPeriodStart(PlanningUnit unit, LocalDate today) {
-        return switch (unit) {
-            case MONTH   -> today.withDayOfMonth(1);
-            case QUARTER -> {
-                int currentQuarter = (today.getMonthValue() - 1) / 3 + 1;
-                yield LocalDate.of(today.getYear(), (currentQuarter - 1) * 3 + 1, 1);
-            }
-            case YEAR    -> LocalDate.of(today.getYear(), Month.JANUARY, 1);
-        };
-    }
-
-    private String formatPeriodLabel(PlanningUnit unit, int period, int year) {
-        return switch (unit) {
-            case MONTH   -> "Tháng " + period + "/" + year;
-            case QUARTER -> "Q" + period + "/" + year;
-            case YEAR    -> "Năm " + year;
-        };
+    /**
+     * Tính label hiển thị cho kỳ kế hoạch.
+     * Vd: "Tháng 1–5/2025" hoặc "Tháng 3/2025" nếu chỉ 1 tháng.
+     */
+    public String formatLabel(InventoryParameterRequest request) {
+        int start = request.getStartMonth();
+        int end   = request.getEndMonth();
+        int year  = request.getYear();
+        if (start == end) return "Tháng " + start + "/" + year;
+        return "Tháng " + start + "–" + end + "/" + year;
     }
 }

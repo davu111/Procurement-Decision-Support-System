@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import type { Product } from "@/types/inventory-opt/product";
 import type { OrderSchedule } from "@/types/inventory-opt/order-schedule";
 import type { InventoryResult } from "@/types/inventory-opt/inventory-result";
@@ -18,44 +18,50 @@ import {
 } from "@/components/ui/select";
 import SawtoothChart from "@/components/charts/SawtoothChart";
 
-type PlanningUnit = "MONTH" | "QUARTER" | "YEAR";
-
 // ── constants ──────────────────────────────────────────────────────────────────
 const TODAY = new Date();
 const CURRENT_YEAR = TODAY.getFullYear();
 const CURRENT_MONTH = TODAY.getMonth() + 1;
-const CURRENT_QUARTER = Math.ceil(CURRENT_MONTH / 3);
 
-// ── pure helpers (không gọi setState, không có side effect) ───────────────────
-
-function getMaxPeriod(unit: PlanningUnit, year: number): number {
-  if (unit === "MONTH") return year === CURRENT_YEAR ? CURRENT_MONTH : 12;
-  return year === CURRENT_YEAR ? CURRENT_QUARTER : 4; // QUARTER
+// ── types ──────────────────────────────────────────────────────────────────────
+interface ResolvedPeriod {
+  planStartDate: string;
+  planEndDate: string;
+  scheduleStartDate: string;
+  isCurrentMonth: boolean;
+  label: string;
 }
 
-function getPeriodRange(
-  unit: PlanningUnit,
+// ── helpers ────────────────────────────────────────────────────────────────────
+function getMonthOptions(year: number) {
+  return Array.from({ length: 12 }, (_, i) => ({
+    value: i + 1,
+    label: `Tháng ${i + 1}`,
+    disabled: year === CURRENT_YEAR && i + 1 < CURRENT_MONTH,
+  }));
+}
+
+function getYearOptions() {
+  const years: number[] = [];
+  for (let y = CURRENT_YEAR + 1; y >= 2020; y--) years.push(y);
+  return years;
+}
+
+function validatePeriod(
+  startMonth: number,
+  endMonth: number,
   year: number,
-  period: number,
-): [string, string] {
-  if (unit === "YEAR") {
-    return [`${year}-01-01`, `${year}-12-31`];
+): string | null {
+  if (startMonth > endMonth) {
+    return `Tháng bắt đầu (${startMonth}) không thể lớn hơn tháng kết thúc (${endMonth})`;
   }
-  if (unit === "QUARTER") {
-    const startMonth = (period - 1) * 3 + 1;
-    const endMonth = period * 3;
-    const endDay = new Date(year, endMonth, 0).getDate();
-    return [
-      `${year}-${String(startMonth).padStart(2, "0")}-01`,
-      `${year}-${String(endMonth).padStart(2, "0")}-${endDay}`,
-    ];
+  if (
+    year < CURRENT_YEAR ||
+    (year === CURRENT_YEAR && startMonth < CURRENT_MONTH)
+  ) {
+    return `Tháng ${startMonth}/${year} đã qua, không thể xem kế hoạch`;
   }
-  // MONTH
-  const endDay = new Date(year, period, 0).getDate();
-  return [
-    `${year}-${String(period).padStart(2, "0")}-01`,
-    `${year}-${String(period).padStart(2, "0")}-${endDay}`,
-  ];
+  return null;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -64,84 +70,92 @@ export default function ProductDetail() {
   const navigate = useNavigate();
   const productId = Number(id);
 
-  // ── Product state
+  // ── Product state ──────────────────────────────────────────────────────────
   const [product, setProduct] = useState<Product | null>(null);
+  const [productError, setProductError] = useState(false);
 
-  // ── Filter state — 3 giá trị độc lập, không có circular dependency
-  const [planningUnit, setPlanningUnit] = useState<PlanningUnit>("MONTH");
+  // ── Filter state ───────────────────────────────────────────────────────────
+  const [startMonth, setStartMonth] = useState<number>(CURRENT_MONTH);
+  const [endMonth, setEndMonth] = useState<number>(CURRENT_MONTH);
   const [targetYear, setTargetYear] = useState<number>(CURRENT_YEAR);
-  // selectedPeriod: số nguyên (tháng 1-12 hoặc quý 1-4), dùng cho MONTH & QUARTER
-  // Với YEAR thì không dùng field này nhưng cũng không cần reset nó
-  const [selectedPeriod, setSelectedPeriod] = useState<number>(CURRENT_MONTH);
 
-  // ── Data state
+  // ── Resolved period (từ /resolve-period) ──────────────────────────────────
+  const [resolvedPeriod, setResolvedPeriod] = useState<ResolvedPeriod | null>(
+    null,
+  );
+  const [periodError, setPeriodError] = useState<string | null>(null);
+  const [resolvingPeriod, setResolvingPeriod] = useState(false);
+
+  // ── Data state ─────────────────────────────────────────────────────────────
   const [orderSchedules, setOrderSchedules] = useState<OrderSchedule[]>([]);
   const [result, setResult] = useState<InventoryResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [noData, setNoData] = useState(false);
-  const [productError, setProductError] = useState(false);
 
-  // ── effectivePeriod: clamp selectedPeriod về giá trị hợp lệ.
-  // Đây là giá trị THỰC SỰ dùng để fetch và hiển thị.
-  // Không bao giờ gọi setState ở đây — chỉ tính toán thuần.
-  const effectivePeriod = useMemo(() => {
-    if (planningUnit === "YEAR") return 1; // không dùng, placeholder
-    const max = getMaxPeriod(planningUnit, targetYear);
-    if (selectedPeriod < 1 || selectedPeriod > max) return max;
-    return selectedPeriod;
-  }, [planningUnit, targetYear, selectedPeriod]);
-
-  // ── startDate / endDate: stable strings, là deps duy nhất của fetch effect
-  const [startDate, endDate] = useMemo(
-    () => getPeriodRange(planningUnit, targetYear, effectivePeriod),
-    [planningUnit, targetYear, effectivePeriod],
+  // ── Validate period client-side ────────────────────────────────────────────
+  const clientValidationError = useMemo(
+    () => validatePeriod(startMonth, endMonth, targetYear),
+    [startMonth, endMonth, targetYear],
   );
 
-  // ── Handlers: khi người dùng chủ động thay đổi filter
-  // Reset selectedPeriod về max hợp lệ khi đổi unit hoặc năm
-  const handleUnitChange = (unit: PlanningUnit) => {
-    setPlanningUnit(unit);
-    if (unit !== "YEAR") {
-      setSelectedPeriod(getMaxPeriod(unit, targetYear));
-    }
-  };
+  // ── Debounce resolve-period ────────────────────────────────────────────────
+  const resolveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleYearChange = (year: number) => {
-    setTargetYear(year);
-    if (planningUnit !== "YEAR") {
-      setSelectedPeriod(getMaxPeriod(planningUnit, year));
+  useEffect(() => {
+    // Nếu client-side validation fail thì không gọi API
+    if (clientValidationError) {
+      setPeriodError(clientValidationError);
+      setResolvedPeriod(null);
+      return;
     }
-  };
 
-  // ── Load product — chạy lại khi productId thay đổi (client-side navigation)
+    setPeriodError(null);
+
+    if (resolveTimerRef.current) clearTimeout(resolveTimerRef.current);
+
+    resolveTimerRef.current = setTimeout(() => {
+      setResolvingPeriod(true);
+      api
+        .get("/inventory/resolve-period", {
+          params: { startMonth, endMonth, year: targetYear },
+        })
+        .then((r) => {
+          if (r.data?.success) {
+            setResolvedPeriod(r.data.data);
+            setPeriodError(null);
+          } else {
+            setPeriodError(r.data?.message ?? "Kỳ không hợp lệ");
+            setResolvedPeriod(null);
+          }
+        })
+        .catch(() => {
+          setPeriodError("Không thể xác minh kỳ kế hoạch");
+          setResolvedPeriod(null);
+        })
+        .finally(() => setResolvingPeriod(false));
+    }, 300);
+
+    return () => {
+      if (resolveTimerRef.current) clearTimeout(resolveTimerRef.current);
+    };
+  }, [startMonth, endMonth, targetYear, clientValidationError]);
+
+  // ── Load product ───────────────────────────────────────────────────────────
   useEffect(() => {
     setProduct(null);
     setProductError(false);
     api
       .get(`/inventory-products/${productId}`)
       .then((r) => setProduct(r.data))
-      .catch((e) => {
-        console.error("Error fetching product:", e);
-        setProductError(true); // ← thêm dòng này
-      });
+      .catch(() => setProductError(true));
   }, [productId]);
 
-  const withTimeout = <T,>(promise: Promise<T>, ms = 10000): Promise<T> =>
-    Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error("Request timeout")), ms),
-      ),
-    ]);
-
+  // ── Load result + schedules — chỉ chạy khi resolvedPeriod hợp lệ ──────────
   useEffect(() => {
+    if (!resolvedPeriod) return;
+
+    const { planStartDate, planEndDate } = resolvedPeriod;
     let cancelled = false;
-    console.log("Effect fired:", {
-      productId,
-      planningUnit,
-      startDate,
-      endDate,
-    });
 
     setLoading(true);
     setNoData(false);
@@ -149,21 +163,14 @@ export default function ProductDetail() {
     setOrderSchedules([]);
 
     Promise.all([
-      withTimeout(
-        api.get(`/inventory-results/range/${productId}`, {
-          params: { planningUnit, startDate, endDate },
-        }),
-      ),
-
-      withTimeout(
-        api.get(`/order-schedules/${productId}`, {
-          params: { from: startDate, to: endDate },
-        }),
-      ),
+      api.get(`/inventory-results/range/${productId}`, {
+        params: { startDate: planStartDate, endDate: planEndDate },
+      }),
+      api.get(`/order-schedules/${productId}`, {
+        params: { from: planStartDate, to: planEndDate },
+      }),
     ])
       .then(([resResult, resSchedules]) => {
-        console.log("Promise resolved, cancelled =", cancelled);
-
         if (cancelled) return;
         const data = resResult.data?.data ?? resResult.data;
         if (!data) {
@@ -173,83 +180,75 @@ export default function ProductDetail() {
           setOrderSchedules(resSchedules.data);
         }
       })
-      .catch((e) => {
-        console.error("Promise error:", e, "cancelled =", cancelled);
+      .catch(() => {
         if (!cancelled) setNoData(true);
       })
       .finally(() => {
-        console.log("Finally, cancelled =", cancelled);
-
         if (!cancelled) setLoading(false);
       });
 
     return () => {
-      console.log("Cleanup called");
-
       cancelled = true;
     };
-  }, [productId, planningUnit, startDate, endDate]);
+  }, [productId, resolvedPeriod]);
 
-  // ── Select options ──────────────────────────────────────────────────────────
-
-  const yearOptions = useMemo(() => {
-    const years: number[] = [];
-    for (let y = CURRENT_YEAR; y >= 2020; y--) years.push(y);
-    return years;
+  // ── Handlers ───────────────────────────────────────────────────────────────
+  const handleYearChange = useCallback((year: number) => {
+    setTargetYear(year);
+    // Clamp startMonth/endMonth về tháng hợp lệ nếu chọn năm hiện tại
+    if (year === CURRENT_YEAR) {
+      setStartMonth((prev) => Math.max(prev, CURRENT_MONTH));
+      setEndMonth((prev) => Math.max(prev, CURRENT_MONTH));
+    }
   }, []);
 
-  const periodOptions = useMemo(() => {
-    if (planningUnit === "MONTH") {
-      return Array.from({ length: 12 }, (_, i) => {
-        const m = i + 1;
-        const disabled =
-          targetYear > CURRENT_YEAR ||
-          (targetYear === CURRENT_YEAR && m > CURRENT_MONTH);
-        return { value: m, label: `Tháng ${m}`, disabled };
-      });
-    }
-    // QUARTER
-    return Array.from({ length: 4 }, (_, i) => {
-      const q = i + 1;
-      const disabled =
-        targetYear > CURRENT_YEAR ||
-        (targetYear === CURRENT_YEAR && q > CURRENT_QUARTER);
-      return { value: q, label: `Q${q}/${targetYear}`, disabled };
-    });
-  }, [planningUnit, targetYear]);
+  const handleStartMonthChange = useCallback(
+    (month: number) => {
+      setStartMonth(month);
+      // endMonth không được nhỏ hơn startMonth mới
+      if (endMonth < month) setEndMonth(month);
+    },
+    [endMonth],
+  );
 
-  const filterLabel = useMemo(() => {
-    if (planningUnit === "YEAR") return `Năm ${targetYear}`;
-    if (planningUnit === "QUARTER") return `Q${effectivePeriod}/${targetYear}`;
-    return `Tháng ${effectivePeriod}/${targetYear}`;
-  }, [planningUnit, targetYear, effectivePeriod]);
+  // ── Options ────────────────────────────────────────────────────────────────
+  const yearOptions = useMemo(() => getYearOptions(), []);
+  const monthOptions = useMemo(() => getMonthOptions(targetYear), [targetYear]);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // endMonth options: thêm disable nếu < startMonth
+  const endMonthOptions = useMemo(
+    () =>
+      monthOptions.map((opt) => ({
+        ...opt,
+        disabled: opt.disabled || opt.value < startMonth,
+      })),
+    [monthOptions, startMonth],
+  );
 
+  // ── Render guards ──────────────────────────────────────────────────────────
   if (productError)
     return (
-      <div>
-        Không tìm thấy sản phẩm.{" "}
+      <div className="text-center py-20">
+        <p className="text-muted-foreground mb-4">Không tìm thấy sản phẩm.</p>
         <Button onClick={() => navigate(-1)}>Quay lại</Button>
       </div>
     );
 
-  if (!product) {
+  if (!product)
     return (
       <div className="text-center py-20">
         <p className="text-muted-foreground animate-pulse">
           Đang tải mặt hàng…
         </p>
-        <Button
-          variant="outline"
-          className="mt-4"
-          onClick={() => navigate("/")}
-        >
+        <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
           Quay lại
         </Button>
       </div>
     );
-  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  const filterLabel =
+    resolvedPeriod?.label ?? `Tháng ${startMonth}–${endMonth}/${targetYear}`;
 
   return (
     <div className="space-y-6">
@@ -273,7 +272,7 @@ export default function ProductDetail() {
           <h2 className="text-sm font-semibold text-foreground">Kỳ kế hoạch</h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Năm */}
           <div className="space-y-2">
             <Label>Năm</Label>
@@ -294,50 +293,86 @@ export default function ProductDetail() {
             </Select>
           </div>
 
-          {/* Đơn vị kỳ */}
+          {/* Tháng bắt đầu */}
           <div className="space-y-2">
-            <Label>Đơn vị kỳ</Label>
+            <Label>Từ tháng</Label>
             <Select
-              value={planningUnit}
-              onValueChange={(v) => handleUnitChange(v as PlanningUnit)}
+              value={startMonth.toString()}
+              onValueChange={(v) => handleStartMonthChange(Number(v))}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="MONTH">Tháng</SelectItem>
-                <SelectItem value="QUARTER">Quý</SelectItem>
-                <SelectItem value="YEAR">Năm</SelectItem>
+                {monthOptions.map((opt) => (
+                  <SelectItem
+                    key={opt.value}
+                    value={opt.value.toString()}
+                    disabled={opt.disabled}
+                  >
+                    {opt.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Tháng / Quý — ẩn khi YEAR */}
-          {planningUnit !== "YEAR" && (
-            <div className="space-y-2">
-              <Label>{planningUnit === "MONTH" ? "Tháng" : "Quý"}</Label>
-              <Select
-                value={effectivePeriod.toString()}
-                onValueChange={(v) => setSelectedPeriod(Number(v))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {periodOptions.map((opt) => (
-                    <SelectItem
-                      key={opt.value}
-                      value={opt.value.toString()}
-                      disabled={opt.disabled}
-                    >
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {/* Tháng kết thúc */}
+          <div className="space-y-2">
+            <Label>Đến tháng</Label>
+            <Select
+              value={endMonth.toString()}
+              onValueChange={(v) => setEndMonth(Number(v))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {endMonthOptions.map((opt) => (
+                  <SelectItem
+                    key={opt.value}
+                    value={opt.value.toString()}
+                    disabled={opt.disabled}
+                  >
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
+        {/* Period preview */}
+        {resolvingPeriod && (
+          <p className="text-xs text-muted-foreground animate-pulse">
+            Đang xác minh kỳ…
+          </p>
+        )}
+        {!resolvingPeriod && periodError && (
+          <p className="text-xs text-destructive">{periodError}</p>
+        )}
+        {!resolvingPeriod && resolvedPeriod && (
+          <div className="text-xs text-muted-foreground space-y-0.5">
+            <p>
+              📅{" "}
+              <span className="font-medium text-foreground">
+                {resolvedPeriod.label}
+              </span>{" "}
+              ({resolvedPeriod.planStartDate} → {resolvedPeriod.planEndDate})
+            </p>
+            <p>
+              🚚 Lịch đặt hàng bắt đầu từ:{" "}
+              <span className="font-medium text-foreground">
+                {resolvedPeriod.scheduleStartDate}
+              </span>
+              {resolvedPeriod.isCurrentMonth && (
+                <Badge variant="secondary" className="ml-2 text-[10px]">
+                  Tháng hiện tại
+                </Badge>
+              )}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Loading */}
@@ -406,7 +441,7 @@ export default function ProductDetail() {
                 Biểu đồ tồn kho (Răng cưa) — {filterLabel}
               </h2>
             </div>
-            {/* <SawtoothChart result={result} schedules={orderSchedules} /> */}
+            <SawtoothChart result={result} schedules={orderSchedules} />
           </div>
 
           {/* Order schedule table */}

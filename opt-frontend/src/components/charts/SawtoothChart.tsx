@@ -81,190 +81,142 @@ export default function SawtoothChart({
   schedules,
 }: SawtoothChartProps) {
   const { mergedData, leadTimeAreas, stockoutAreas, maxY } = useMemo(() => {
-    if (schedules.length === 0) {
-      return {
-        mergedData: [],
-        leadTimeAreas: [] as { from: number; to: number }[],
-        stockoutAreas: [] as { from: number; to: number }[],
-        maxY: 0,
-      };
-    }
+    const empty = {
+      mergedData: [] as ChartPoint[],
+      leadTimeAreas: [] as { from: number; to: number }[],
+      stockoutAreas: [] as { from: number; to: number }[],
+      maxY: 0,
+    };
+
+    if (schedules.length === 0) return empty;
 
     const sorted = [...schedules].sort(
       (a, b) =>
         new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime(),
     );
 
-    const firstSched = sorted[0];
     const maxLevel = result.maxInventoryLevel;
     const B = result.reorderPointB;
-    const Z = result.avgInventoryLevel;
 
-    // L (lead time) tính theo ngày thực tế từ schedule
+    // ── Guard: data không hợp lệ ──────────────────────────────────────────
+    if (!maxLevel || !B || maxLevel <= 0) return empty;
+
     const lDays = daysBetween(
-      firstSched.expectedDeliveryDate,
-      firstSched.orderDate,
+      sorted[0].expectedDeliveryDate,
+      sorted[0].orderDate,
     );
+    if (lDays <= 0) return empty; // orderDate >= deliveryDate → data lỗi
 
-    // τ (cycle time) tính theo khoảng cách giữa 2 orderDate liên tiếp
     const tauDays =
       sorted.length >= 2
         ? daysBetween(sorted[1].orderDate, sorted[0].orderDate)
         : Math.round((result.optimalCycleTimeTau / result.leadTimeL) * lDays);
 
+    if (tauDays <= 0) return empty; // 2 order cùng ngày → không vẽ được
+
     const daysPerPeriod =
       result.leadTimeL > 0 ? Math.round(lDays / result.leadTimeL) : 30;
-    const tnDays = Math.round(result.replenishmentTimeTn * daysPerPeriod);
-    // Tt = τ - Tn: thời gian tiêu thụ thuần (không nhận hàng)
+
+    const tnDays = Math.max(
+      1,
+      Math.round(result.replenishmentTimeTn * daysPerPeriod),
+    );
     const ttDays = Math.max(1, tauDays - tnDays);
 
-    // Tốc độ thay đổi tồn kho theo lý thuyết bổ sung dần:
-    // - Trong Tn ngày nhận hàng: tồn kho TĂNG từ 0 lên maxLevel
-    //   => tốc độ tăng ròng = maxLevel / tnDays (đã trừ tiêu thụ trong Tn)
-    // - Trong Tt ngày tiêu thụ thuần: tồn kho GIẢM từ maxLevel về 0
-    //   => tốc độ giảm = maxLevel / ttDays
-    // Theo lý thuyết: Tn < Tt nên sườn trái (tăng) thoải hơn sườn phải (giảm)
-    // khi lDays > tauDays/2 (L dài). Ngược lại sườn trái dốc hơn.
     const dailyRiseNet = maxLevel / tnDays;
     const dailyFall = maxLevel / ttDays;
+    const invAtDeliv = Math.max(0, B - dailyFall * lDays);
 
     const refDateStr = sorted[0].orderDate;
-    const toDayIndex = (dateStr: string) => daysBetween(dateStr, refDateStr);
+    const toDayIdx = (dateStr: string) => daysBetween(dateStr, refDateStr);
 
-    // Xây dựng map: dayIndex => loại ngày (nhận hàng hay không)
-    type ReceivingWindow = { start: number; end: number };
-    const receivingWindows: ReceivingWindow[] = sorted.map((s) => {
-      const delivIdx = toDayIndex(s.expectedDeliveryDate);
-      return { start: delivIdx, end: delivIdx + tnDays - 1 };
-    });
-
-    const allOrderIdx = sorted.map((s) => toDayIndex(s.orderDate));
-    const allDeliveryIdx = sorted.map((s) =>
-      toDayIndex(s.expectedDeliveryDate),
-    );
-    const chartStart = Math.min(...allOrderIdx) - 1;
-    const lastDelivIdx = Math.max(...allDeliveryIdx);
-    const chartEnd = lastDelivIdx + tnDays + ttDays + 5;
-
-    const rawPoints = new Map<number, ChartPoint>();
-
-    const setPoint = (
-      dayIndex: number,
-      date: string,
-      inventory: number,
-      extra?: Partial<ChartPoint>,
-    ) => {
-      const existing = rawPoints.get(dayIndex);
-      if (existing) {
-        rawPoints.set(dayIndex, { ...existing, ...extra });
-      } else {
-        rawPoints.set(dayIndex, { dayIndex, date, inventory, ...extra });
-      }
-    };
-
-    // APPROACH: Tính inventory theo công thức tuyến tính cho từng đoạn của mỗi chu kỳ
-    //
-    // Mỗi chu kỳ τ gồm 2 đoạn:
-    //   Đoạn 1 — Lead time [orderDate, deliveryDate): tồn kho GIẢM từ B xuống
-    //     inv(t) = B - dailyFall * t  (t = số ngày kể từ orderDate)
-    //   Đoạn 2 — Nhận hàng [deliveryDate, deliveryDate+Tn): tồn kho TĂNG lên maxLevel
-    //     inv(t) = inv(deliveryDate) + dailyRiseNet * t
-    //   Đoạn 3 — Tiêu thụ thuần [deliveryDate+Tn, orderDate tiếp theo): giảm từ maxLevel về B
-    //     inv(t) = maxLevel - dailyFall * t
-    //
-    // Điều này ĐẢM BẢO:
-    //   - orderDate luôn có inventory = B (anchor point)
-    //   - Đỉnh tam giác luôn = maxLevel
-    //   - Không có sai số tích lũy qua các chu kỳ
-
-    // Tập hợp tất cả breakpoints (ngày quan trọng) để tính giá trị chính xác
-    const anchorPoints = new Map<number, number>(); // dayIndex => inventory
-
-    for (const sched of sorted) {
-      const orderIdx = toDayIndex(sched.orderDate);
-      const delivIdx = toDayIndex(sched.expectedDeliveryDate);
-      const peakIdx = delivIdx + tnDays;
-
-      // Anchor: orderDate luôn = B (định nghĩa của điểm tái đặt hàng)
-      anchorPoints.set(orderIdx, B);
-
-      // Tại deliveryDate: tồn kho đã giảm thêm L ngày kể từ orderDate
-      const invAtDeliv = Math.max(0, B - dailyFall * lDays);
-      anchorPoints.set(delivIdx, invAtDeliv);
-
-      // Tại đỉnh (deliveryDate + Tn): tồn kho đạt maxLevel
-      anchorPoints.set(peakIdx, maxLevel);
-    }
-
-    // Hàm nội suy inventory tại bất kỳ ngày nào dựa trên chu kỳ chứa nó
-    const getInventory = (idx: number): number => {
-      // Tìm chu kỳ phù hợp: orderDate <= idx < orderDate tiếp theo
-      for (let i = 0; i < sorted.length; i++) {
-        const orderIdx = toDayIndex(sorted[i].orderDate);
-        const delivIdx = toDayIndex(sorted[i].expectedDeliveryDate);
-        const peakIdx = delivIdx + tnDays;
-        const nextOrderIdx =
-          i + 1 < sorted.length
-            ? toDayIndex(sorted[i + 1].orderDate)
-            : orderIdx + tauDays;
-
-        if (idx < orderIdx) continue;
-        if (idx >= nextOrderIdx && i < sorted.length - 1) continue;
-
-        if (idx >= orderIdx && idx < delivIdx) {
-          // Đoạn 1: Lead time — giảm từ B
-          return Math.max(0, B - dailyFall * (idx - orderIdx));
-        } else if (idx >= delivIdx && idx < peakIdx) {
-          // Đoạn 2: Nhận hàng — tăng từ invAtDeliv
-          const invAtDeliv = Math.max(0, B - dailyFall * lDays);
-          return Math.min(
-            maxLevel,
-            invAtDeliv + dailyRiseNet * (idx - delivIdx),
-          );
-        } else if (idx >= peakIdx) {
-          // Đoạn 3: Tiêu thụ thuần — giảm từ maxLevel về B
-          return Math.max(0, maxLevel - dailyFall * (idx - peakIdx));
-        }
-      }
-      return 0;
-    };
-
-    for (let idx = chartStart; idx <= chartEnd; idx++) {
-      const date = addDaysStr(refDateStr, idx);
-      const inv = Math.round(getInventory(idx) * 100) / 100;
-
-      const orderSched = sorted.find((s) => toDayIndex(s.orderDate) === idx);
-      const deliverySched = sorted.find(
-        (s) => toDayIndex(s.expectedDeliveryDate) === idx,
-      );
-
-      const extra: Partial<ChartPoint> = {};
-      if (orderSched) {
-        // orderMarker luôn = B vì đây là định nghĩa điểm đặt hàng
-        extra.orderMarker = B;
-        extra.isWarning = orderSched.isReorderWarning;
-      }
-      if (deliverySched) {
-        extra.deliveryMarker = inv;
-      }
-
-      setPoint(idx, date, inv, extra);
-    }
-
-    // Lead time areas
-    const ltAreas: { from: number; to: number }[] = sorted.map((s) => ({
-      from: toDayIndex(s.orderDate),
-      to: toDayIndex(s.expectedDeliveryDate),
+    const cycleBreakpoints = sorted.map((s) => ({
+      orderIdx: toDayIdx(s.orderDate),
+      delivIdx: toDayIdx(s.expectedDeliveryDate),
+      peakIdx: toDayIdx(s.expectedDeliveryDate) + tnDays,
+      isWarning: s.isReorderWarning,
     }));
 
-    // Stockout areas
+    // ── Guard: chartEnd không được quá lớn ────────────────────────────────
+    const chartStart = cycleBreakpoints[0].orderIdx;
+    const lastCycle = cycleBreakpoints[cycleBreakpoints.length - 1];
+    const chartEnd = lastCycle.peakIdx + ttDays + 5;
+
+    const MAX_POINTS = 3650; // tối đa ~10 năm ngày, thực tế 1 kỳ << 365
+    if (chartEnd - chartStart > MAX_POINTS) return empty;
+
+    const orderDayMap = new Map<number, boolean>();
+    const delivDaySet = new Set<number>();
+    for (const { orderIdx, delivIdx, isWarning } of cycleBreakpoints) {
+      orderDayMap.set(orderIdx, isWarning);
+      delivDaySet.add(delivIdx);
+    }
+
+    const points: ChartPoint[] = [];
+    let cycleIdx = 0;
+    console.log("Chart params:", {
+      lDays,
+      tauDays,
+      tnDays,
+      ttDays,
+      chartStart,
+      chartEnd,
+    });
+
+    for (let idx = chartStart; idx <= chartEnd; idx++) {
+      // ── Fix Bug 2: dùng for thay while để tránh infinite loop ────────────
+      for (
+        let next = cycleIdx + 1;
+        next < cycleBreakpoints.length &&
+        idx >= cycleBreakpoints[next].orderIdx;
+        next++
+      ) {
+        cycleIdx = next;
+      }
+
+      const { orderIdx, delivIdx, peakIdx } = cycleBreakpoints[cycleIdx];
+
+      let inv: number;
+      if (idx < orderIdx) {
+        inv = B;
+      } else if (idx < delivIdx) {
+        inv = Math.max(0, B - dailyFall * (idx - orderIdx));
+      } else if (idx < peakIdx) {
+        inv = Math.min(maxLevel, invAtDeliv + dailyRiseNet * (idx - delivIdx));
+      } else {
+        inv = Math.max(0, maxLevel - dailyFall * (idx - peakIdx));
+      }
+
+      inv = Math.round(inv * 100) / 100;
+
+      const pt: ChartPoint = {
+        dayIndex: idx,
+        date: addDaysStr(refDateStr, idx),
+        inventory: inv,
+      };
+
+      if (orderDayMap.has(idx)) {
+        pt.orderMarker = B;
+        pt.isWarning = orderDayMap.get(idx);
+      }
+      if (delivDaySet.has(idx)) {
+        pt.deliveryMarker = inv;
+      }
+
+      points.push(pt);
+    }
+
+    // ── Lead time areas ──────────────────────────────────────────────────────
+    const ltAreas = cycleBreakpoints.map(({ orderIdx, delivIdx }) => ({
+      from: orderIdx,
+      to: delivIdx,
+    }));
+
+    // ── Stockout areas ───────────────────────────────────────────────────────
     const soAreas: { from: number; to: number }[] = [];
     let inStockout = false;
     let stockoutStart = 0;
-    const sortedPts = Array.from(rawPoints.values()).sort(
-      (a, b) => a.dayIndex - b.dayIndex,
-    );
-    for (const pt of sortedPts) {
+    for (const pt of points) {
       if (pt.inventory === 0 && !inStockout) {
         inStockout = true;
         stockoutStart = pt.dayIndex;
@@ -277,7 +229,7 @@ export default function SawtoothChart({
     const maxY = Math.max(maxLevel, B) * 1.2;
 
     return {
-      mergedData: sortedPts,
+      mergedData: points,
       leadTimeAreas: ltAreas,
       stockoutAreas: soAreas,
       maxY,
@@ -294,9 +246,8 @@ export default function SawtoothChart({
   const B = result.reorderPointB;
   const Z = result.avgInventoryLevel;
 
-  const allDayIndices = mergedData.map((d) => d.dayIndex);
-  const minDay = Math.min(...allDayIndices);
-  const maxDay = Math.max(...allDayIndices);
+  const minDay = mergedData[0].dayIndex;
+  const maxDay = mergedData[mergedData.length - 1].dayIndex;
   const totalDays = maxDay - minDay;
   const tickStep = Math.max(1, Math.ceil(totalDays / 12));
 
@@ -322,13 +273,10 @@ export default function SawtoothChart({
           ticks={ticks}
           tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
           tickFormatter={(val) => {
-            const point = mergedData.find((p) => p.dayIndex === val);
-            if (point) return fmtDate(point.date);
-            if (mergedData.length > 0)
-              return fmtDate(
-                addDaysStr(mergedData[0].date, val - mergedData[0].dayIndex),
-              );
-            return "";
+            // O(1): tính ngày trực tiếp từ offset, không dùng .find
+            return fmtDate(
+              addDaysStr(mergedData[0].date, val - mergedData[0].dayIndex),
+            );
           }}
           label={{
             value: "Thời gian",
@@ -386,7 +334,7 @@ export default function SawtoothChart({
 
         {stockoutAreas.map((area, i) => (
           <ReferenceArea
-            key={`stockout-${i}`}
+            key={`so-${i}`}
             x1={area.from}
             x2={area.to}
             fill="hsl(0 72% 51%)"

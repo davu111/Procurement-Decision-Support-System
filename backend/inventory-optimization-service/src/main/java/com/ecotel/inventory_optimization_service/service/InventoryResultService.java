@@ -1,7 +1,6 @@
 package com.ecotel.inventory_optimization_service.service;
 
 import com.ecotel.inventory_optimization_service.dto.response.InventoryCalculationResult;
-import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import com.ecotel.inventory_optimization_service.mapper.InventoryResultMapper;
 import com.ecotel.inventory_optimization_service.model.InventoryResult;
 import com.ecotel.inventory_optimization_service.repository.InventoryParameterRepository;
@@ -19,9 +18,9 @@ public class InventoryResultService {
     private final InventoryResultMapper inventoryResultMapper;
 
     // Get inventory results by parameter ID by product id
-    public InventoryCalculationResult getInventoryResultLatestByProductIdAndPlanningUnit(Long productId, PlanningUnit planningUnit) {
-        Long parameterId = inventoryParameterRepository.findTopByProductIdAndPlanningUnitOrderByUpdatedAtDesc(productId, planningUnit)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tham số tối ưu hóa cho sản phẩm ID: " + productId + " và đơn vị lập kế hoạch: " + planningUnit))
+    public InventoryCalculationResult getInventoryResultLatestByProductId(Long productId) {
+        Long parameterId = inventoryParameterRepository.findTopByProductIdOrderByUpdatedAtDesc(productId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tham số tối ưu hóa cho sản phẩm ID: " + productId))
                 .getId();
 
         InventoryResult result = inventoryResultRepository.findByInventoryParameterId(parameterId)
@@ -31,9 +30,9 @@ public class InventoryResultService {
     }
 
     // Get inventory results by parameter ID by product id and date range
-    public InventoryCalculationResult getInventoryResultByProductIdAndPlanStartDateBetweenAndPlanningUnit(Long productId, PlanningUnit planningUnit, LocalDate startDate, LocalDate endDate) {
-        Long parameterId = inventoryParameterRepository.findByProductIdAndPlanStartDateBetweenAndPlanningUnit(productId, startDate, endDate, planningUnit)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tham số tối ưu hóa cho sản phẩm ID: " + productId + " và đơn vị lập kế hoạch: " + planningUnit + " từ ngày " + startDate + " đến ngày " + endDate))
+    public InventoryCalculationResult getInventoryResultByProductIdAndPlanStartDateBetween(Long productId, LocalDate startDate, LocalDate endDate) {
+        Long parameterId = inventoryParameterRepository.findByProductIdAndPlanStartDateBetween(productId, startDate, endDate)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tham số tối ưu hóa cho sản phẩm ID: " + productId + " từ ngày " + startDate + " đến ngày " + endDate))
                 .getId();
 
         InventoryResult result = inventoryResultRepository.findByInventoryParameterId(parameterId)

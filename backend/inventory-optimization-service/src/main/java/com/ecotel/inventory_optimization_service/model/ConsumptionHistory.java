@@ -1,6 +1,6 @@
 package com.ecotel.inventory_optimization_service.model;
 
-import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "consumption_history",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"product_id", "period_start_date", "planning_unit"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"product_id", "period_start_date"}))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,14 +26,12 @@ public class ConsumptionHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "planning_unit", nullable = false)
-    private PlanningUnit planningUnit;
-
+    // Luôn là ngày 1 của tháng (vd: 2025-01-01)
     @Column(name = "period_start_date", nullable = false)
     private LocalDate periodStartDate; // ngày đầu kỳ
 

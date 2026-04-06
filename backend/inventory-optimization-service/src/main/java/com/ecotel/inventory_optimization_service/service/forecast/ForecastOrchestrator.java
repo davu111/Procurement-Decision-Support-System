@@ -2,7 +2,6 @@ package com.ecotel.inventory_optimization_service.service.forecast;
 
 import com.ecotel.inventory_optimization_service.dto.response.ForecastResult;
 import com.ecotel.inventory_optimization_service.enums.ForecastModel;
-import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import com.ecotel.inventory_optimization_service.model.ConsumptionHistory;
 import com.ecotel.inventory_optimization_service.repository.ConsumptionHistoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,10 +24,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ForecastOrchestrator {
 
-    private final WeightedMovingAverageForecast wmaForecast;
-    private final HoltWintersForecast holtWintersForecast;
-    private final SeasonalRegressionForecast seasonalRegressionForecast;
-    private final ConsumptionHistoryRepository consumptionHistoryRepository;
+    private final WeightedMovingAverageForecast     wmaForecast;
+    private final HoltWintersForecast               holtWintersForecast;
+    private final SeasonalRegressionForecast        seasonalRegressionForecast;
+    private final ConsumptionHistoryRepository      consumptionHistoryRepository;
 
     @Value("${app.inventory.wma-threshold:6}")
     private int wmaThreshold;
@@ -40,21 +39,21 @@ public class ForecastOrchestrator {
     private double mapeWarningThreshold;
 
     /**
-     * Dự đoán Q cho nhiều kỳ tiếp theo.
+     * Dự đoán Q (nhu cầu/tháng) cho nhiều kỳ tiếp theo.
+     * Không cần planningUnit — tất cả đều là tháng.
      *
-     * @param periodsAhead số kỳ muốn dự đoán (mặc định 3 cho frontend chart)
+     * @param periodsAhead số tháng muốn dự đoán (mặc định 3)
      */
-    public ForecastResult forecastDemand(Long productId, PlanningUnit planningUnit,
-                                         int periodsAhead) {
+    public ForecastResult forecastDemand(Long productId, int periodsAhead) {
         List<ConsumptionHistory> history =
-                consumptionHistoryRepository.findByProductIdAndPlanningUnitOrderByPeriodStartDateAsc(
-                        productId, planningUnit);
+                consumptionHistoryRepository.findByProductIdOrderByPeriodStartDateAsc(productId);
 
         int dataCount = history.size();
 
         if (dataCount == 0) {
             return ForecastResult.builder()
-                    .modelUsed(ForecastModel.MANUAL).dataPointsUsed(0)
+                    .modelUsed(ForecastModel.MANUAL)
+                    .dataPointsUsed(0)
                     .description("Chưa có dữ liệu lịch sử. Vui lòng nhập thủ công.")
                     .requiresManualInput(true)
                     .build();
@@ -64,12 +63,11 @@ public class ForecastOrchestrator {
                 .map(h -> h.getActualConsumption().doubleValue())
                 .collect(Collectors.toList());
 
-        // Ngày bắt đầu kỳ CUỐI CÙNG — để tính nhãn tháng cho forecast
         LocalDate lastPeriodStart = history.get(history.size() - 1).getPeriodStartDate();
 
         ForecastStrategy strategy = selectStrategy(dataCount);
-        ForecastResult result = strategy.forecast(
-                consumptionData, lastPeriodStart, periodsAhead, planningUnit.name());
+        // planningUnit cố định là MONTH
+        ForecastResult result = strategy.forecast(consumptionData, lastPeriodStart, periodsAhead, "MONTH");
 
         result.setMapeWarning(!Double.isNaN(result.getMape()) && result.getMape() > mapeWarningThreshold);
         result.setNextModelUpgrade(getNextModelInfo(dataCount));
@@ -77,15 +75,14 @@ public class ForecastOrchestrator {
         return result;
     }
 
-    /** Overload backward-compat: mặc định 3 kỳ */
-    public ForecastResult forecastDemand(Long productId, PlanningUnit planningUnit) {
-        return forecastDemand(productId, planningUnit, 3);
+    /** Overload mặc định 3 kỳ */
+    public ForecastResult forecastDemand(Long productId) {
+        return forecastDemand(productId, 3);
     }
 
-    public ForecastResult forecastLeadTime(Long productId, PlanningUnit planningUnit) {
+    public ForecastResult forecastLeadTime(Long productId) {
         List<ConsumptionHistory> history =
-                consumptionHistoryRepository.findByProductIdAndPlanningUnitOrderByPeriodStartDateAsc(
-                        productId, planningUnit);
+                consumptionHistoryRepository.findByProductIdOrderByPeriodStartDateAsc(productId);
 
         List<Double> leadTimeData = history.stream()
                 .filter(h -> h.getActualLeadTimeDays() != null)
@@ -94,21 +91,22 @@ public class ForecastOrchestrator {
 
         if (leadTimeData.isEmpty()) {
             return ForecastResult.builder()
-                    .modelUsed(ForecastModel.MANUAL).dataPointsUsed(0)
+                    .modelUsed(ForecastModel.MANUAL)
+                    .dataPointsUsed(0)
                     .description("Chưa có dữ liệu lead time. Vui lòng nhập thủ công.")
                     .requiresManualInput(true)
                     .build();
         }
 
-        LocalDate lastPeriodStart = history.isEmpty() ? LocalDate.now()
+        LocalDate lastPeriodStart = history.isEmpty()
+                ? LocalDate.now()
                 : history.get(history.size() - 1).getPeriodStartDate();
 
-        // Lead time dùng WMA, chỉ cần 1 kỳ dự đoán
-        return wmaForecast.forecast(leadTimeData, lastPeriodStart, 1, planningUnit.name());
+        return wmaForecast.forecast(leadTimeData, lastPeriodStart, 1, "MONTH");
     }
 
     public ForecastStrategy selectStrategy(int dataCount) {
-        if (dataCount < wmaThreshold) return wmaForecast;
+        if (dataCount < wmaThreshold)        return wmaForecast;
         if (dataCount < holtWintersThreshold) return holtWintersForecast;
         return seasonalRegressionForecast;
     }
@@ -117,11 +115,11 @@ public class ForecastOrchestrator {
         return selectStrategy(dataCount).getModelType();
     }
 
-    private String getNextModelInfo(int currentCount) {
-        if (currentCount < wmaThreshold)
-            return String.format("Cần thêm %d điểm để nâng lên Holt-Winters", wmaThreshold - currentCount);
-        if (currentCount < holtWintersThreshold)
-            return String.format("Cần thêm %d điểm để nâng lên Seasonal Regression", holtWintersThreshold - currentCount);
+    private String getNextModelInfo(int count) {
+        if (count < wmaThreshold)
+            return "Cần thêm " + (wmaThreshold - count) + " tháng để dùng Holt-Winters";
+        if (count < holtWintersThreshold)
+            return "Cần thêm " + (holtWintersThreshold - count) + " tháng để dùng Seasonal Regression";
         return "Đang dùng mô hình tốt nhất: Seasonal Regression";
     }
 }

@@ -1,6 +1,5 @@
 package com.ecotel.inventory_optimization_service.model;
 
-import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
@@ -13,12 +12,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Tham số dự trữ cho từng mặt hàng trong từng kỳ kế hoạch
+ * Tham số kế hoạch dự trữ cho một khoảng thời gian liên tục.
+ * Không còn planningUnit — tất cả đều là kế hoạch theo tháng.
+ * Một bản ghi bao phủ từ planStartDate đến planEndDate (nhiều tháng liền kề).
+ * Q là nhu cầu mỗi tháng, thuật toán chạy 1 lần, lịch đặt hàng sinh xuyên suốt.
  */
-
 @Entity
-@Table(name = "inventory_parameters",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"product_id", "plan_start_date", "planning_unit"}))
+@Table(name = "inventory_parameters")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -43,27 +43,29 @@ public class InventoryParameter {
     @Column(name = "supplier_product_id")
     private UUID supplierProductId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "planning_unit", nullable = false)
-    private PlanningUnit planningUnit;
-
+    // Ngày đầu kỳ — luôn là ngày 1 của tháng bắt đầu (DB key)
     @Column(name = "plan_start_date", nullable = false)
-    private LocalDate planStartDate;        // Ngày đầu kỳ — DB key, luôn là ngày 1 của kỳ
+    private LocalDate planStartDate;
 
-    @Column(name = "schedule_start_date")
-    private LocalDate scheduleStartDate;    // Ngày bắt đầu sinh lịch — hôm nay hoặc đầu kỳ tương lai
+    // Ngày cuối kỳ — luôn là ngày cuối của tháng kết thúc
+    @Column(name = "plan_end_date", nullable = false)
+    private LocalDate planEndDate;
 
-    // Q - người dùng nhập hoặc AI đề xuất
+    // Ngày bắt đầu sinh lịch đặt hàng:
+    //   kỳ hiện tại  → ngày hôm nay
+    //   kỳ tương lai → planStartDate
+    @Column(name = "schedule_start_date", nullable = false)
+    private LocalDate scheduleStartDate;
+
+    // Q — nhu cầu tiêu thụ MỖI THÁNG (không phải tổng cả kỳ)
     @Column(name = "demand_q", nullable = false, precision = 18, scale = 4)
     private BigDecimal demandQ;
 
-    // I - hệ số bảo quản (đã quy đổi về đơn vị kỳ)
+    // I — hệ số bảo quản/tháng (I năm / 12)
     @Column(name = "storage_cost_coefficient_i", nullable = false, precision = 8, scale = 4)
     private BigDecimal storageCostCoefficientI;
 
-    // === Snapshot từ Supplier Service tại thời điểm tạo kỳ ===
-    // Đã quy đổi về đơn vị planning_unit, bất biến sau khi lưu
-
+    // Snapshot từ Supplier Service — K/tháng, A, C, L/tháng
     @Column(name = "snapshot_supply_rate_k", nullable = false, precision = 18, scale = 4)
     private BigDecimal snapshotSupplyRateK;         // K
 
@@ -80,6 +82,37 @@ public class InventoryParameter {
     @Column(name = "supplier_data_source", nullable = false, length = 30)
     @Builder.Default
     private String supplierDataSource = "MANUAL";
+
+    /**
+     * Trạng thái kế hoạch:
+     *   ACTIVE      — đang hiệu lực
+     *   SUPERSEDED  — đã bị thay thế bởi kế hoạch mới (giữ lại làm audit trail)
+     */
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private String status = "ACTIVE";
+
+    /**
+     * Tồn kho thực tế (hoặc dự đoán) tại thời điểm bắt đầu kế hoạch.
+     * Dùng để tính ngày đặt hàng đầu tiên khi replan.
+     * null = kế hoạch đầu tiên, bắt đầu từ B lý thuyết.
+     */
+    @Column(name = "initial_inventory", precision = 18, scale = 4)
+    private BigDecimal initialInventory;
+
+    /**
+     * Lô hàng đang bay tại thời điểm replan (scheduled receipt).
+     * Số lượng của đơn hàng đã đặt nhưng chưa nhận, sẽ về trong khoảng L_new.
+     * null = không có lô hàng đang bay.
+     */
+    @Column(name = "scheduled_receipt_qty", precision = 18, scale = 4)
+    private BigDecimal scheduledReceiptQty;
+
+    /**
+     * Ngày nhận lô hàng đang bay (scheduled receipt date).
+     */
+    @Column(name = "scheduled_receipt_date")
+    private LocalDate scheduledReceiptDate;
 
     // === Cờ đề xuất tự động ===
     @Column(name = "q_is_suggested")

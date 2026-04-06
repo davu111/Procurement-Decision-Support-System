@@ -1,6 +1,5 @@
 package com.ecotel.inventory_optimization_service.dto.request;
 
-import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -10,8 +9,6 @@ import java.time.LocalDate;
 public class ConsumptionHistoryRequest {
 
     @NotNull private Long productId;
-
-    @NotNull private PlanningUnit planningUnit;
 
     @NotNull private LocalDate periodStartDate;
 

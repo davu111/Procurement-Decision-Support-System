@@ -1,11 +1,13 @@
 package com.ecotel.inventory_optimization_service.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Kết quả tính toán tối ưu theo mô hình bổ sung dần
@@ -22,6 +24,7 @@ public class InventoryResult {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inventory_parameter_id", nullable = false, unique = true)
     private InventoryParameter inventoryParameter;
@@ -57,6 +60,11 @@ public class InventoryResult {
 
     @Column(name = "m_value", nullable = false)
     private Integer mValue; // m = floor(L/τ*)
+
+    // Cascade xóa order_schedules khi xóa inventory_result
+    @JsonIgnore
+    @OneToMany(mappedBy = "inventoryResult", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderSchedule> orderSchedules;
 
     @CreationTimestamp
     @Column(name = "calculated_at", updatable = false)

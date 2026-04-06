@@ -1,6 +1,5 @@
 package com.ecotel.inventory_optimization_service.dto.response;
 
-import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import lombok.*;
 import java.math.BigDecimal;
 
@@ -8,7 +7,6 @@ import java.math.BigDecimal;
 public class ForecastSuggestionResponse {
 
     private Long productId;
-    private PlanningUnit planningUnit;
 
     // === Gợi ý từ AI ===
     private BigDecimal suggestedQ;          // Q đề xuất

@@ -3,7 +3,6 @@ package com.ecotel.inventory_optimization_service.controller;
 import com.ecotel.inventory_optimization_service.dto.request.ConsumptionHistoryRequest;
 import com.ecotel.inventory_optimization_service.dto.response.ApiResponse;
 import com.ecotel.inventory_optimization_service.dto.response.ConsumptionHistoryResponse;
-import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import com.ecotel.inventory_optimization_service.repository.ConsumptionHistoryRepository;
 import com.ecotel.inventory_optimization_service.service.ConsumptionHistoryService;
 import jakarta.validation.Valid;
@@ -31,8 +30,8 @@ public class ConsumptionHistoryController {
             @Valid @RequestBody ConsumptionHistoryRequest request) {
         ConsumptionHistoryResponse saved = consumptionHistoryService.record(request);
 
-        int totalPoints = historyRepository.countByProductIdAndPlanningUnit(
-                request.getProductId(), request.getPlanningUnit());
+        int totalPoints = historyRepository.countByProductId(
+                request.getProductId());
 
         String message = String.format(
                 "Đã lưu dữ liệu tiêu thụ. Tổng số điểm dữ liệu: %d. %s",
@@ -45,9 +44,8 @@ public class ConsumptionHistoryController {
      */
     @GetMapping("/{productId}")
     public ResponseEntity<ApiResponse<List<ConsumptionHistoryResponse>>> getHistory(
-            @PathVariable Long productId,
-            @RequestParam(defaultValue = "MONTH") PlanningUnit planningUnit) {
-        List<ConsumptionHistoryResponse> history = consumptionHistoryService.getHistory(productId, planningUnit);
+            @PathVariable Long productId) {
+        List<ConsumptionHistoryResponse> history = consumptionHistoryService.getHistory(productId);
         return ResponseEntity.ok(ApiResponse.success(history));
     }
 

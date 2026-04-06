@@ -2,7 +2,6 @@ package com.ecotel.inventory_optimization_service.service;
 
 import com.ecotel.inventory_optimization_service.dto.request.ConsumptionHistoryRequest;
 import com.ecotel.inventory_optimization_service.dto.response.ConsumptionHistoryResponse;
-import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import com.ecotel.inventory_optimization_service.exception.ResourceNotFoundException;
 import com.ecotel.inventory_optimization_service.mapper.ConsumptionHistoryMapper;
 import com.ecotel.inventory_optimization_service.model.ConsumptionHistory;
@@ -32,9 +31,9 @@ public class ConsumptionHistoryService {
         return historyMapper.toConsumptionHistoryResponse(saved);
     }
 
-    public List<ConsumptionHistoryResponse> getHistory(Long productId, PlanningUnit planningUnit) {
+    public List<ConsumptionHistoryResponse> getHistory(Long productId) {
         List<ConsumptionHistory> history = historyRepository
-                .findByProductIdAndPlanningUnitOrderByPeriodStartDateAsc(productId, planningUnit);
+                .findByProductIdOrderByPeriodStartDateAsc(productId);
         return history.stream()
                 .map(historyMapper::toConsumptionHistoryResponse)
                 .toList();

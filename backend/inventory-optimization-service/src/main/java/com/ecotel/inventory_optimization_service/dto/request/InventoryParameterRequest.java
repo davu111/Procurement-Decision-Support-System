@@ -1,6 +1,5 @@
 package com.ecotel.inventory_optimization_service.dto.request;
 
-import com.ecotel.inventory_optimization_service.enums.PlanningUnit;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -15,45 +14,61 @@ public class InventoryParameterRequest {
     @NotNull(message = "Mã mặt hàng không được trống")
     private Long productId;
 
-    private Long warehouseConfigId; // null → dùng config mặc định
-
-    @NotNull(message = "Đơn vị kỳ kế hoạch không được trống")
-    private PlanningUnit planningUnit;
+    private Long warehouseConfigId;
 
     /**
-     * Kỳ kế hoạch cụ thể người dùng chọn — ý nghĩa tùy planningUnit:
-     *   MONTH   → số tháng (1-12)
-     *   QUARTER → số quý  (1-4)
-     *   YEAR    → năm     (ví dụ 2025)
-     *
-     * Không nhận planStartDate trực tiếp từ client nữa.
-     * planStartDate và scheduleStartDate được tính tự động trong service.
+     * Tháng bắt đầu kế hoạch (1–12).
+     * Không cần planningUnit nữa — tất cả đều là tháng.
      */
-    @NotNull(message = "Kỳ kế hoạch không được trống")
-    @Min(value = 1, message = "Kỳ kế hoạch không hợp lệ")
-    private Integer targetPeriod;
+    @NotNull(message = "Tháng bắt đầu không được trống")
+    @Min(value = 1) @Max(value = 12)
+    private Integer startMonth;
 
-    /**
-     * Năm của kỳ kế hoạch.
-     * Với YEAR thì targetPeriod == targetYear, giữ riêng để rõ nghĩa.
-     */
+    @NotNull(message = "Tháng kết thúc không được trống")
+    @Min(value = 1) @Max(value = 12)
+    private Integer endMonth;
+
     @NotNull(message = "Năm kế hoạch không được trống")
-    @Min(value = 2020, message = "Năm không hợp lệ")
-    private Integer targetYear;
+    @Min(value = 2020)
+    private Integer year;
 
+    /**
+     * Q — nhu cầu tiêu thụ MỖI THÁNG.
+     * Thuật toán chạy với Q này, lịch đặt hàng sinh xuyên suốt từ startMonth đến endMonth.
+     */
     @NotNull(message = "Nhu cầu Q không được trống")
     @DecimalMin(value = "0.0001", message = "Q phải > 0")
     private BigDecimal demandQ;
 
+    /**
+     * I — hệ số bảo quản theo NĂM.
+     * Service tự quy đổi về tháng (I/12).
+     */
     @NotNull(message = "Hệ số bảo quản I không được trống")
-    @DecimalMin(value = "0.0001", message = "I phải > 0")
-    @DecimalMax(value = "1.0", message = "I phải <= 1 (100%)")
+    @DecimalMin(value = "0.0001") @DecimalMax(value = "1.0")
     private BigDecimal storageCostCoefficientI;
 
-    // K, A, C, L không cần nhập - lấy tự động từ Supplier Service
-    // Chỉ dùng khi fallback manual (Supplier Service down và không có kỳ trước)
+    /**
+     * Tồn kho thực tế (hoặc dự đoán) tại ngày bắt đầu kế hoạch.
+     * - null → kế hoạch đầu tiên, hệ thống dùng B lý thuyết làm điểm xuất phát
+     * - có giá trị → replan, hệ thống tính ngày đặt hàng đầu tiên từ giá trị này
+     */
+    private BigDecimal initialInventory;
+
+    /**
+     * Lô hàng đang bay: số lượng đã đặt nhưng chưa nhận tại ngày bắt đầu.
+     * Chỉ điền khi replan và có đơn hàng đang vận chuyển.
+     */
+    private BigDecimal scheduledReceiptQty;
+
+    /**
+     * Ngày nhận lô hàng đang bay.
+     */
+    private java.time.LocalDate scheduledReceiptDate;
+
+    // Fallback manual
     private BigDecimal manualSupplyRateK;
     private BigDecimal manualFixedOrderCostA;
     private BigDecimal manualUnitPriceC;
-    private BigDecimal manualLeadTimeDays; // ngày - sẽ được quy đổi
+    private BigDecimal manualLeadTimeDays;
 }
