@@ -4,6 +4,7 @@ import com.ecotel.inventory_optimization_service.dto.response.ApiResponse;
 import com.ecotel.inventory_optimization_service.dto.response.OrderScheduleResponse;
 import com.ecotel.inventory_optimization_service.service.OrderScheduleService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/order-schedules")
 @RequiredArgsConstructor
@@ -39,7 +41,9 @@ public class OrderScheduleController {
             @PathVariable Long productId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        log.info("Lấy lịch kế hoạch đặt hàng cho sản phẩm ID: {}, từ {} đến {}", productId, from, to);
         List<OrderScheduleResponse> schedules = scheduleService.getScheduleByProductId(productId, from, to);
+        System.out.println(schedules);
         return ResponseEntity.ok(ApiResponse.success(schedules));
     }
 }

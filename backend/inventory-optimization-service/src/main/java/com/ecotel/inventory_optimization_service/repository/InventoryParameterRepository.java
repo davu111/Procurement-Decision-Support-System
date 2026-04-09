@@ -21,6 +21,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
     @Query("""
         SELECT p FROM InventoryParameter p
         WHERE p.product.id = :productId
+          AND p.status = 'ACTIVE'
           AND p.planStartDate <= :newEnd
           AND p.planEndDate   >= :newStart
     """)
@@ -85,10 +86,17 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
     Optional<InventoryParameter> findByProductIdAndPlanStartDate(
             Long productId, LocalDate planStartDate);
 
-    Optional<InventoryParameter> findByProductIdAndPlanStartDateBetween(
-            Long productId,
-            LocalDate startDate,
-            LocalDate endDate);
+    @Query("""
+    SELECT ip FROM InventoryParameter ip
+    WHERE ip.product.id = :productId
+      AND ip.planStartDate <= :endDate
+      AND ip.planEndDate >= :startDate
+""")
+    List<InventoryParameter> findOverlappingPlans(
+            @Param("productId") Long productId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 
     Optional<InventoryParameter> findByProductIdIn(List<Long> productIds);
 }

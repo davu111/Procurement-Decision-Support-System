@@ -33,11 +33,11 @@ interface ResolvedPeriod {
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────────
-function getMonthOptions(year: number) {
+function getMonthOptions() {
   return Array.from({ length: 12 }, (_, i) => ({
     value: i + 1,
     label: `Tháng ${i + 1}`,
-    disabled: year === CURRENT_YEAR && i + 1 < CURRENT_MONTH,
+    disabled: false,
   }));
 }
 
@@ -50,17 +50,10 @@ function getYearOptions() {
 function validatePeriod(
   startMonth: number,
   endMonth: number,
-  year: number,
+  _year: number,
 ): string | null {
-  if (startMonth > endMonth) {
+  if (startMonth > endMonth)
     return `Tháng bắt đầu (${startMonth}) không thể lớn hơn tháng kết thúc (${endMonth})`;
-  }
-  if (
-    year < CURRENT_YEAR ||
-    (year === CURRENT_YEAR && startMonth < CURRENT_MONTH)
-  ) {
-    return `Tháng ${startMonth}/${year} đã qua, không thể xem kế hoạch`;
-  }
   return null;
 }
 
@@ -87,8 +80,8 @@ export default function ProductDetail() {
   const [resolvingPeriod, setResolvingPeriod] = useState(false);
 
   // ── Data state ─────────────────────────────────────────────────────────────
-  const [orderSchedules, setOrderSchedules] = useState<OrderSchedule[]>([]);
-  const [result, setResult] = useState<InventoryResult | null>(null);
+  const [results, setResults] = useState<InventoryResult[]>([]);
+  const [schedules, setSchedules] = useState<OrderSchedule[]>([]);
   const [loading, setLoading] = useState(false);
   const [noData, setNoData] = useState(false);
 
@@ -100,6 +93,9 @@ export default function ProductDetail() {
 
   // ── Debounce resolve-period ────────────────────────────────────────────────
   const resolveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const allSchedulesSorted = schedules
+    .slice()
+    .sort((a, b) => a.orderDate.localeCompare(b.orderDate));
 
   useEffect(() => {
     // Nếu client-side validation fail thì không gọi API
@@ -117,19 +113,16 @@ export default function ProductDetail() {
       setResolvingPeriod(true);
       api
         .get("/inventory/resolve-period", {
-          params: { startMonth, endMonth, year: targetYear },
+          params: { startMonth, endMonth, year: targetYear, mode: "history" },
         })
-        .then((r) => {
-          if (r.data?.success) {
-            setResolvedPeriod(r.data.data);
-            setPeriodError(null);
-          } else {
-            setPeriodError(r.data?.message ?? "Kỳ không hợp lệ");
-            setResolvedPeriod(null);
-          }
+        .then((res: any) => {
+          console.log("resolve-period response:", res); // ← thêm dòng này
+
+          setResolvedPeriod(res.data);
+          setPeriodError(null);
         })
-        .catch(() => {
-          setPeriodError("Không thể xác minh kỳ kế hoạch");
+        .catch((e: Error) => {
+          setPeriodError(e.message);
           setResolvedPeriod(null);
         })
         .finally(() => setResolvingPeriod(false));
@@ -146,12 +139,18 @@ export default function ProductDetail() {
     setProductError(false);
     api
       .get(`/inventory-products/${productId}`)
-      .then((r) => setProduct(r.data))
+      .then((res: any) => setProduct(res.data))
       .catch(() => setProductError(true));
   }, [productId]);
 
   // ── Load result + schedules — chỉ chạy khi resolvedPeriod hợp lệ ──────────
   useEffect(() => {
+    console.log(
+      "Triggering data load for productId:",
+      productId,
+      "with resolvedPeriod:",
+      resolvedPeriod,
+    );
     if (!resolvedPeriod) return;
 
     const { planStartDate, planEndDate } = resolvedPeriod;
@@ -159,8 +158,8 @@ export default function ProductDetail() {
 
     setLoading(true);
     setNoData(false);
-    setResult(null);
-    setOrderSchedules([]);
+    setResults([]);
+    setSchedules([]);
 
     Promise.all([
       api.get(`/inventory-results/range/${productId}`, {
@@ -170,14 +169,23 @@ export default function ProductDetail() {
         params: { from: planStartDate, to: planEndDate },
       }),
     ])
-      .then(([resResult, resSchedules]) => {
+      .then(([resResult, resSchedules]: any[]) => {
         if (cancelled) return;
-        const data = resResult.data?.data ?? resResult.data;
-        if (!data) {
+        // API trả array of results
+        const rawResults: InventoryResult[] = resResult.data;
+        const rawSchedules: OrderSchedule[] = resSchedules.data ?? [];
+        console.log(
+          "Loaded inventory results:",
+          rawResults,
+          "and order schedules:",
+          rawSchedules,
+        );
+
+        if (!rawResults || rawResults.length === 0) {
           setNoData(true);
         } else {
-          setResult(data);
-          setOrderSchedules(resSchedules.data);
+          setResults(rawResults);
+          setSchedules(rawSchedules);
         }
       })
       .catch(() => {
@@ -360,7 +368,7 @@ export default function ProductDetail() {
               </span>{" "}
               ({resolvedPeriod.planStartDate} → {resolvedPeriod.planEndDate})
             </p>
-            <p>
+            <div>
               🚚 Lịch đặt hàng bắt đầu từ:{" "}
               <span className="font-medium text-foreground">
                 {resolvedPeriod.scheduleStartDate}
@@ -370,7 +378,7 @@ export default function ProductDetail() {
                   Tháng hiện tại
                 </Badge>
               )}
-            </p>
+            </div>
           </div>
         )}
       </div>
@@ -398,41 +406,8 @@ export default function ProductDetail() {
       )}
 
       {/* Main content */}
-      {!loading && !noData && result && (
+      {!loading && !noData && results.length > 0 && (
         <>
-          {/* Key metrics */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            {[
-              {
-                label: "S* (Lượng đặt tối ưu)",
-                value: `${formatNumber(result.optimalOrderQtyS)} ${product.unit}`,
-              },
-              {
-                label: "n* (Số lần đặt)",
-                value: formatNumber(result.optimalOrderCountN),
-              },
-              {
-                label: "τ* (Chu kỳ)",
-                value: `${formatNumber(result.optimalCycleTimeTau, 4)} kỳ`,
-              },
-              {
-                label: "B (Điểm đặt hàng)",
-                value: `${formatNumber(result.reorderPointB)} ${product.unit}`,
-              },
-              {
-                label: "D_min (Chi phí tối thiểu)",
-                value: formatCurrency(result.minTotalCost),
-              },
-            ].map((m) => (
-              <div key={m.label} className="bg-card border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground mb-1">{m.label}</p>
-                <p className="text-lg font-bold font-mono text-foreground">
-                  {m.value}
-                </p>
-              </div>
-            ))}
-          </div>
-
           {/* Sawtooth Chart */}
           <div className="bg-card border rounded-lg p-5">
             <div className="flex items-center gap-2 mb-4">
@@ -441,7 +416,13 @@ export default function ProductDetail() {
                 Biểu đồ tồn kho (Răng cưa) — {filterLabel}
               </h2>
             </div>
-            <SawtoothChart result={result} schedules={orderSchedules} />
+            {console.log(
+              "Rendering SawtoothChart with results:",
+              results,
+              "and schedules:",
+              schedules,
+            )}
+            <SawtoothChart results={results} schedules={schedules} />
           </div>
 
           {/* Order schedule table */}
@@ -476,7 +457,7 @@ export default function ProductDetail() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {orderSchedules.map((o) => (
+                  {allSchedulesSorted.map((o) => (
                     <tr key={o.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3 font-mono">
                         #{o.orderSequence}

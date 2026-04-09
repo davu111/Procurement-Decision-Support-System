@@ -2,14 +2,18 @@ package com.ecotel.inventory_optimization_service.service;
 
 import com.ecotel.inventory_optimization_service.dto.response.InventoryCalculationResult;
 import com.ecotel.inventory_optimization_service.mapper.InventoryResultMapper;
+import com.ecotel.inventory_optimization_service.model.InventoryParameter;
 import com.ecotel.inventory_optimization_service.model.InventoryResult;
 import com.ecotel.inventory_optimization_service.repository.InventoryParameterRepository;
 import com.ecotel.inventory_optimization_service.repository.InventoryResultRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InventoryResultService {
@@ -30,14 +34,21 @@ public class InventoryResultService {
     }
 
     // Get inventory results by parameter ID by product id and date range
-    public InventoryCalculationResult getInventoryResultByProductIdAndPlanStartDateBetween(Long productId, LocalDate startDate, LocalDate endDate) {
-        Long parameterId = inventoryParameterRepository.findByProductIdAndPlanStartDateBetween(productId, startDate, endDate)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tham số tối ưu hóa cho sản phẩm ID: " + productId + " từ ngày " + startDate + " đến ngày " + endDate))
-                .getId();
+    public List<InventoryCalculationResult> getInventoryResultByProductIdAndPlanStartDateBetween(Long productId, LocalDate startDate, LocalDate endDate) {
+        List<Long> parameterId = inventoryParameterRepository.findOverlappingPlans(productId, startDate, endDate)
+                .stream()
+                .map(InventoryParameter::getId)
+                .toList();
+        System.out.println(parameterId + " - parameterId" +               " - productId: " + productId +
+                " - startDate: " + startDate +
+                " - endDate: " + endDate);
 
-        InventoryResult result = inventoryResultRepository.findByInventoryParameterId(parameterId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy kết quả tối ưu hóa với tham số ID: " + parameterId));
+        List<InventoryResult> result = inventoryResultRepository.findByInventoryParameterIdIn(parameterId)
+                .stream()
+                .toList();
 
-        return inventoryResultMapper.toInventoryCalculationResult(result);
+        return result.stream()
+                .map(inventoryResultMapper::toInventoryCalculationResult)
+                .toList();
     }
 }

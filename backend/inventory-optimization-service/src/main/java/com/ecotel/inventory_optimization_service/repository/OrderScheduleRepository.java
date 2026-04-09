@@ -30,16 +30,21 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
     void deleteByInventoryResultId(Long inventoryResultId);
 
     /**
-     * Lấy các đơn hàng đã đặt nhưng chưa nhận (scheduled receipts) của sản phẩm.
-     * "Đang bay" = actualDeliveryDate IS NULL AND expectedDeliveryDate >= today.
-     * Dùng để tính tồn kho hiệu dụng khi replan.
+     * Lấy các đơn hàng ĐANG ĐƯỢC GIAO của sản phẩm.
+     *
+     * Định nghĩa "đang giao": đơn đã được đặt (orderDate <= today) nhưng chưa nhận
+     * (actualDeliveryDate IS NULL) và ngày giao dự kiến còn trong tương lai
+     * (expectedDeliveryDate >= fromDate).
+     *
+     * Không tính các đơn hàng chưa đặt (orderDate > today) vì hoàn toàn có thể hủy.
      */
     @Query("""
-    SELECT o FROM OrderSchedule o
-    WHERE o.product.id = :productId
-    AND o.actualDeliveryDate IS NULL
-    AND o.expectedDeliveryDate >= :fromDate
-    ORDER BY o.expectedDeliveryDate ASC
+        SELECT o FROM OrderSchedule o
+        WHERE o.product.id = :productId
+          AND o.actualDeliveryDate IS NULL
+          AND o.orderDate < :fromDate
+          AND o.expectedDeliveryDate > :fromDate
+        ORDER BY o.expectedDeliveryDate ASC
     """)
     List<OrderSchedule> findPendingReceipts(
             @Param("productId") Long productId,

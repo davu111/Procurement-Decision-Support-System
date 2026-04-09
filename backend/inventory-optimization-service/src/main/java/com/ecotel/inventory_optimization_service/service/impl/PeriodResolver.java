@@ -24,8 +24,8 @@ public class PeriodResolver {
             LocalDate scheduleStartDate
     ) {}
 
-    public ResolvedPeriod resolve(InventoryParameterRequest request, LocalDate today) {
-        validate(request, today);
+    public ResolvedPeriod resolve(InventoryParameterRequest request, LocalDate today, String mode) {
+        validate(request, today, mode);
 
         LocalDate planStartDate = LocalDate.of(request.getYear(), request.getStartMonth(), 1);
         LocalDate planEndDate   = YearMonth.of(request.getYear(), request.getEndMonth()).atEndOfMonth();
@@ -44,7 +44,7 @@ public class PeriodResolver {
      *   1. startMonth <= endMonth (trong cùng năm)
      *   2. Không lập kế hoạch cho quá khứ (startMonth < tháng hiện tại)
      */
-    public void validate(InventoryParameterRequest request, LocalDate today) {
+    public void validate(InventoryParameterRequest request, LocalDate today, String mode) {
         int startMonth = request.getStartMonth();
         int endMonth   = request.getEndMonth();
         int year       = request.getYear();
@@ -58,7 +58,7 @@ public class PeriodResolver {
         LocalDate planStartDate      = LocalDate.of(year, startMonth, 1);
         LocalDate currentMonthStart  = today.withDayOfMonth(1);
 
-        if (planStartDate.isBefore(currentMonthStart)) {
+        if (!mode.equals("history") && planStartDate.isBefore(currentMonthStart)) {
             throw new IllegalArgumentException(
                     "Không thể lập kế hoạch cho tháng " + startMonth + "/" + year
                             + " — tháng này đã qua");

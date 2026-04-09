@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/inventory-results")
@@ -24,12 +25,12 @@ public class InventoryResultController {
     }
 
     @GetMapping("/range/{productId}")
-    public ResponseEntity<ApiResponse<InventoryCalculationResult>> getInventoryResultRange(
+    public ResponseEntity<ApiResponse<List<InventoryCalculationResult>>> getInventoryResultRange(
             @PathVariable Long productId,
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate
     ) {
-        InventoryCalculationResult result = resultService.getInventoryResultByProductIdAndPlanStartDateBetween(productId, startDate, endDate);
+        List<InventoryCalculationResult> result = resultService.getInventoryResultByProductIdAndPlanStartDateBetween(productId, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

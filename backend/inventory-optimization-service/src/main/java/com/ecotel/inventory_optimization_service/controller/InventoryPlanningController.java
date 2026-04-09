@@ -116,17 +116,18 @@ public class InventoryPlanningController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> resolvePeriod(
             @RequestParam Integer startMonth,
             @RequestParam Integer endMonth,
-            @RequestParam Integer year) {
+            @RequestParam Integer year,
+            @RequestParam (required = false) String mode) {
         InventoryParameterRequest temp = InventoryParameterRequest.builder()
                 .startMonth(startMonth).endMonth(endMonth).year(year)
                 .productId(0L).demandQ(BigDecimal.ONE).storageCostCoefficientI(BigDecimal.ONE)
                 .build();
         try {
-            PeriodResolver.validate(temp, LocalDate.now());
+            PeriodResolver.validate(temp, LocalDate.now(), mode);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
-        PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(temp, LocalDate.now());
+        PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(temp, LocalDate.now(), mode);
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "planStartDate",     resolved.planStartDate().toString(),
                 "planEndDate",       resolved.planEndDate().toString(),

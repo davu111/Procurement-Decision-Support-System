@@ -46,8 +46,8 @@ public class InventoryPlanningService {
     @Transactional
     public InventoryCalculationResult createAndCalculate(InventoryParameterRequest request) {
         LocalDate today = LocalDate.now();
-        PeriodResolver.validate(request, today);
-        PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(request, today);
+        PeriodResolver.validate(request, today, null);
+        PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(request, today, null);
 
         LocalDate planStartDate     = resolved.planStartDate();
         LocalDate planEndDate       = resolved.planEndDate();
@@ -107,8 +107,8 @@ public class InventoryPlanningService {
     @Transactional
     public InventoryCalculationResult replan(InventoryParameterRequest request) {
         LocalDate today = LocalDate.now();
-        PeriodResolver.validate(request, today);
-        PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(request, today);
+        PeriodResolver.validate(request, today, null);
+        PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(request, today, null);
 
         LocalDate planStartDate = resolved.planStartDate();
         LocalDate planEndDate   = resolved.planEndDate();
@@ -383,8 +383,8 @@ public class InventoryPlanningService {
 
     public List<InventoryParameter> findOverlapping(InventoryParameterRequest request) {
         LocalDate today   = LocalDate.now();
-        PeriodResolver.validate(request, today);
-        PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(request, today);
+        PeriodResolver.validate(request, today, null);
+        PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(request, today, null);
         return parameterRepository.findOverlapping(
                 request.getProductId(), resolved.planStartDate(), resolved.planEndDate());
     }
