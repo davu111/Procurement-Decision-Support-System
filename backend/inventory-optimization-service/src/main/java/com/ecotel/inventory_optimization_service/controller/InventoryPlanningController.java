@@ -37,7 +37,7 @@ public class InventoryPlanningController {
     public ResponseEntity<ApiResponse<InventoryCalculationResult>> calculate(
             @Valid @RequestBody InventoryParameterRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
-                planningService.createAndCalculate(request),
+                planningService.createAndCalculate(request, null),
                 "Tính toán thành công. Lịch kế hoạch đã được tạo."));
     }
 

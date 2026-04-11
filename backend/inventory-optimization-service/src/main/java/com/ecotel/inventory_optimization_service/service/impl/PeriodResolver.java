@@ -58,7 +58,7 @@ public class PeriodResolver {
         LocalDate planStartDate      = LocalDate.of(year, startMonth, 1);
         LocalDate currentMonthStart  = today.withDayOfMonth(1);
 
-        if (!mode.equals("history") && planStartDate.isBefore(currentMonthStart)) {
+        if (mode == null && planStartDate.isBefore(currentMonthStart)) {
             throw new IllegalArgumentException(
                     "Không thể lập kế hoạch cho tháng " + startMonth + "/" + year
                             + " — tháng này đã qua");

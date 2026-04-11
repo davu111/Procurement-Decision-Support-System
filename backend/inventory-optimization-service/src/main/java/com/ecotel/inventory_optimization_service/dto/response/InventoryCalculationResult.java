@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class InventoryCalculationResult {
+    private Long id;
 
     // === Kết quả tối ưu ===
     private BigDecimal optimalOrderQtyS;       // S*
@@ -25,6 +26,7 @@ public class InventoryCalculationResult {
     private Integer mValue;                    // m = floor(L/τ*)
 
     // === Tham số đầu vào (để trả về cho client kiểm tra) ===
+    private Long InventoryParameterId;
     private BigDecimal demandQ;
     private BigDecimal supplyRateK;
     private BigDecimal fixedOrderCostA;

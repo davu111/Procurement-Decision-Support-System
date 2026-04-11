@@ -359,7 +359,7 @@ export default function ProductDetail() {
         {!resolvingPeriod && periodError && (
           <p className="text-xs text-destructive">{periodError}</p>
         )}
-        {!resolvingPeriod && resolvedPeriod && (
+        {/* {!resolvingPeriod && resolvedPeriod && (
           <div className="text-xs text-muted-foreground space-y-0.5">
             <p>
               📅{" "}
@@ -380,7 +380,7 @@ export default function ProductDetail() {
               )}
             </div>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Loading */}

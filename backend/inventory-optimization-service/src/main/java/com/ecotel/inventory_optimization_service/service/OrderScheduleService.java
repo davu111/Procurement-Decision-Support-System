@@ -17,14 +17,14 @@ public class OrderScheduleService {
     private final OrderScheduleMapper scheduleMapper;
 
     public List<OrderScheduleResponse> getSchedule(LocalDate from, LocalDate to){
-        List<OrderSchedule> schedules = scheduleRepository.findByOrderDateBetween(from, to);
+        List<OrderSchedule> schedules = scheduleRepository.findEffectiveByDateRange(from, to);
         return schedules.stream()
                 .map(scheduleMapper::toOrderScheduleResponse)
                 .toList();
     }
 
     public List<OrderScheduleResponse> getScheduleByProductId(Long productId, LocalDate from, LocalDate to){
-        List<OrderSchedule> schedules = scheduleRepository.findByProductIdAndOrderDateBetween(productId, from, to);
+        List<OrderSchedule> schedules = scheduleRepository.findEffectiveByProductIdAndDateRange(productId, from, to);
         return schedules.stream()
                 .map(scheduleMapper::toOrderScheduleResponse)
                 .toList();

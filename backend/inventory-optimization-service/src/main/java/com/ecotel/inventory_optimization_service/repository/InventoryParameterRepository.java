@@ -50,6 +50,28 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
      * Đánh dấu SUPERSEDED cho các kế hoạch nằm trong khoảng [start, end].
      * Dùng khi replan: kế hoạch cũ bị thay thế nhưng không xóa.
      */
+    @Query("""
+        SELECT p FROM InventoryParameter p
+        WHERE p.product.id = :productId
+        AND p.planEndDate   >= :startDate
+        AND p.status = 'ACTIVE'
+        """)
+    List<InventoryParameter> findActiveToSupersede(
+            @Param("productId") Long productId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate")   LocalDate endDate);
+
+//    @Query("""
+//        SELECT p FROM InventoryParameter p
+//        WHERE p.product.id = :productId
+//        #AND p.planStartDate <= :endDate
+//        AND p.planEndDate   >= :startDate
+//        AND p.status = 'ACTIVE'
+//        """)
+//    List<InventoryParameter> findActiveToSupersede(
+//            @Param("productId") Long productId,
+//            @Param("startDate") LocalDate startDate,
+//            @Param("endDate")   LocalDate endDate);
     @org.springframework.data.jpa.repository.Modifying
     @Query("""
     UPDATE InventoryParameter p

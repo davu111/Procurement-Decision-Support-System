@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
   Scatter,
 } from "recharts";
@@ -175,6 +176,17 @@ function buildSegment(
     delivDaySet.add(delivIdx);
   }
 
+  console.log("Sawtooth params:", {
+    lDays,
+    daysPerPeriod,
+    tauDays,
+    tnDays,
+    ttDays,
+    firstOrderDate: sorted[0]?.orderDate,
+    secondOrderDate: sorted[1]?.orderDate,
+    firstDeliveryDate: sorted[0]?.expectedDeliveryDate,
+  });
+
   const points: ChartPoint[] = [];
   let cycleIdx = 0;
 
@@ -263,8 +275,7 @@ export default function SawtoothChart({
     // Dùng inventoryResultId từ schedule làm key — đây là nguồn sự thật duy nhất.
     const schedulesByResultId = new Map<number, OrderSchedule[]>();
     for (const s of schedules) {
-      const rid: number | undefined =
-        (s as any).inventoryResultId ?? (s as any).inventoryParameterId;
+      const rid: number | undefined = (s as any).inventoryResultId;
       if (rid == null) continue;
       if (!schedulesByResultId.has(rid)) schedulesByResultId.set(rid, []);
       schedulesByResultId.get(rid)!.push(s);
@@ -273,12 +284,7 @@ export default function SawtoothChart({
     // ── Bước 2: Với mỗi result, tìm schedules match bằng cách thử các field id ──
     // Không giả định tên field id của InventoryResult — thử tất cả candidates.
     function getResultId(r: InventoryResult): number | undefined {
-      const candidates = [
-        "id",
-        "parameterId",
-        "inventoryParameterId",
-        "resultId",
-      ];
+      const candidates = ["id"];
       for (const key of candidates) {
         const v = (r as any)[key];
         if (v != null && typeof v === "number") return v;
@@ -482,12 +488,12 @@ export default function SawtoothChart({
                   )}
                   {p.orderMarker !== undefined && (
                     <p className="text-destructive font-medium">
-                      📦 Ngày đặt hàng {p.isWarning ? "⚠️ Tràn kỳ" : ""}
+                      Ngày đặt hàng {p.isWarning ? "Tràn kỳ" : ""}
                     </p>
                   )}
                   {p.deliveryMarker !== undefined && (
                     <p className="text-emerald-600 font-medium">
-                      🚚 Ngày nhận hàng
+                      Ngày nhận hàng
                     </p>
                   )}
                 </div>
@@ -535,92 +541,98 @@ export default function SawtoothChart({
               ))}
 
           {/*
-           * B / Z / maxLevel — mỗi segment dùng ReferenceArea với y1=y2
-           * để đường kẻ ngang chỉ kéo dài trong khoảng x của segment đó.
+           * B / Z / maxLevel theo từng segment.
+           *
+           * Dùng ReferenceLine với prop `segment` (recharts ≥ 2.1) để giới hạn
+           * đường kẻ chỉ trong khoảng x của segment đó.
+           * Label dùng content function để render SVG text ra vùng right margin.
            */}
-          {builtSegments.map((seg, i) => {
+          {builtSegments.flatMap((seg, i) => {
             const { result, chartStart, chartEnd } = seg;
             const B = result.reorderPointB;
             const Z = result.avgInventoryLevel;
             const ML = result.maxInventoryLevel;
-            // Chỉ gắn label cho segment cuối cùng có giá trị đó
-            // để tránh label bị đè lên nhau khi cùng giá trị
-            const isLast = i === builtSegments.length - 1;
-            const prevSeg = builtSegments[i - 1];
-            const showBLabel =
-              isLast || !prevSeg || prevSeg.result.reorderPointB !== B;
-            const showZLabel =
-              isLast || !prevSeg || prevSeg.result.avgInventoryLevel !== Z;
-            const showMLLabel =
-              isLast || !prevSeg || prevSeg.result.maxInventoryLevel !== ML;
 
-            return (
-              <g key={`refs-${i}`}>
-                {/* maxLevel */}
-                <ReferenceArea
-                  x1={chartStart}
-                  x2={chartEnd}
-                  y1={ML}
-                  y2={ML}
-                  stroke="hsl(142 71% 35%)"
-                  strokeWidth={1.5}
-                  strokeDasharray="8 4"
-                  fill="transparent"
-                  label={
-                    showMLLabel
-                      ? {
-                          value: `S*(1-Q/K)=${ML.toFixed(0)}`,
-                          position: "right",
-                          fill: "hsl(142 71% 35%)",
-                          fontSize: 9,
-                        }
-                      : undefined
+            const prevSeg = builtSegments[i - 1];
+            const showBLabel = !prevSeg || prevSeg.result.reorderPointB !== B;
+            const showZLabel =
+              !prevSeg || prevSeg.result.avgInventoryLevel !== Z;
+            const showMLLabel =
+              !prevSeg || prevSeg.result.maxInventoryLevel !== ML;
+
+            // Custom label render text ra ngoài chart area (right margin = 90px)
+            const makeLabel = (text: string, color: string, show: boolean) =>
+              show
+                ? {
+                    content: (props: any) => {
+                      const vb = props?.viewBox;
+                      if (!vb) return null;
+                      return (
+                        <text
+                          x={vb.x + vb.width + 6}
+                          y={vb.y}
+                          fontSize={9}
+                          fill={color}
+                          dominantBaseline="middle"
+                          style={{ pointerEvents: "none" }}
+                        >
+                          {text}
+                        </text>
+                      );
+                    },
                   }
-                />
-                {/* Z */}
-                <ReferenceArea
-                  x1={chartStart}
-                  x2={chartEnd}
-                  y1={Z}
-                  y2={Z}
-                  stroke="hsl(38 92% 50%)"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 4"
-                  fill="transparent"
-                  label={
-                    showZLabel
-                      ? {
-                          value: `Z=${Z.toFixed(0)}`,
-                          position: "right",
-                          fill: "hsl(38 92% 50%)",
-                          fontSize: 9,
-                        }
-                      : undefined
-                  }
-                />
-                {/* B */}
-                <ReferenceArea
-                  x1={chartStart}
-                  x2={chartEnd}
-                  y1={B}
-                  y2={B}
-                  stroke="hsl(0 72% 51%)"
-                  strokeWidth={1.5}
-                  strokeDasharray="8 4"
-                  fill="transparent"
-                  label={
-                    showBLabel
-                      ? {
-                          value: `B=${B.toFixed(0)}`,
-                          position: "right",
-                          fill: "hsl(0 72% 51%)",
-                          fontSize: 9,
-                        }
-                      : undefined
-                  }
-                />
-              </g>
-            );
+                : undefined;
+
+            return [
+              <ReferenceLine
+                key={`ml-${i}`}
+                segment={[
+                  { x: chartStart, y: ML },
+                  { x: chartEnd, y: ML },
+                ]}
+                stroke="hsl(142 71% 35%)"
+                strokeWidth={1.5}
+                strokeDasharray="8 4"
+                ifOverflow="visible"
+                label={makeLabel(
+                  `S*(1-Q/K)=${ML.toFixed(0)}`,
+                  "hsl(142 71% 35%)",
+                  showMLLabel,
+                )}
+              />,
+              <ReferenceLine
+                key={`z-${i}`}
+                segment={[
+                  { x: chartStart, y: Z },
+                  { x: chartEnd, y: Z },
+                ]}
+                stroke="hsl(38 92% 50%)"
+                strokeWidth={1.5}
+                strokeDasharray="4 4"
+                ifOverflow="visible"
+                label={makeLabel(
+                  `Z=${Z.toFixed(0)}`,
+                  "hsl(38 92% 50%)",
+                  showZLabel,
+                )}
+              />,
+              <ReferenceLine
+                key={`b-${i}`}
+                segment={[
+                  { x: chartStart, y: B },
+                  { x: chartEnd, y: B },
+                ]}
+                stroke="hsl(0 72% 51%)"
+                strokeWidth={1.5}
+                strokeDasharray="8 4"
+                ifOverflow="visible"
+                label={makeLabel(
+                  `B=${B.toFixed(0)}`,
+                  "hsl(0 72% 51%)",
+                  showBLabel,
+                )}
+              />,
+            ];
           })}
 
           {/* Đường tồn kho — 1 Line per segment, màu riêng */}
@@ -644,7 +656,7 @@ export default function SawtoothChart({
       </ResponsiveContainer>
 
       {/* Bảng thông số từng kế hoạch — chỉ hiện khi multi-segment */}
-      {isMultiSegment && (
+      {/* {isMultiSegment && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
           {builtSegments.map((seg, i) => (
             <div
@@ -674,7 +686,7 @@ export default function SawtoothChart({
             </div>
           ))}
         </div>
-      )}
+      )} */}
     </div>
   );
 }

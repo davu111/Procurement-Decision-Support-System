@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.lang.System.exit;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -44,7 +46,7 @@ public class InventoryPlanningService {
     // -------------------------------------------------------
 
     @Transactional
-    public InventoryCalculationResult createAndCalculate(InventoryParameterRequest request) {
+    public InventoryCalculationResult createAndCalculate(InventoryParameterRequest request, InventoryParameter previousParam) {
         LocalDate today = LocalDate.now();
         PeriodResolver.validate(request, today, null);
         PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(request, today, null);
@@ -95,7 +97,7 @@ public class InventoryPlanningService {
 
         InventoryCalculationResult calcResult = calculationService.calculate(param);
         saveResult(param, calcResult);
-        generateOrderSchedule(param, calcResult);
+        generateOrderSchedule(param, calcResult, previousParam);
 
         return calcResult;
     }
@@ -112,12 +114,17 @@ public class InventoryPlanningService {
 
         LocalDate planStartDate = resolved.planStartDate();
         LocalDate planEndDate   = resolved.planEndDate();
+        System.out.println(planStartDate);
+        System.out.println(planEndDate);
 
         // Supersede kế hoạch cũ trong khoảng thời gian này
+        InventoryParameter previousParam = parameterRepository.findActiveToSupersede(
+                request.getProductId(), planStartDate, planEndDate).stream().findFirst().orElse(null);
+
         parameterRepository.supersede(request.getProductId(), planStartDate, planEndDate);
 
         // Tạo kế hoạch mới (dùng lại logic createAndCalculate)
-        return createAndCalculate(request);
+        return createAndCalculate(request, previousParam);
     }
 
     /**
@@ -213,15 +220,16 @@ public class InventoryPlanningService {
     // -------------------------------------------------------
 
     private void generateOrderSchedule(InventoryParameter param,
-                                       InventoryCalculationResult result) {
+                                       InventoryCalculationResult result,
+                                       InventoryParameter previousParam) {
         InventoryResult savedResult = resultRepository
                 .findByInventoryParameterId(param.getId()).orElseThrow();
 
         scheduleRepository.deleteByInventoryResultId(savedResult.getId());
 
         long cycleDays = result.getOptimalCycleTimeTau()
-                .multiply(BigDecimal.valueOf(30))
-                .setScale(0, RoundingMode.HALF_UP)
+                .multiply(java.math.BigDecimal.valueOf(30))
+                .setScale(0, java.math.RoundingMode.HALF_UP)
                 .longValue();
         long leadDays  = Math.round(param.getSnapshotLeadTimeL().doubleValue() * 30);
 
@@ -231,7 +239,7 @@ public class InventoryPlanningService {
         }
 
         // Tính ngày đặt hàng ĐẦU TIÊN
-        LocalDate firstOrderDate = calcFirstOrderDate(param, result, leadDays);
+        LocalDate firstOrderDate = calcFirstOrderDate(param, result, leadDays, previousParam);
 
         List<OrderSchedule> schedules = new ArrayList<>();
         int       sequence  = 1;
@@ -266,61 +274,84 @@ public class InventoryPlanningService {
      * Tính ngày đặt hàng đầu tiên dựa trên initialInventory.
      *
      * Nếu initialInventory == null (kế hoạch đầu tiên):
-     *   → Bắt đầu từ scheduleStartDate (B đã được đảm bảo lý thuyết)
+     *   → Bắt đầu từ scheduleStartDate
      *
      * Nếu initialInventory != null (replan):
-     *   → Tính tồn kho hiệu dụng = initialInventory + scheduledReceiptQty (nếu lô về trước L_new)
-     *   → Nếu I_eff <= B: đặt hàng ngay tại scheduleStartDate
-     *   → Nếu I_eff >  B: lùi ngày đặt = (I_eff - B) / (Q/30) ngày
+     *   → Mô phỏng tồn kho từng ngày từ scheduleStartDate,
+     *     tính đúng cả giai đoạn đang nhận lô hàng cũ (tồn kho tăng)
+     *     và giai đoạn chỉ tiêu thụ (tồn kho giảm).
+     *   → Ngày đầu tiên tồn kho chạm B_new = ngày đặt hàng đầu tiên.
+     *
+     * Lý do không dùng công thức tuyến tính (iEff - B) / (Q/30):
+     *   Công thức đó giả định tồn kho luôn giảm đều, bỏ qua giai đoạn
+     *   đang nhận lô hàng cũ khiến tồn kho tăng — dẫn đến tính sai ngày.
      */
     private LocalDate calcFirstOrderDate(InventoryParameter param,
                                          InventoryCalculationResult result,
-                                         long leadDays) {
+                                         long leadDays,
+                                         InventoryParameter previousParam) {
         if (param.getInitialInventory() == null) {
             return param.getScheduleStartDate();
         }
 
-        BigDecimal B = result.getReorderPointB();
-        BigDecimal Q = param.getDemandQ();
+        BigDecimal B        = result.getReorderPointB();
+        BigDecimal Q        = param.getDemandQ();        // Q/tháng
+        BigDecimal previousQ = previousParam != null ? previousParam.getDemandQ() : Q; // Dùng Q cũ nếu có để tính giai đoạn đang nhận
+        BigDecimal K        = param.getSnapshotSupplyRateK(); // K/tháng
+        LocalDate  start    = param.getScheduleStartDate();
+        LocalDate  planEnd  = param.getPlanEndDate();
 
-        // Tồn kho hiệu dụng: cộng lô đang bay nếu về trước khi lô mới cần về
-        BigDecimal iEff = param.getInitialInventory();
+//        double inv         = param.getInitialInventory().doubleValue();
+        BigDecimal dailyConsume = previousQ.divide(BigDecimal.valueOf(30), 4, RoundingMode.HALF_UP); // Dùng Q cũ để tính tiêu thụ hàng ngày
+        double dailyRise    = (K.doubleValue() - Q.doubleValue()) / 30.0;
+
+        // Xác định giai đoạn đang nhận lô hàng cũ (nếu có)
+        LocalDate recvStart = null;
+        LocalDate recvEnd   = null;
+        System.out.println(param);
         if (param.getScheduledReceiptQty() != null
                 && param.getScheduledReceiptDate() != null) {
-            LocalDate latestAcceptableDelivery =
-                    param.getScheduleStartDate().plusDays(leadDays);
-            if (!param.getScheduledReceiptDate().isAfter(latestAcceptableDelivery)) {
-                iEff = iEff.add(param.getScheduledReceiptQty());
-                log.info("Cộng lô đang bay {} vào tồn kho hiệu dụng (giao {})",
-                        param.getScheduledReceiptQty(), param.getScheduledReceiptDate());
+//            long tnDays = result.getReplenishmentTimeTn()
+//                    .multiply(java.math.BigDecimal.valueOf(30))
+//                    .setScale(0, java.math.RoundingMode.HALF_UP)
+//                    .longValue();
+            long tnDays = previousParam.getInventoryResult().getReplenishmentTimeTn()
+                    .multiply(java.math.BigDecimal.valueOf(30))
+                    .setScale(0, java.math.RoundingMode.HALF_UP)
+                    .longValue();
+            recvStart   = param.getScheduledReceiptDate();
+            recvEnd     = recvStart.plusDays(tnDays);
+            log.info("Lô đang bay: giao {}, Tn={} ngày, kết thúc nhận {}",
+                    recvStart, tnDays, recvEnd);
+        }
+        System.out.println(recvEnd);
+
+
+        // Mô phỏng từng ngày cho đến khi tìm được ngày chạm B
+        BigDecimal inv = previousParam.getInventoryResult().getMaxInventoryLevel();
+        long maxDays = java.time.temporal.ChronoUnit.DAYS.between(recvEnd, planEnd) + 1;
+        for (long offset = 1; offset <= maxDays; offset++) {
+            LocalDate current      = recvEnd.plusDays(offset);
+//                inv -= dailyConsume;
+            inv = inv.subtract(dailyConsume);
+
+//            inv = Math.max(0, inv);
+            inv = inv.max(java.math.BigDecimal.ZERO);
+
+
+            if (inv.compareTo(B) <= 0) {
+                log.info("Tồn kho chạm B={} vào ngày {} (offset={}), đặt hàng ngay",
+                        B, current, offset);
+                return current;
             }
+
         }
+//        exit(0);
 
-        if (iEff.compareTo(B) <= 0) {
-            // Tồn kho đã dưới B → đặt hàng ngay
-            log.info("I_eff={} <= B={}, đặt hàng ngay tại {}", iEff, B, param.getScheduleStartDate());
-            return param.getScheduleStartDate();
-        }
-
-        // Tồn kho trên B → tính số ngày chờ
-        // daysToB = (I_eff - B) / (Q/30)
-        BigDecimal qPerDay = Q.divide(BigDecimal.valueOf(30), 6, RoundingMode.HALF_UP);
-        long daysToB = iEff.subtract(B)
-                .divide(qPerDay, 0, RoundingMode.CEILING)
-                .longValue();
-
-        LocalDate firstOrder = param.getScheduleStartDate().plusDays(daysToB);
-
-        // Đảm bảo không vượt quá planEndDate
-        if (firstOrder.isAfter(param.getPlanEndDate())) {
-            log.warn("Tồn kho quá cao, không cần đặt hàng trong kỳ này (productId={})",
-                    param.getProduct().getId());
-            return param.getPlanEndDate().plusDays(1); // sẽ không sinh lịch nào
-        }
-
-        log.info("I_eff={} > B={}, lùi ngày đặt đầu tiên {} ngày → {}",
-                iEff, B, daysToB, firstOrder);
-        return firstOrder;
+        // Nếu tồn kho không bao giờ chạm B trong kỳ → không cần đặt
+        log.warn("Tồn kho không chạm B trong kỳ, không sinh lịch (productId={})",
+                param.getProduct().getId());
+        return planEnd.plusDays(1);
     }
 
     // -------------------------------------------------------
