@@ -44,7 +44,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
     AND p.status = 'ACTIVE'
     ORDER BY p.planStartDate DESC
     """)
-    java.util.Optional<InventoryParameter> findLatestActive(@Param("productId") Long productId);
+    List<InventoryParameter> findLatestActive(@Param("productId") Long productId);
 
     /**
      * Đánh dấu SUPERSEDED cho các kế hoạch nằm trong khoảng [start, end].

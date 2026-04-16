@@ -20,10 +20,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static java.lang.System.exit;
 
@@ -71,6 +68,48 @@ public class InventoryPlanningService {
         BigDecimal demandQPerMonth = request.getDemandQ()
                 .divide(BigDecimal.valueOf(totalMonths), 4, RoundingMode.HALF_UP);
 
+        // Auto-detect tồn kho và lô đang bay cho kế hoạch liền kề
+        // Ưu tiên: request > auto-detect từ kỳ trước
+        BigDecimal  effectiveInitialInventory  = request.getInitialInventory();
+        BigDecimal  effectiveReceiptQty        = request.getScheduledReceiptQty();
+        LocalDate   effectiveReceiptDate       = request.getScheduledReceiptDate();
+
+        if (effectiveInitialInventory == null) {
+            // Kiểm tra có kế hoạch ACTIVE liền kề ngay trước planStartDate không
+            // "Liền kề" = planEndDate của kỳ trước nằm trong vòng 1 tháng trước planStartDate
+            LocalDate adjacentThreshold = planStartDate.minusMonths(1);
+            List<InventoryParameter> adjacent = parameterRepository.findOverlapping(
+                    request.getProductId(),
+                    adjacentThreshold,
+                    planStartDate.minusDays(1));
+
+            boolean hasAdjacentPlan = adjacent.stream()
+                    .anyMatch(p -> "ACTIVE".equals(p.getStatus()));
+
+            if (hasAdjacentPlan) {
+                log.info("Phát hiện kế hoạch liền kề, tự động tính tồn kho tại {}",
+                        planStartDate);
+                PredictedInventoryResponse predicted =
+                        predictInventory(request.getProductId(), planStartDate);
+
+                if (predicted.getPredictedInventory() != null) {
+                    effectiveInitialInventory = predicted.getPredictedInventory();
+                    log.info("Auto initialInventory={} tại {}", effectiveInitialInventory, planStartDate);
+                }
+
+                // Lấy lô đang bay từ kỳ trước (nếu request chưa điền)
+                if (effectiveReceiptQty == null && !predicted.getPendingReceipts().isEmpty()) {
+                    // Chỉ lấy lô đầu tiên (giao sớm nhất) vì đó là lô ảnh hưởng nhất
+                    PredictedInventoryResponse.PendingReceipt firstReceipt =
+                            predicted.getPendingReceipts().get(0);
+                    effectiveReceiptQty  = firstReceipt.getQuantity();
+                    effectiveReceiptDate = firstReceipt.getExpectedDeliveryDate();
+                    log.info("Auto scheduledReceipt qty={} date={}",
+                            effectiveReceiptQty, effectiveReceiptDate);
+                }
+            }
+        }
+
         InventoryParameter param = InventoryParameter.builder()
                 .product(product)
                 .warehouseConfig(config)
@@ -87,9 +126,9 @@ public class InventoryPlanningService {
                 .snapshotUnitPriceC(snapshot.unitPriceC)
                 .snapshotLeadTimeL(snapshot.leadTimeL)
                 .supplierDataSource(snapshot.source)
-                .initialInventory(request.getInitialInventory())
-                .scheduledReceiptQty(request.getScheduledReceiptQty())
-                .scheduledReceiptDate(request.getScheduledReceiptDate())
+                .initialInventory(effectiveInitialInventory)
+                .scheduledReceiptQty(effectiveReceiptQty)
+                .scheduledReceiptDate(effectiveReceiptDate)
                 .status("ACTIVE")
                 .build();
 
@@ -114,8 +153,6 @@ public class InventoryPlanningService {
 
         LocalDate planStartDate = resolved.planStartDate();
         LocalDate planEndDate   = resolved.planEndDate();
-        System.out.println(planStartDate);
-        System.out.println(planEndDate);
 
         // Supersede kế hoạch cũ trong khoảng thời gian này
         InventoryParameter previousParam = parameterRepository.findActiveToSupersede(
@@ -156,7 +193,7 @@ public class InventoryPlanningService {
      */
     public PredictedInventoryResponse predictInventory(Long productId, LocalDate targetDate) {
         Optional<InventoryParameter> activeOpt =
-                parameterRepository.findLatestActive(productId);
+                parameterRepository.findLatestActive(productId).stream().findFirst();
 
         if (activeOpt.isEmpty()) {
             return PredictedInventoryResponse.builder()
@@ -308,7 +345,7 @@ public class InventoryPlanningService {
         // Xác định giai đoạn đang nhận lô hàng cũ (nếu có)
         LocalDate recvStart = null;
         LocalDate recvEnd   = null;
-        System.out.println(param);
+//        System.out.println(param);
         if (param.getScheduledReceiptQty() != null
                 && param.getScheduledReceiptDate() != null) {
 //            long tnDays = result.getReplenishmentTimeTn()
@@ -322,6 +359,19 @@ public class InventoryPlanningService {
             recvStart   = param.getScheduledReceiptDate();
             recvEnd     = recvStart.plusDays(tnDays);
             log.info("Lô đang bay: giao {}, Tn={} ngày, kết thúc nhận {}",
+                    recvStart, tnDays, recvEnd);
+        } else if (previousParam != null) {
+            long tnDays = previousParam.getInventoryResult().getReplenishmentTimeTn()
+                    .multiply(java.math.BigDecimal.valueOf(30))
+                    .setScale(0, java.math.RoundingMode.HALF_UP)
+                    .longValue();
+            OrderSchedule latestOrder = previousParam.getInventoryResult().getOrderSchedules()
+                    .stream()
+                    .max(Comparator.comparing(OrderSchedule::getExpectedDeliveryDate))
+                    .orElse(null);
+            recvStart = latestOrder != null ? latestOrder.getExpectedDeliveryDate() : null;
+            recvEnd     = recvStart.plusDays(tnDays);
+            log.info("Lô đang bay cuối kỳ: giao {}, Tn={} ngày, kết thúc nhận {}",
                     recvStart, tnDays, recvEnd);
         }
         System.out.println(recvEnd);

@@ -40,7 +40,7 @@ public class SupplierProductService {
      */
     public SupplierProductResponse getByProductId(Long productId) {
         SupplierProduct sp = supplierProductRepository
-                .findByProductId(productId)
+                .findActiveByProductId(productId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Không tìm thấy thông tin nhà cung cấp cho sản phẩm id: " + productId));
         return supplierProductMapper.toSupplierProductResponse(sp);

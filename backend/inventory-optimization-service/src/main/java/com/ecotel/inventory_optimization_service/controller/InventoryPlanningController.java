@@ -6,6 +6,7 @@ import com.ecotel.inventory_optimization_service.dto.response.ForecastSuggestion
 import com.ecotel.inventory_optimization_service.dto.response.InventoryCalculationResult;
 import com.ecotel.inventory_optimization_service.dto.response.PredictedInventoryResponse;
 import com.ecotel.inventory_optimization_service.model.InventoryParameter;
+import com.ecotel.inventory_optimization_service.repository.InventoryParameterRepository;
 import com.ecotel.inventory_optimization_service.repository.OrderScheduleRepository;
 import com.ecotel.inventory_optimization_service.service.impl.InventoryPlanningService;
 import com.ecotel.inventory_optimization_service.service.impl.PeriodResolver;
@@ -28,6 +29,7 @@ public class InventoryPlanningController {
 
     private final InventoryPlanningService planningService;
     private final OrderScheduleRepository  scheduleRepository;
+    private final InventoryParameterRepository parameterRepository;
 
     /**
      * POST /api/inventory/calculate
@@ -36,8 +38,10 @@ public class InventoryPlanningController {
     @PostMapping("/calculate")
     public ResponseEntity<ApiResponse<InventoryCalculationResult>> calculate(
             @Valid @RequestBody InventoryParameterRequest request) {
+        InventoryParameter previousParam = parameterRepository.findLatestActive(request.getProductId())
+                .stream().findFirst().orElse(null);
         return ResponseEntity.ok(ApiResponse.success(
-                planningService.createAndCalculate(request, null),
+                planningService.createAndCalculate(request, previousParam),
                 "Tính toán thành công. Lịch kế hoạch đã được tạo."));
     }
 

@@ -2,6 +2,8 @@ package com.ecotel.supplier_service.repository;
 
 import com.ecotel.supplier_service.model.SupplierProduct;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,5 +24,6 @@ public interface SupplierProductRepository extends JpaRepository<SupplierProduct
     // Tìm tất cả sản phẩm đang active
     List<SupplierProduct> findByIsActiveTrue();
 
-    Optional<SupplierProduct> findByProductId(Long productId);
+    @Query("SELECT sp FROM SupplierProduct sp WHERE sp.productId = :productId AND sp.isActive = true")
+    Optional<SupplierProduct> findActiveByProductId(@Param("productId") Long productId);
 }
