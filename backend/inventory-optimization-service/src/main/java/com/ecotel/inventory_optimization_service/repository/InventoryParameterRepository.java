@@ -121,4 +121,33 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
     );
 
     Optional<InventoryParameter> findByProductIdIn(List<Long> productIds);
+
+    /**
+     * Tìm bản ghi InventoryParameter phù hợp nhất với product_id và khoảng thời gian yêu cầu.
+     *
+     * Điều kiện:
+     *  - Đúng product
+     *  - plan_start_date <= requestStart AND plan_end_date >= requestEnd  (bao hết khoảng yêu cầu)
+     *  - Ưu tiên status = 'ACTIVE' trước, sau đó updated_at mới nhất
+     *
+     * @param productId   ID của sản phẩm
+     * @param requestStart ngày bắt đầu kỳ yêu cầu
+     * @param requestEnd   ngày kết thúc kỳ yêu cầu
+     * @return Optional chứa bản ghi phù hợp nhất, hoặc empty nếu không tìm thấy
+     */
+    @Query("""
+        SELECT ip
+        FROM InventoryParameter ip
+        WHERE ip.product.id = :productId
+          AND YEAR(ip.planStartDate) * 100 + MONTH(ip.planStartDate) <= :yearMonth
+          AND YEAR(ip.planEndDate)   * 100 + MONTH(ip.planEndDate)   >= :yearMonth
+        ORDER BY
+          CASE WHEN ip.status = 'ACTIVE' THEN 0 ELSE 1 END ASC,
+          ip.updatedAt DESC
+        LIMIT 1
+        """)
+    Optional<InventoryParameter> findBestMatchByMonth(
+            @Param("productId") Long productId,
+            @Param("yearMonth") int  yearMonth   // format: 202604
+    );
 }

@@ -32,19 +32,19 @@ public class HoltWintersForecast implements ForecastStrategy {
     @Override
     public ForecastResult forecast(List<Double> historicalData,
                                    LocalDate lastPeriodStart,
-                                   int periodsAhead,
-                                   String planningUnit) {
+                                   int periodsAhead) {
         int n = historicalData.size();
 
         if (n < seasonLength) {
-            // Fallback: chưa đủ 1 chu kỳ
+            // Fallback: chưa đủ 1 chu kỳ mùa vụ → trung bình đơn giản
             double avg = simpleAverage(historicalData);
             List<ForecastPoint> pts = new ArrayList<>();
             for (int step = 0; step < periodsAhead; step++) {
-                String period = stepToPeriodLabel(lastPeriodStart, step + 1, planningUnit);
                 pts.add(ForecastPoint.builder()
-                        .period(period).forecastValue(avg)
-                        .upperBound(avg * 1.15).lowerBound(avg * 0.85)
+                        .period(periodLabel(lastPeriodStart, step + 1))
+                        .forecastValue(avg)
+                        .upperBound(round4(avg * 1.15))
+                        .lowerBound(round4(avg * 0.85))
                         .build());
             }
             return ForecastResult.builder()
@@ -55,47 +55,45 @@ public class HoltWintersForecast implements ForecastStrategy {
                     .build();
         }
 
-        double[] data = historicalData.stream().mapToDouble(Double::doubleValue).toArray();
-        double[] level = new double[n];
-        double[] trend = new double[n];
-        double[] seasonal = new double[n + periodsAhead]; // extend để forecast
+        double[] data      = historicalData.stream().mapToDouble(Double::doubleValue).toArray();
+        double[] level     = new double[n];
+        double[] trend     = new double[n];
+        double[] seasonal  = new double[n + periodsAhead];
         double[] forecastArr = new double[n];
 
         initializeComponents(data, level, trend, seasonal);
 
         for (int t = seasonLength; t < n; t++) {
             double prevL = level[t-1], prevT = trend[t-1], prevS = seasonal[t-seasonLength];
-            level[t]    = alpha * (data[t] / prevS) + (1-alpha) * (prevL + prevT);
-            trend[t]    = beta  * (level[t] - prevL) + (1-beta)  * prevT;
-            seasonal[t] = gamma * (data[t] / level[t]) + (1-gamma) * prevS;
+            level[t]     = alpha * (data[t] / prevS) + (1 - alpha) * (prevL + prevT);
+            trend[t]     = beta  * (level[t] - prevL) + (1 - beta) * prevT;
+            seasonal[t]  = gamma * (data[t] / level[t]) + (1 - gamma) * prevS;
             forecastArr[t] = (prevL + prevT) * prevS;
         }
 
-        double mape = calculateMape(data, forecastArr, seasonLength);
+        double mape  = calculateMape(data, forecastArr, seasonLength);
+        double lastL = level[n - 1];
+        double lastT = trend[n - 1];
 
-        double lastL = level[n-1];
-        double lastT = trend[n-1];
-
-        // Forecast h kỳ tiếp theo: F(n+h) = (L + h*T) * S(n-m + (n+h)%m)
         List<ForecastPoint> forecastPoints = new ArrayList<>();
         double firstForecastValue = 0;
 
         for (int step = 0; step < periodsAhead; step++) {
-            int h = step + 1;
-            int seasonIdx = (n + step) % seasonLength;
-            double nextS = seasonal[n - seasonLength + seasonIdx];
-            double fv = Math.max((lastL + h * lastT) * nextS, 0);
+            int    h         = step + 1;
+            int    seasonIdx = (n + step) % seasonLength;
+            double nextS     = seasonal[n - seasonLength + seasonIdx];
+            double fv        = Math.max((lastL + h * lastT) * nextS, 0);
 
             if (step == 0) firstForecastValue = fv;
 
-            double band = Double.isNaN(mape) ? fv * 0.1 : fv * (mape / 100.0);
-            String period = stepToPeriodLabel(lastPeriodStart, h, planningUnit);
+            double effectiveMape = Double.isNaN(mape) ? 10.0 : Math.max(mape, 5.0);
+            double band = fv * (effectiveMape / 100.0);
 
             forecastPoints.add(ForecastPoint.builder()
-                    .period(period)
-                    .forecastValue(Math.round(fv * 10000.0) / 10000.0)
-                    .upperBound(Math.round((fv + band) * 10000.0) / 10000.0)
-                    .lowerBound(Math.round(Math.max(0, fv - band) * 10000.0) / 10000.0)
+                    .period(periodLabel(lastPeriodStart, h))
+                    .forecastValue(round4(fv))
+                    .upperBound(round4(fv + band))
+                    .lowerBound(round4(Math.max(0, fv - band)))
                     .build());
         }
 
@@ -110,7 +108,10 @@ public class HoltWintersForecast implements ForecastStrategy {
                 .build();
     }
 
-    private void initializeComponents(double[] data, double[] level, double[] trend, double[] seasonal) {
+    // -------------------------------------------------------
+
+    private void initializeComponents(double[] data, double[] level,
+                                      double[] trend, double[] seasonal) {
         double initialLevel = 0;
         for (int i = 0; i < seasonLength; i++) initialLevel += data[i];
         initialLevel /= seasonLength;
@@ -118,14 +119,14 @@ public class HoltWintersForecast implements ForecastStrategy {
         double initialTrend = 0;
         if (data.length >= 2 * seasonLength) {
             double secondAvg = 0;
-            for (int i = seasonLength; i < 2*seasonLength; i++) secondAvg += data[i];
+            for (int i = seasonLength; i < 2 * seasonLength; i++) secondAvg += data[i];
             secondAvg /= seasonLength;
             initialTrend = (secondAvg - initialLevel) / seasonLength;
         }
         for (int i = 0; i < seasonLength; i++) {
             seasonal[i] = data[i] / initialLevel;
-            level[i] = initialLevel;
-            trend[i] = initialTrend;
+            level[i]    = initialLevel;
+            trend[i]    = initialTrend;
         }
     }
 
@@ -144,13 +145,13 @@ public class HoltWintersForecast implements ForecastStrategy {
         return data.stream().mapToDouble(Double::doubleValue).average().orElse(0);
     }
 
-    private String stepToPeriodLabel(LocalDate last, int steps, String planningUnit) {
-        LocalDate next = switch (planningUnit.toUpperCase()) {
-            case "QUARTER" -> last.plusMonths(3L * steps);
-            case "YEAR"    -> last.plusYears(steps);
-            default        -> last.plusMonths(steps);
-        };
+    private String periodLabel(LocalDate last, int monthsAhead) {
+        LocalDate next = last.plusMonths(monthsAhead);
         return String.format("%d-%02d", next.getYear(), next.getMonthValue());
+    }
+
+    private double round4(double v) {
+        return Math.round(v * 10000.0) / 10000.0;
     }
 
     @Override

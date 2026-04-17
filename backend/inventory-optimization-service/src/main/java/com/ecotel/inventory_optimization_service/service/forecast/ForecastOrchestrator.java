@@ -24,10 +24,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ForecastOrchestrator {
 
-    private final WeightedMovingAverageForecast     wmaForecast;
-    private final HoltWintersForecast               holtWintersForecast;
-    private final SeasonalRegressionForecast        seasonalRegressionForecast;
-    private final ConsumptionHistoryRepository      consumptionHistoryRepository;
+    private final WeightedMovingAverageForecast  wmaForecast;
+    private final HoltWintersForecast            holtWintersForecast;
+    private final SeasonalRegressionForecast     seasonalRegressionForecast;
+    private final ConsumptionHistoryRepository   consumptionHistoryRepository;
 
     @Value("${app.inventory.wma-threshold:6}")
     private int wmaThreshold;
@@ -39,8 +39,7 @@ public class ForecastOrchestrator {
     private double mapeWarningThreshold;
 
     /**
-     * Dự đoán Q (nhu cầu/tháng) cho nhiều kỳ tiếp theo.
-     * Không cần planningUnit — tất cả đều là tháng.
+     * Dự đoán Q (nhu cầu/tháng) cho các tháng tiếp theo.
      *
      * @param periodsAhead số tháng muốn dự đoán (mặc định 3)
      */
@@ -65,21 +64,25 @@ public class ForecastOrchestrator {
 
         LocalDate lastPeriodStart = history.get(history.size() - 1).getPeriodStartDate();
 
-        ForecastStrategy strategy = selectStrategy(dataCount);
-        // planningUnit cố định là MONTH
-        ForecastResult result = strategy.forecast(consumptionData, lastPeriodStart, periodsAhead, "MONTH");
+        ForecastResult result = selectStrategy(dataCount)
+                .forecast(consumptionData, lastPeriodStart, periodsAhead);
 
-        result.setMapeWarning(!Double.isNaN(result.getMape()) && result.getMape() > mapeWarningThreshold);
+        result.setMapeWarning(!Double.isNaN(result.getMape())
+                && result.getMape() > mapeWarningThreshold);
         result.setNextModelUpgrade(getNextModelInfo(dataCount));
 
         return result;
     }
 
-    /** Overload mặc định 3 kỳ */
+    /** Overload mặc định 3 tháng */
     public ForecastResult forecastDemand(Long productId) {
-        return forecastDemand(productId, 3);
+        return forecastDemand(productId, 6);
     }
 
+    /**
+     * Dự đoán Lead Time (ngày) cho tháng tiếp theo.
+     * Lead time ổn định theo thời gian → WMA là đủ.
+     */
     public ForecastResult forecastLeadTime(Long productId) {
         List<ConsumptionHistory> history =
                 consumptionHistoryRepository.findByProductIdOrderByPeriodStartDateAsc(productId);
@@ -102,11 +105,14 @@ public class ForecastOrchestrator {
                 ? LocalDate.now()
                 : history.get(history.size() - 1).getPeriodStartDate();
 
-        return wmaForecast.forecast(leadTimeData, lastPeriodStart, 1, "MONTH");
+        // Lead time dùng WMA, chỉ cần 1 kỳ dự đoán
+        return wmaForecast.forecast(leadTimeData, lastPeriodStart, 1);
     }
 
+    // -------------------------------------------------------
+
     public ForecastStrategy selectStrategy(int dataCount) {
-        if (dataCount < wmaThreshold)        return wmaForecast;
+        if (dataCount < wmaThreshold)         return wmaForecast;
         if (dataCount < holtWintersThreshold) return holtWintersForecast;
         return seasonalRegressionForecast;
     }
@@ -117,9 +123,9 @@ public class ForecastOrchestrator {
 
     private String getNextModelInfo(int count) {
         if (count < wmaThreshold)
-            return "Cần thêm " + (wmaThreshold - count) + " tháng để dùng Holt-Winters";
+            return "Cần thêm " + (wmaThreshold - count) + " tháng để nâng lên Holt-Winters";
         if (count < holtWintersThreshold)
-            return "Cần thêm " + (holtWintersThreshold - count) + " tháng để dùng Seasonal Regression";
+            return "Cần thêm " + (holtWintersThreshold - count) + " tháng để nâng lên Seasonal Regression";
         return "Đang dùng mô hình tốt nhất: Seasonal Regression";
     }
 }

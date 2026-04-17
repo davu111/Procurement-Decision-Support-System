@@ -49,6 +49,14 @@ public class ConsumptionHistoryController {
         return ResponseEntity.ok(ApiResponse.success(history));
     }
 
+    @GetMapping("/{productId}/year/{year}")
+    public ResponseEntity<ApiResponse<List<ConsumptionHistoryResponse>>> getHistoryByYear(
+            @PathVariable Long productId,
+            @PathVariable int year) {
+        List<ConsumptionHistoryResponse> history = consumptionHistoryService.getByYear(productId, year);
+        return ResponseEntity.ok(ApiResponse.success(history));
+    }
+
     private String getModelReadinessMessage(int count) {
         if (count < 6) return String.format("Cần %d điểm nữa để dùng Holt-Winters.", 6 - count);
         if (count < 18) return String.format("Cần %d điểm nữa để dùng Seasonal Regression.", 18 - count);

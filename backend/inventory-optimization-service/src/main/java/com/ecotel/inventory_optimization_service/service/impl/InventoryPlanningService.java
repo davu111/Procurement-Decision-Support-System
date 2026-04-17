@@ -2,11 +2,9 @@ package com.ecotel.inventory_optimization_service.service.impl;
 
 import com.ecotel.inventory_optimization_service.dto.request.InventoryParameterRequest;
 import com.ecotel.inventory_optimization_service.dto.request.supplier.SupplierProductData;
-import com.ecotel.inventory_optimization_service.dto.response.ForecastResult;
-import com.ecotel.inventory_optimization_service.dto.response.ForecastSuggestionResponse;
-import com.ecotel.inventory_optimization_service.dto.response.InventoryCalculationResult;
-import com.ecotel.inventory_optimization_service.dto.response.PredictedInventoryResponse;
+import com.ecotel.inventory_optimization_service.dto.response.*;
 import com.ecotel.inventory_optimization_service.exception.ResourceNotFoundException;
+import com.ecotel.inventory_optimization_service.mapper.InventoryPlanningMapper;
 import com.ecotel.inventory_optimization_service.model.*;
 import com.ecotel.inventory_optimization_service.repository.*;
 import com.ecotel.inventory_optimization_service.service.InventoryCalculationService;
@@ -19,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -37,6 +36,7 @@ public class InventoryPlanningService {
     private final InventoryCalculationService   calculationService;
     private final ForecastOrchestrator          forecastOrchestrator;
     private final SupplierServiceClient         supplierServiceClient;
+    private final InventoryPlanningMapper inventoryPlanningMapper;
 
     // -------------------------------------------------------
     // LUỒNG CHÍNH: TẠO / REPLAN KẾ HOẠCH
@@ -603,6 +603,14 @@ public class InventoryPlanningService {
 
         resultRepository.save(result);
     }
+
+    public InventoryParameterResponse getParameterRange(Long productId, YearMonth yearMonth) {
+        int yearMonthInt = yearMonth.getYear() * 100 + yearMonth.getMonthValue(); // 202604
+        InventoryParameter params = parameterRepository.findBestMatchByMonth(productId, yearMonthInt)
+                .orElse(null);
+        return inventoryPlanningMapper.toInventoryParameterResponse(params);
+    }
+
     @lombok.Builder @lombok.Data
     private static class SnapshotData {
         UUID supplierProductId;

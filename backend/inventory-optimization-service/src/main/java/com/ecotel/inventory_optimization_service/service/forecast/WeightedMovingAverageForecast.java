@@ -26,17 +26,14 @@ public class WeightedMovingAverageForecast implements ForecastStrategy {
     @Override
     public ForecastResult forecast(List<Double> historicalData,
                                    LocalDate lastPeriodStart,
-                                   int periodsAhead,
-                                   String planningUnit) {
+                                   int periodsAhead) {
         int n = historicalData.size();
         if (n == 0) throw new IllegalArgumentException("Không có dữ liệu lịch sử");
 
         double[] weights = selectWeights(n);
-        double mape = calculateMape(historicalData, weights);
+        double   mape    = calculateMape(historicalData, weights);
 
-        // WMA không có seasonal model → dùng sliding window cho mỗi kỳ tiếp
-        // Mỗi kỳ dự đoán, append giá trị dự đoán vào window để tính kỳ sau
-        List<Double> window = new ArrayList<>(historicalData);
+        List<Double>        window         = new ArrayList<>(historicalData);
         List<ForecastPoint> forecastPoints = new ArrayList<>();
         double firstForecastValue = 0;
 
@@ -48,18 +45,18 @@ public class WeightedMovingAverageForecast implements ForecastStrategy {
 
             if (step == 0) firstForecastValue = fv;
 
-            double band = Double.isNaN(mape) ? fv * 0.15 : fv * (mape / 100.0);
-            String period = stepToPeriodLabel(lastPeriodStart, step + 1, planningUnit);
+            double effectiveMape = Double.isNaN(mape) ? 15.0 : Math.max(mape, 5.0);
+            double band   = fv * (effectiveMape / 100.0);
+            String period = periodLabel(lastPeriodStart, step + 1);
 
             forecastPoints.add(ForecastPoint.builder()
                     .period(period)
-                    .forecastValue(Math.round(fv * 10000.0) / 10000.0)
-                    .upperBound(Math.round((fv + band) * 10000.0) / 10000.0)
-                    .lowerBound(Math.round(Math.max(0, fv - band) * 10000.0) / 10000.0)
+                    .forecastValue(round4(fv))
+                    .upperBound(round4(fv + band))
+                    .lowerBound(round4(Math.max(0, fv - band)))
                     .build());
 
-            // Dùng giá trị dự đoán làm input cho kỳ tiếp theo
-            window.add(fv);
+            window.add(fv); // sliding window cho kỳ tiếp
         }
 
         return ForecastResult.builder()
@@ -68,9 +65,12 @@ public class WeightedMovingAverageForecast implements ForecastStrategy {
                 .modelUsed(ForecastModel.WMA)
                 .mape(mape)
                 .dataPointsUsed(n)
-                .description(buildDescription(weights, getRecentData(historicalData, weights.length), firstForecastValue))
+                .description(buildDescription(weights,
+                        getRecentData(historicalData, weights.length), firstForecastValue))
                 .build();
     }
+
+    // -------------------------------------------------------
 
     private double[] selectWeights(int n) {
         if (n >= 3) return WEIGHTS_3;
@@ -100,20 +100,21 @@ public class WeightedMovingAverageForecast implements ForecastStrategy {
     private String buildDescription(double[] weights, double[] recent, double forecast) {
         StringBuilder sb = new StringBuilder("WMA: ");
         for (int i = 0; i < weights.length; i++) {
-            sb.append(String.format("%.0f%%×%.2f", weights[i]*100, recent[i]));
+            sb.append(String.format("%.0f%%×%.2f", weights[i] * 100, recent[i]));
             if (i < weights.length - 1) sb.append(" + ");
         }
         sb.append(String.format(" = %.4f", forecast));
         return sb.toString();
     }
 
-    private String stepToPeriodLabel(LocalDate last, int steps, String planningUnit) {
-        LocalDate next = switch (planningUnit.toUpperCase()) {
-            case "QUARTER" -> last.plusMonths(3L * steps);
-            case "YEAR"    -> last.plusYears(steps);
-            default        -> last.plusMonths(steps);
-        };
+    /** Tính nhãn YYYY-MM cách lastPeriodStart một số tháng */
+    private String periodLabel(LocalDate last, int monthsAhead) {
+        LocalDate next = last.plusMonths(monthsAhead);
         return String.format("%d-%02d", next.getYear(), next.getMonthValue());
+    }
+
+    private double round4(double v) {
+        return Math.round(v * 10000.0) / 10000.0;
     }
 
     @Override

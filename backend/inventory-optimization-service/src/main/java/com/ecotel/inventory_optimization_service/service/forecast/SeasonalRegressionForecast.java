@@ -28,13 +28,11 @@ public class SeasonalRegressionForecast implements ForecastStrategy {
     @Override
     public ForecastResult forecast(List<Double> historicalData,
                                    LocalDate lastPeriodStart,
-                                   int periodsAhead,
-                                   String planningUnit) {
-        int n = historicalData.size();
+                                   int periodsAhead) {
+        int      n    = historicalData.size();
         double[] data = historicalData.stream().mapToDouble(Double::doubleValue).toArray();
 
-        double[] seasonalIndex = calculateSeasonalIndex(data);
-
+        double[] seasonalIndex  = calculateSeasonalIndex(data);
         double[] deseasonalized = new double[n];
         for (int i = 0; i < n; i++) {
             int period = i % SEASON_LENGTH;
@@ -42,61 +40,57 @@ public class SeasonalRegressionForecast implements ForecastStrategy {
                     ? data[i] / seasonalIndex[period] : data[i];
         }
 
-        double[] regression = linearRegression(deseasonalized);
-        double a = regression[0];
-        double b = regression[1];
-
+        double[] reg = linearRegression(deseasonalized);
+        double a = reg[0], b = reg[1];
         double mape = calculateMape(data, a, b, seasonalIndex);
 
-        // === Tính forecastPoints cho tất cả các kỳ cần dự đoán ===
-        List<ForecastPoint> forecastPoints = new ArrayList<>();
-        double firstForecastValue = 0;
+        List<ForecastPoint> forecastPoints    = new ArrayList<>();
+        double              firstForecastValue = 0;
 
         for (int step = 0; step < periodsAhead; step++) {
-            int t = n + step;
-            int periodIndex = t % SEASON_LENGTH;
-            double trendValue = a + b * t;
-            double fv = Math.max(trendValue * seasonalIndex[periodIndex], 0);
+            int    t           = n + step;
+            int    periodIndex = t % SEASON_LENGTH;
+            double fv          = Math.max((a + b * t) * seasonalIndex[periodIndex], 0);
 
             if (step == 0) firstForecastValue = fv;
 
-            double band = Double.isNaN(mape) ? fv * 0.1 : fv * (mape / 100.0);
-
-            // Tính nhãn tháng cho kỳ này
-            String period = stepToPeriodLabel(lastPeriodStart, step + 1, planningUnit);
+            double effectiveMape = Double.isNaN(mape) ? 10.0 : Math.max(mape, 5.0);
+            double band = fv * (effectiveMape / 100.0);
 
             forecastPoints.add(ForecastPoint.builder()
-                    .period(period)
-                    .forecastValue(Math.round(fv * 10000.0) / 10000.0)
-                    .upperBound(Math.round((fv + band) * 10000.0) / 10000.0)
-                    .lowerBound(Math.round(Math.max(0, fv - band) * 10000.0) / 10000.0)
+                    .period(periodLabel(lastPeriodStart, step + 1))
+                    .forecastValue(round4(fv))
+                    .upperBound(round4(fv + band))
+                    .lowerBound(round4(Math.max(0, fv - band)))
                     .build());
         }
 
         return ForecastResult.builder()
-                .forecastValue(firstForecastValue)   // kỳ tiếp theo (backward compat)
+                .forecastValue(firstForecastValue)
                 .forecastPoints(forecastPoints)
                 .modelUsed(ForecastModel.SEASONAL_REGRESSION)
                 .mape(mape)
                 .dataPointsUsed(n)
                 .seasonalIndices(seasonalIndex)
                 .description(String.format(
-                        "Seasonal Regression: a=%.4f, b=%.4f, SI[%d]=%.4f → Dự đoán kỳ tiếp=%.4f",
+                        "Seasonal Regression: a=%.4f, b=%.4f, SI[%d]=%.4f → kỳ1=%.4f",
                         a, b, n % SEASON_LENGTH, seasonalIndex[n % SEASON_LENGTH],
                         firstForecastValue))
                 .build();
     }
+
+    // -------------------------------------------------------
 
     private double[] calculateSeasonalIndex(double[] data) {
         double overallAvg = 0;
         for (double v : data) overallAvg += v;
         overallAvg /= data.length;
 
-        double[] periodSum = new double[SEASON_LENGTH];
-        int[] periodCount = new int[SEASON_LENGTH];
+        double[] periodSum   = new double[SEASON_LENGTH];
+        int[]    periodCount = new int[SEASON_LENGTH];
         for (int i = 0; i < data.length; i++) {
-            periodSum[i % SEASON_LENGTH] += data[i];
-            periodCount[i % SEASON_LENGTH]++;
+            periodSum[i % SEASON_LENGTH]   += data[i];
+            periodCount[i % SEASON_LENGTH] ++;
         }
 
         double[] si = new double[SEASON_LENGTH];
@@ -108,7 +102,7 @@ public class SeasonalRegressionForecast implements ForecastStrategy {
     }
 
     private double[] linearRegression(double[] data) {
-        int n = data.length;
+        int    n    = data.length;
         double sumT = 0, sumY = 0, sumTY = 0, sumT2 = 0;
         for (int t = 0; t < n; t++) {
             sumT += t; sumY += data[t];
@@ -121,8 +115,7 @@ public class SeasonalRegressionForecast implements ForecastStrategy {
 
     private double calculateMape(double[] actual, double a, double b, double[] si) {
         int startFrom = Math.min(SEASON_LENGTH, actual.length / 3);
-        double totalError = 0;
-        int count = 0;
+        double totalError = 0; int count = 0;
         for (int t = startFrom; t < actual.length; t++) {
             double predicted = (a + b * t) * si[t % SEASON_LENGTH];
             if (actual[t] != 0) {
@@ -133,20 +126,15 @@ public class SeasonalRegressionForecast implements ForecastStrategy {
         return count > 0 ? (totalError / count) * 100 : Double.NaN;
     }
 
-    /**
-     * Tính nhãn kỳ (YYYY-MM) cho kỳ cách lastPeriodStart một số bước
-     */
-    private String stepToPeriodLabel(LocalDate lastPeriodStart, int steps, String planningUnit) {
-        LocalDate next = switch (planningUnit.toUpperCase()) {
-            case "QUARTER" -> lastPeriodStart.plusMonths(3L * steps);
-            case "YEAR"    -> lastPeriodStart.plusYears(steps);
-            default        -> lastPeriodStart.plusMonths(steps); // MONTH
-        };
+    private String periodLabel(LocalDate last, int monthsAhead) {
+        LocalDate next = last.plusMonths(monthsAhead);
         return String.format("%d-%02d", next.getYear(), next.getMonthValue());
     }
 
-    @Override
-    public ForecastModel getModelType() {
-        return ForecastModel.SEASONAL_REGRESSION;
+    private double round4(double v) {
+        return Math.round(v * 10000.0) / 10000.0;
     }
+
+    @Override
+    public ForecastModel getModelType() { return ForecastModel.SEASONAL_REGRESSION; }
 }

@@ -46,14 +46,21 @@ export default function ForecastChart({
       ? ((result.forecastQ - result.avg6Q) / result.avg6Q) * 100
       : null;
 
+  // Use historicalPoints if points are empty
+  const chartData = useMemo(() => {
+    console.log("Rendering ForecastChart with result:", result);
+    return result.points.length > 0
+      ? result.points
+      : result.historicalPoints || [];
+  }, [result.points, result.historicalPoints]);
+
   // Find the "today" divider
   const todayPeriod = useMemo(() => {
-    const lastActual = result.points.filter((p) => p.actual !== null).pop();
-    console.log("Rendering ForecastChart with result:", result);
+    const lastActual = chartData.filter((p) => p.actual !== null).pop();
     return lastActual?.period || "";
-  }, [result.points]);
+  }, [chartData]);
 
-  const forecastPoint = result.points.find((p) => p.forecastValue !== null);
+  const forecastPoint = chartData.find((p) => p.forecastValue !== null);
 
   return (
     <div className="bg-card border rounded-lg overflow-hidden">
@@ -100,7 +107,7 @@ export default function ForecastChart({
         <div className="flex-1 p-5">
           <ResponsiveContainer width="100%" height={320}>
             <ComposedChart
-              data={result.points}
+              data={chartData}
               margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
             >
               <CartesianGrid
@@ -217,104 +224,113 @@ export default function ForecastChart({
         </div>
 
         {/* Summary Panel */}
-        <div className="lg:w-64 border-t lg:border-t-0 lg:border-l border-border p-5 space-y-4">
-          {/* Forecast Q */}
-          <div className="bg-muted rounded-lg p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Dự đoán Q</p>
-            <p className="text-2xl font-bold font-mono text-foreground">
-              {formatNumber(result.forecastQ)}{" "}
-              <span className="text-sm font-normal">{result.unit}</span>
-            </p>
-          </div>
-
-          {/* Comparisons */}
-          {changePrev !== null && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">So kỳ trước</span>
-              <span
-                className={cn(
-                  "flex items-center gap-1 font-medium",
-                  changePrev >= 0 ? "text-status-success" : "text-destructive",
-                )}
-              >
-                {changePrev >= 0 ? (
-                  <TrendingUp className="h-3.5 w-3.5" />
-                ) : (
-                  <TrendingDown className="h-3.5 w-3.5" />
-                )}
-                {changePrev >= 0 ? "+" : ""}
-                {changePrev.toFixed(1)}%
-              </span>
-            </div>
-          )}
-          {changeAvg6 !== null && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">So TB 6 kỳ</span>
-              <span
-                className={cn(
-                  "flex items-center gap-1 font-medium",
-                  changeAvg6 >= 0 ? "text-status-success" : "text-destructive",
-                )}
-              >
-                {changeAvg6 >= 0 ? (
-                  <TrendingUp className="h-3.5 w-3.5" />
-                ) : (
-                  <TrendingDown className="h-3.5 w-3.5" />
-                )}
-                {changeAvg6 >= 0 ? "+" : ""}
-                {changeAvg6.toFixed(1)}%
-              </span>
-            </div>
-          )}
-
-          {/* Confidence range */}
-          {forecastPoint && (
-            <div className="bg-muted rounded-lg p-3">
-              <p className="text-xs text-muted-foreground mb-1">
-                Khoảng tin cậy
-              </p>
-              <p className="font-mono font-medium text-foreground text-sm">
-                {formatNumber(forecastPoint.lowerBound!)} —{" "}
-                {formatNumber(forecastPoint.upperBound!)} {result.unit}
+        {result.model !== "HISTORICAL_DATA_ONLY" && (
+          <div className="lg:w-64 border-t lg:border-t-0 lg:border-l border-border p-5 space-y-4">
+            {/* Forecast Q */}
+            <div className="bg-muted rounded-lg p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Dự đoán Q</p>
+              <p className="text-2xl font-bold font-mono text-foreground">
+                {formatNumber(result.forecastQ)}{" "}
+                <span className="text-sm font-normal">{result.unit}</span>
               </p>
             </div>
-          )}
 
-          {/* Seasonality */}
-          {result.seasonalityInsight && (
-            <div className="bg-primary/5 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <Lightbulb className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                <p className="text-xs text-foreground">
-                  {result.seasonalityInsight}
+            {/* Comparisons */}
+            {changePrev !== null && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">So kỳ trước</span>
+                <span
+                  className={cn(
+                    "flex items-center gap-1 font-medium",
+                    changePrev >= 0
+                      ? "text-status-success"
+                      : "text-destructive",
+                  )}
+                >
+                  {changePrev >= 0 ? (
+                    <TrendingUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <TrendingDown className="h-3.5 w-3.5" />
+                  )}
+                  {changePrev >= 0 ? "+" : ""}
+                  {changePrev.toFixed(1)}%
+                </span>
+              </div>
+            )}
+            {changeAvg6 !== null && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">So TB 6 kỳ</span>
+                <span
+                  className={cn(
+                    "flex items-center gap-1 font-medium",
+                    changeAvg6 >= 0
+                      ? "text-status-success"
+                      : "text-destructive",
+                  )}
+                >
+                  {changeAvg6 >= 0 ? (
+                    <TrendingUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <TrendingDown className="h-3.5 w-3.5" />
+                  )}
+                  {changeAvg6 >= 0 ? "+" : ""}
+                  {changeAvg6.toFixed(1)}%
+                </span>
+              </div>
+            )}
+
+            {/* Confidence range */}
+            {forecastPoint && (
+              <div className="bg-muted rounded-lg p-3">
+                <p className="text-xs text-muted-foreground mb-1">
+                  Khoảng tin cậy
+                </p>
+                <p className="font-mono font-medium text-foreground text-sm">
+                  {formatNumber(forecastPoint.lowerBound!)} —{" "}
+                  {formatNumber(forecastPoint.upperBound!)} {result.unit}
                 </p>
               </div>
-              {result.peakMonth && result.lowMonth && (
-                <p className="text-xs text-muted-foreground mt-2 ml-6">
-                  Cao nhất: T{result.peakMonth.month} (+{result.peakMonth.pct}%)
-                  · Thấp nhất: T{result.lowMonth.month} ({result.lowMonth.pct}%)
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+            )}
+
+            {/* Seasonality */}
+            {result.seasonalityInsight && (
+              <div className="bg-primary/5 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <Lightbulb className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <p className="text-xs text-foreground">
+                    {result.seasonalityInsight}
+                  </p>
+                </div>
+                {result.peakMonth && result.lowMonth && (
+                  <p className="text-xs text-muted-foreground mt-2 ml-6">
+                    Cao nhất: T{result.peakMonth.month} (+{result.peakMonth.pct}
+                    %) · Thấp nhất: T{result.lowMonth.month} (
+                    {result.lowMonth.pct}%)
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Action buttons */}
       <div className="border-t border-border p-5 flex items-center gap-3">
-        <Button
-          onClick={() => onUseForecast(result.forecastQ)}
-          disabled={mapeLevel === "low"}
-          className="gap-2"
-        >
-          <CheckCircle className="h-4 w-4" />
-          Dùng giá trị dự đoán: {formatNumber(result.forecastQ)} {result.unit}
-        </Button>
+        {result.model !== "HISTORICAL_DATA_ONLY" && (
+          <Button
+            onClick={() => onUseForecast(result.forecastQ)}
+            disabled={mapeLevel === "low"}
+            className="gap-2"
+          >
+            <CheckCircle className="h-4 w-4" />
+            Dùng giá trị dự đoán: {formatNumber(result.forecastQ)} {result.unit}
+          </Button>
+        )}
         <Button variant="outline" onClick={onManualInput} className="gap-2">
           <Edit3 className="h-4 w-4" />
           Nhập thủ công
         </Button>
-        {mapeLevel === "low" && (
+        {result.model !== "HISTORICAL_DATA_ONLY" && mapeLevel === "low" && (
           <span className="text-xs text-destructive">
             MAPE &gt; 20% — vui lòng nhập thủ công
           </span>

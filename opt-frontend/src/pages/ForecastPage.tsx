@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import FileImporter from "@/components/forecast/FileImporter";
 import ForecastChart from "@/components/forecast/ForecastChart";
 import type { Product } from "@/types/inventory-opt/product";
@@ -16,8 +17,13 @@ import type { ConsumptionHistory } from "@/types/inventory-opt/consumption-histo
 import api from "@/api/axiosConfig";
 import { completeForecastDataFromBackend } from "@/utils/forecastCompletion";
 import { getDataQualityMessage } from "@/types/forecast";
-import type { ConsumptionRecord, ForecastResult } from "@/types/forecast";
+import type {
+  ConsumptionRecord,
+  ForecastResult,
+  ConsumptionPoint,
+} from "@/types/forecast";
 import type { ForecastSuggestionResponse } from "../types/inventory-opt/forecast-suggestion";
+import type { ForecastModel, ForecastPoint } from "@/types/forecast";
 import { cn } from "@/lib/utils";
 
 export default function ForecastPage() {
@@ -26,13 +32,22 @@ export default function ForecastPage() {
   const [consumptionHistory, setConsumptionHistory] = useState<
     ConsumptionHistory[]
   >([]);
+  const currentYear = new Date().getFullYear();
+
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     api
       .get("/inventory-products")
       .then((response) => setProducts(response.data))
-      .catch((error) => console.error("Error fetching products:", error));
+      .catch((error) => {
+        console.error("Error fetching products:", error);
+        setError("Lỗi khi tải danh sách mặt hàng");
+      });
   }, []);
+
   const [importedRecords, setImportedRecords] = useState<ConsumptionRecord[]>(
     [],
   );
@@ -46,60 +61,161 @@ export default function ForecastPage() {
     setImportedRecords((prev) => [...prev, ...records]);
   };
 
-  // Get products with data count
-  // const productDataCounts = mockProducts.map((p) => {
-  //   const count = importedRecords.filter(
-  //     (r) => r.productCode === p.code,
-  //   ).length;
-  //   return { ...p, dataCount: count };
-  // });
-
-  const handleProductSelect = async (id: string) => {
-    const productId = Number(id);
+  const handleProductSelect = (id: string) => {
     setSelectedProduct(id);
-    const product = products.find((p) => p.id === productId);
-    if (!product) return;
-
-    try {
-      // Gọi backend API để lấy gợi ý forecast
-      // axios interceptor return ApiResponse<T>, nên cần .data để unwrap
-      const suggestionResponse = await api.get<any>(
-        `/inventory/suggest/${productId}`,
-      );
-      const suggestion: ForecastSuggestionResponse = suggestionResponse.data;
-
-      // Gọi consumption history để frontend có chi tiết
-      const historyResponse = await api.get<any>(
-        `/consumption-history/${productId}`,
-      );
-      const consumptionRecords: ConsumptionRecord[] = historyResponse.data;
-
-      if (!consumptionRecords || consumptionRecords.length < 3) {
-        setForecastResult(null);
-        return;
-      }
-
-      // Complete dữ liệu từ backend response + history
-      const result = completeForecastDataFromBackend(
-        suggestion,
-        consumptionRecords,
-        {
-          id: product.id,
-          name: product.name,
-          unit: product.unit,
-        },
-      );
-      console.log("Completed forecast result for frontend:", result);
-
-      setForecastResult(result);
-    } catch (error) {
-      console.error("Error fetching forecast suggestion:", error);
-      setForecastResult(null);
-    }
+    setSelectedYear(null);
+    setForecastResult(null);
+    setConsumptionHistory([]);
+    setError(null);
   };
 
+  useEffect(() => {
+    if (!selectedProduct || !selectedYear) {
+      setForecastResult(null);
+      return;
+    }
+
+    const productId = Number(selectedProduct);
+    const product = products.find((p) => p.id === productId);
+    if (!product) {
+      setError("Không tìm thấy mặt hàng");
+      return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      setForecastResult(null);
+
+      try {
+        console.log(
+          `🔄 Fetching consumption history for product ${productId}, year ${selectedYear}`,
+        );
+
+        // 🔥 Lấy history theo năm
+        const historyRes = await api.get(
+          `/consumption-history/${productId}/year/${selectedYear}`,
+        );
+
+        const consumptionRecords: ConsumptionHistory[] =
+          historyRes.data.data || historyRes.data;
+
+        if (!Array.isArray(consumptionRecords)) {
+          throw new Error("API trả về dữ liệu không hợp lệ");
+        }
+
+        console.log(
+          `✅ History fetched:`,
+          consumptionRecords.length,
+          "records",
+        );
+        setConsumptionHistory(consumptionRecords);
+
+        // ❗ CHỈ gọi forecast cho năm hiện tại
+        if (selectedYear === currentYear) {
+          console.log(`📊 Current year detected, fetching forecast...`);
+
+          try {
+            const suggestionRes = await api.get(
+              `/inventory/suggest/${productId}`,
+            );
+
+            console.log(`✅ Suggestion API response:`, suggestionRes.data);
+
+            const suggestion: ForecastSuggestionResponse = suggestionRes.data;
+
+            const recordsForForecast: ConsumptionRecord[] =
+              consumptionRecords.map((item) => ({
+                productId: item.productId,
+                periodStartDate: item.periodStartDate,
+                periodEndDate: item.periodEndDate,
+                actualConsumption: Number(item.actualConsumption),
+                plannedConsumption: Number(item.plannedConsumption ?? 0),
+                actualLeadTimeDays: Number(item.actualLeadTimeDays ?? 0),
+                actualSupplyRate: Number(item.actualSupplyRate ?? 0),
+                notes: item.notes ?? "",
+              }));
+
+            const result = completeForecastDataFromBackend(
+              suggestion,
+              recordsForForecast,
+              {
+                id: product.id,
+                name: product.name,
+                unit: product.unit,
+              },
+            );
+
+            console.log(`✅ Forecast result:`, result);
+            setForecastResult(result);
+          } catch (suggestionErr) {
+            console.error("❌ Error fetching suggestion:", suggestionErr);
+            setError(
+              `Lỗi khi tính dự đoán: ${
+                suggestionErr instanceof Error
+                  ? suggestionErr.message
+                  : "Unknown error"
+              }`,
+            );
+            setForecastResult(null);
+          }
+        } else {
+          console.log(`📅 Past year selected, showing historical data only`);
+
+          const recordsForForecast = consumptionRecords.map((item) => ({
+            productId: item.productId,
+            periodStartDate: item.periodStartDate,
+            periodEndDate: item.periodEndDate,
+            actualConsumption: Number(item.actualConsumption),
+            plannedConsumption: Number(item.plannedConsumption ?? 0),
+            actualLeadTimeDays: Number(item.actualLeadTimeDays ?? 0),
+            actualSupplyRate: Number(item.actualSupplyRate ?? 0),
+            notes: item.notes ?? "",
+          }));
+
+          const historicalResult: ForecastResult = {
+            productId: productId,
+            productName: product.name,
+            model: "HISTORICAL_DATA_ONLY",
+            mape: 0,
+            dataPointsUsed: recordsForForecast.length,
+            forecastQ: 0,
+            previousQ: 0,
+            avg6Q: 0,
+            unit: product.unit,
+            points: [],
+            historicalPoints: recordsForForecast.map((record) => ({
+              period: record.periodStartDate,
+              forecastValue: null,
+              actual: record.actualConsumption,
+              planned: record.plannedConsumption,
+              upperBound: null,
+              lowerBound: null,
+            })),
+            seasonalityInsight: null,
+            peakMonth: null,
+            lowMonth: null,
+          };
+
+          setForecastResult(historicalResult);
+        }
+      } catch (err) {
+        console.error("❌ Error in fetchData:", err);
+        setError(
+          `Lỗi khi tải dữ liệu: ${
+            err instanceof Error ? err.message : "Unknown error"
+          }`,
+        );
+        setForecastResult(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedProduct, selectedYear, products]);
+
   const handleUseForecast = (q: number) => {
-    // Navigate to new plan page (in real app, would pass data)
     navigate("/new-plan");
   };
 
@@ -116,6 +232,13 @@ export default function ForecastPage() {
           ra dự đoán
         </p>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Step 1: Import */}
       <div className="bg-card border rounded-lg p-5 space-y-4">
@@ -138,60 +261,79 @@ export default function ForecastPage() {
           Bước 2: Chọn mặt hàng để xem dự đoán
         </h2>
 
-        <div className="max-w-sm space-y-2">
-          <Label>Mặt hàng</Label>
-          <Select value={selectedProduct} onValueChange={handleProductSelect}>
-            <SelectTrigger>
-              <SelectValue placeholder="Chọn mặt hàng..." />
-            </SelectTrigger>
-            <SelectContent>
-              {products.map((p) => {
-                return (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    <div className="flex items-center gap-2">
-                      <span>
-                        {p.code} - {p.name}
-                      </span>
-                    </div>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Data quality badges */}
-        {/* {selectedProduct && (
-          <div className="flex flex-wrap gap-2">
-            {productDataCounts
-              .filter((p) => p.code === selectedProduct)
-              .map((p) => {
-                const quality = getDataQualityMessage(p.dataCount);
-                const model = getModelForDataPoints(p.dataCount);
-                return (
-                  <div key={p.id} className="flex items-center gap-2 text-sm">
-                    <span>{quality.icon}</span>
-                    <span className="text-muted-foreground">
-                      {quality.message}
-                    </span>
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {model}
-                    </Badge>
-                  </div>
-                );
-              })}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="max-w-sm space-y-2 flex-1">
+            <Label>Mặt hàng</Label>
+            <Select value={selectedProduct} onValueChange={handleProductSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn mặt hàng..." />
+              </SelectTrigger>
+              <SelectContent>
+                {products.map((p) => {
+                  return (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {p.code} - {p.name}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
-        )} */}
+
+          <div className="max-w-sm space-y-2 flex-1">
+            <Label>Năm</Label>
+            <Select
+              value={selectedYear?.toString() || ""}
+              onValueChange={(v) => setSelectedYear(Number(v))}
+              disabled={!selectedProduct}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn năm..." />
+              </SelectTrigger>
+              <SelectContent>
+                {[2021, 2022, 2023, 2024, 2025, 2026].map((y) => (
+                  <SelectItem key={y} value={y.toString()}>
+                    {y} {y === currentYear ? "(Hiện tại)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="bg-card border rounded-lg p-5">
+          <p className="text-muted-foreground">Đang tải dữ liệu...</p>
+        </div>
+      )}
+
       {/* Forecast Chart */}
-      {forecastResult && (
+      {!loading && forecastResult && (
         <ForecastChart
           result={forecastResult}
           onUseForecast={handleUseForecast}
           onManualInput={handleManualInput}
         />
       )}
+
+      {!loading &&
+        !forecastResult &&
+        selectedProduct &&
+        selectedYear &&
+        !error && (
+          <div className="bg-card border rounded-lg p-5">
+            <p className="text-muted-foreground text-sm">
+              Không có dữ liệu để hiển thị. Hãy kiểm tra dữ liệu tiêu thụ đã
+              import.
+            </p>
+          </div>
+        )}
     </div>
   );
 }

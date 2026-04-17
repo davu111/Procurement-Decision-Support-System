@@ -39,7 +39,8 @@ export type ForecastModel =
   | "MANUAL"
   | "WMA"
   | "HOLT_WINTERS"
-  | "SEASONAL_REGRESSION";
+  | "SEASONAL_REGRESSION"
+  | "HISTORICAL_DATA_ONLY";
 
 export interface ForecastPoint {
   period: string;
@@ -64,6 +65,7 @@ export interface ForecastResult {
   seasonalityInsight: string | null;
   peakMonth: { month: number; pct: number } | null;
   lowMonth: { month: number; pct: number } | null;
+  historicalPoints?: ForecastPoint[];
 }
 
 export type MapeLevel = "high" | "medium" | "low";
@@ -102,4 +104,9 @@ export function getDataQualityMessage(count: number): {
   if (count <= 18)
     return { icon: "ℹ️", message: "Đủ dữ liệu cho dự đoán có trend theo mùa" };
   return { icon: "✓", message: "Mô hình đầy đủ, kết quả tin cậy" };
+}
+
+export interface ConsumptionPoint {
+  period: string;
+  value: number;
 }

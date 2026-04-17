@@ -1,10 +1,7 @@
 package com.ecotel.inventory_optimization_service.controller;
 
 import com.ecotel.inventory_optimization_service.dto.request.InventoryParameterRequest;
-import com.ecotel.inventory_optimization_service.dto.response.ApiResponse;
-import com.ecotel.inventory_optimization_service.dto.response.ForecastSuggestionResponse;
-import com.ecotel.inventory_optimization_service.dto.response.InventoryCalculationResult;
-import com.ecotel.inventory_optimization_service.dto.response.PredictedInventoryResponse;
+import com.ecotel.inventory_optimization_service.dto.response.*;
 import com.ecotel.inventory_optimization_service.model.InventoryParameter;
 import com.ecotel.inventory_optimization_service.repository.InventoryParameterRepository;
 import com.ecotel.inventory_optimization_service.repository.OrderScheduleRepository;
@@ -18,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -162,5 +160,15 @@ public class InventoryPlanningController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(ApiResponse.success(
                 scheduleRepository.findByProductIdAndOrderDateBetween(productId, from, to)));
+    }
+
+    @GetMapping("/parameters/{id}")
+    public ResponseEntity<ApiResponse<InventoryParameterResponse>> getParameterById(
+            @PathVariable Long id,
+            @RequestParam String yearMonth) {  // "2026-04"
+
+        YearMonth ym = YearMonth.parse(yearMonth); // parse ISO format
+        return ResponseEntity.ok(ApiResponse.success(
+                planningService.getParameterRange(id, ym)));
     }
 }

@@ -11,3 +11,14 @@ export interface ConsumptionHistory {
   notes: string;
   createdAt: string;
 }
+
+export interface ConsumptionHistoryRequest {
+  productId: number;
+  periodStartDate: string;
+  periodEndDate: string;
+  actualConsumption: number;
+  plannedConsumption?: number | null;
+  actualLeadTimeDays?: number | null;
+  actualSupplyRate?: number | null;
+  notes?: string;
+}

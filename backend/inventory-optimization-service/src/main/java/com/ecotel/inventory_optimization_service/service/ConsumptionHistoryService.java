@@ -11,6 +11,7 @@ import com.ecotel.inventory_optimization_service.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -35,6 +36,18 @@ public class ConsumptionHistoryService {
         List<ConsumptionHistory> history = historyRepository
                 .findByProductIdOrderByPeriodStartDateAsc(productId);
         return history.stream()
+                .map(historyMapper::toConsumptionHistoryResponse)
+                .toList();
+    }
+    public List<ConsumptionHistoryResponse> getByYear(Long productId, int year) {
+        LocalDate start = LocalDate.of(year, 1, 1);
+        LocalDate end = LocalDate.of(year, 12, 31);
+
+        List<ConsumptionHistory> consumptionHistories = historyRepository
+                .findByProduct_IdAndPeriodStartDateBetweenOrderByPeriodStartDateAsc(
+                        productId, start, end
+                );
+        return consumptionHistories.stream()
                 .map(historyMapper::toConsumptionHistoryResponse)
                 .toList();
     }

@@ -12,18 +12,17 @@ import java.util.List;
 public interface ForecastStrategy {
 
     /**
-     * Dự đoán nhiều kỳ tiếp theo.
+     * Dự đoán nhiều tháng tiếp theo.
+     * Tất cả đều là đơn vị tháng — không còn planningUnit.
      *
-     * @param historicalData  chuỗi giá trị lịch sử (đã sort tăng dần theo thời gian)
-     * @param lastPeriodStart ngày bắt đầu kỳ CUỐI CÙNG trong historicalData
-     *                        — để tính đúng nhãn tháng cho từng ForecastPoint
-     * @param periodsAhead    số kỳ muốn dự đoán (thường là 3)
-     * @param planningUnit    MONTH | QUARTER | YEAR — để bước đúng kỳ
+     * @param historicalData  chuỗi actual_consumption theo tháng, sort tăng dần
+     * @param lastPeriodStart ngày bắt đầu tháng CUỐI CÙNG trong historicalData
+     *                        — để tính nhãn YYYY-MM cho ForecastPoint
+     * @param periodsAhead    số tháng muốn dự đoán (thường là 3)
      */
     ForecastResult forecast(List<Double> historicalData,
                             LocalDate lastPeriodStart,
-                            int periodsAhead,
-                            String planningUnit);
+                            int periodsAhead);
 
     ForecastModel getModelType();
 }

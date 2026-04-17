@@ -37,4 +37,10 @@ public interface ConsumptionHistoryRepository extends JpaRepository<ConsumptionH
             @Param("productId") Long productId,
             @Param("from") LocalDate from,
             @Param("to")        LocalDate to);
+
+    List<ConsumptionHistory> findByProduct_IdAndPeriodStartDateBetweenOrderByPeriodStartDateAsc(
+            Long productId,
+            LocalDate start,
+            LocalDate end
+    );
 }
