@@ -8,6 +8,7 @@ import com.ecotel.inventory_optimization_service.mapper.InventoryPlanningMapper;
 import com.ecotel.inventory_optimization_service.model.*;
 import com.ecotel.inventory_optimization_service.repository.*;
 import com.ecotel.inventory_optimization_service.service.InventoryCalculationService;
+import com.ecotel.inventory_optimization_service.service.InventoryParameterService;
 import com.ecotel.inventory_optimization_service.service.forecast.ForecastOrchestrator;
 import com.ecotel.inventory_optimization_service.service.supplier.SupplierServiceClient;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +21,6 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-
-import static java.lang.System.exit;
 
 @Slf4j
 @Service
@@ -37,6 +36,7 @@ public class InventoryPlanningService {
     private final ForecastOrchestrator          forecastOrchestrator;
     private final SupplierServiceClient         supplierServiceClient;
     private final InventoryPlanningMapper inventoryPlanningMapper;
+    private final InventoryParameterService inventoryParameterService;
 
     // -------------------------------------------------------
     // LUỒNG CHÍNH: TẠO / REPLAN KẾ HOẠCH
@@ -53,11 +53,11 @@ public class InventoryPlanningService {
         LocalDate scheduleStartDate = resolved.scheduleStartDate();
 
         // Kiểm tra overlap — nếu có thì SUPERSEDE (không xóa)
-        List<InventoryParameter> overlapping = parameterRepository.findOverlapping(
-                request.getProductId(), planStartDate, planEndDate);
-        if (!overlapping.isEmpty()) {
-            throw new IllegalStateException(buildOverlapMessage(overlapping));
-        }
+//        List<InventoryParameter> overlapping = parameterRepository.findOverlapping(
+//                request.getProductId(), planStartDate, planEndDate);
+//        if (!overlapping.isEmpty()) {
+//            throw new IllegalStateException(buildOverlapMessage(overlapping));
+//        }
 
         Product         product  = findProduct(request.getProductId());
         WarehouseConfig config   = resolveWarehouseConfig(request);
@@ -130,13 +130,16 @@ public class InventoryPlanningService {
                 .scheduledReceiptQty(effectiveReceiptQty)
                 .scheduledReceiptDate(effectiveReceiptDate)
                 .status("ACTIVE")
+                .paramReceipt(previousParam != null ? previousParam.getId() : null)
                 .build();
 
         param = parameterRepository.save(param);
 
         InventoryCalculationResult calcResult = calculationService.calculate(param);
-        saveResult(param, calcResult);
-        generateOrderSchedule(param, calcResult, previousParam);
+        InventoryResult result = saveResult(param, calcResult);
+        List<OrderSchedule> schedules = generateOrderSchedule(param, calcResult, previousParam);
+
+        inventoryParameterService.updateActualDates(param, schedules, result);
 
         return calcResult;
     }
@@ -159,6 +162,10 @@ public class InventoryPlanningService {
                 request.getProductId(), planStartDate, planEndDate).stream().findFirst().orElse(null);
 
         parameterRepository.supersede(request.getProductId(), planStartDate, planEndDate);
+
+        // Cancelled nếu kế hoạch mới phủ ngày bắt đầu của kế hoạch cũ
+        int updateCancelRow = parameterRepository.findOverlappingToCancel(request.getProductId(), planStartDate, planEndDate);
+        log.info("Replan: cancel {} kế hoạch trùng (nếu có)", updateCancelRow);
 
         // Tạo kế hoạch mới (dùng lại logic createAndCalculate)
         return createAndCalculate(request, previousParam);
@@ -256,7 +263,7 @@ public class InventoryPlanningService {
     // SINH LỊCH ĐẶT HÀNG — hỗ trợ initialInventory
     // -------------------------------------------------------
 
-    private void generateOrderSchedule(InventoryParameter param,
+    private List<OrderSchedule> generateOrderSchedule(InventoryParameter param,
                                        InventoryCalculationResult result,
                                        InventoryParameter previousParam) {
         InventoryResult savedResult = resultRepository
@@ -272,7 +279,7 @@ public class InventoryPlanningService {
 
         if (cycleDays <= 0) {
             log.error("cycleDays <= 0 cho parameterId={}", param.getId());
-            return;
+            return null;
         }
 
         // Tính ngày đặt hàng ĐẦU TIÊN
@@ -305,6 +312,7 @@ public class InventoryPlanningService {
         }
 
         scheduleRepository.saveAll(schedules);
+        return schedules;
     }
 
     /**
@@ -327,13 +335,15 @@ public class InventoryPlanningService {
                                          InventoryCalculationResult result,
                                          long leadDays,
                                          InventoryParameter previousParam) {
-        if (param.getInitialInventory() == null) {
+        if (previousParam == null) {
+            log.info("Kế hoạch đầu tiên, bắt đầu sinh lịch từ scheduleStartDate={}",
+                    param.getScheduleStartDate());
             return param.getScheduleStartDate();
         }
 
         BigDecimal B        = result.getReorderPointB();
         BigDecimal Q        = param.getDemandQ();        // Q/tháng
-        BigDecimal previousQ = previousParam != null ? previousParam.getDemandQ() : Q; // Dùng Q cũ nếu có để tính giai đoạn đang nhận
+        BigDecimal previousQ = previousParam.getDemandQ(); // Dùng Q cũ nếu có để tính giai đoạn đang nhận
         BigDecimal K        = param.getSnapshotSupplyRateK(); // K/tháng
         LocalDate  start    = param.getScheduleStartDate();
         LocalDate  planEnd  = param.getPlanEndDate();
@@ -345,59 +355,37 @@ public class InventoryPlanningService {
         // Xác định giai đoạn đang nhận lô hàng cũ (nếu có)
         LocalDate recvStart = null;
         LocalDate recvEnd   = null;
-//        System.out.println(param);
-        if (param.getScheduledReceiptQty() != null
-                && param.getScheduledReceiptDate() != null) {
-//            long tnDays = result.getReplenishmentTimeTn()
-//                    .multiply(java.math.BigDecimal.valueOf(30))
-//                    .setScale(0, java.math.RoundingMode.HALF_UP)
-//                    .longValue();
             long tnDays = previousParam.getInventoryResult().getReplenishmentTimeTn()
                     .multiply(java.math.BigDecimal.valueOf(30))
                     .setScale(0, java.math.RoundingMode.HALF_UP)
                     .longValue();
-            recvStart   = param.getScheduledReceiptDate();
-            recvEnd     = recvStart.plusDays(tnDays);
-            log.info("Lô đang bay: giao {}, Tn={} ngày, kết thúc nhận {}",
-                    recvStart, tnDays, recvEnd);
-        } else if (previousParam != null) {
-            long tnDays = previousParam.getInventoryResult().getReplenishmentTimeTn()
-                    .multiply(java.math.BigDecimal.valueOf(30))
-                    .setScale(0, java.math.RoundingMode.HALF_UP)
-                    .longValue();
+            LocalDate planStartDate = param.getPlanStartDate();
+
             OrderSchedule latestOrder = previousParam.getInventoryResult().getOrderSchedules()
                     .stream()
+                    .filter(order -> order.getExpectedDeliveryDate() != null
+                            && !order.getExpectedDeliveryDate().isAfter(planStartDate))
                     .max(Comparator.comparing(OrderSchedule::getExpectedDeliveryDate))
                     .orElse(null);
+//            System.out.println(previousParam.getId());
+//        System.out.println(latestOrder.getInventoryResult());
             recvStart = latestOrder != null ? latestOrder.getExpectedDeliveryDate() : null;
-            recvEnd     = recvStart.plusDays(tnDays);
-            log.info("Lô đang bay cuối kỳ: giao {}, Tn={} ngày, kết thúc nhận {}",
-                    recvStart, tnDays, recvEnd);
-        }
-        System.out.println(recvEnd);
+            recvEnd     = recvStart != null? recvStart.plusDays(tnDays): null;
+            log.info("Lô đang bay trước ngày {}: giao {}, Tn={} ngày, kết thúc nhận {}",
+                    planStartDate, recvStart, tnDays, recvEnd);
 
 
-        // Mô phỏng từng ngày cho đến khi tìm được ngày chạm B
+        // Tìm ngày chạm B
         BigDecimal inv = previousParam.getInventoryResult().getMaxInventoryLevel();
-        long maxDays = java.time.temporal.ChronoUnit.DAYS.between(recvEnd, planEnd) + 1;
-        for (long offset = 1; offset <= maxDays; offset++) {
-            LocalDate current      = recvEnd.plusDays(offset);
-//                inv -= dailyConsume;
-            inv = inv.subtract(dailyConsume);
 
-//            inv = Math.max(0, inv);
-            inv = inv.max(java.math.BigDecimal.ZERO);
+        if (inv.compareTo(B) >= 0) {
+            long plusDay = inv.subtract(B)
+                    .divide(dailyConsume, 0, RoundingMode.CEILING)
+                    .longValue();
 
-
-            if (inv.compareTo(B) <= 0) {
-                log.info("Tồn kho chạm B={} vào ngày {} (offset={}), đặt hàng ngay",
-                        B, current, offset);
-                return current;
-            }
-
+            System.out.println("Ngày đặt hàng đầu tiên: " + recvEnd.plusDays(plusDay));
+            return recvEnd.plusDays(plusDay);
         }
-//        exit(0);
-
         // Nếu tồn kho không bao giờ chạm B trong kỳ → không cần đặt
         log.warn("Tồn kho không chạm B trong kỳ, không sinh lịch (productId={})",
                 param.getProduct().getId());
@@ -585,7 +573,7 @@ public class InventoryPlanningService {
                 "Không thể lấy K,A,C,L cho sản phẩm id=" + request.getProductId());
     }
 
-    private void saveResult(InventoryParameter param, InventoryCalculationResult calc) {
+    private InventoryResult saveResult(InventoryParameter param, InventoryCalculationResult calc) {
         InventoryResult result = resultRepository
                 .findByInventoryParameterId(param.getId())
                 .orElse(InventoryResult.builder().inventoryParameter(param).build());
@@ -602,6 +590,7 @@ public class InventoryPlanningService {
         result.setMValue(calc.getMValue());
 
         resultRepository.save(result);
+        return result;
     }
 
     public InventoryParameterResponse getParameterRange(Long productId, YearMonth yearMonth) {

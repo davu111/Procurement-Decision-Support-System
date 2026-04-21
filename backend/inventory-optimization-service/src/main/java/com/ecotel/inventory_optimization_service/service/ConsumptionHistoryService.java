@@ -2,6 +2,7 @@ package com.ecotel.inventory_optimization_service.service;
 
 import com.ecotel.inventory_optimization_service.dto.request.ConsumptionHistoryRequest;
 import com.ecotel.inventory_optimization_service.dto.response.ConsumptionHistoryResponse;
+import com.ecotel.inventory_optimization_service.dto.response.ImportResultResponse;
 import com.ecotel.inventory_optimization_service.exception.ResourceNotFoundException;
 import com.ecotel.inventory_optimization_service.mapper.ConsumptionHistoryMapper;
 import com.ecotel.inventory_optimization_service.model.ConsumptionHistory;
@@ -10,6 +11,8 @@ import com.ecotel.inventory_optimization_service.repository.ConsumptionHistoryRe
 import com.ecotel.inventory_optimization_service.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -21,12 +24,12 @@ public class ConsumptionHistoryService {
     private final ConsumptionHistoryRepository historyRepository;
     private final ConsumptionHistoryMapper historyMapper;
 
+    @Transactional
     public ConsumptionHistoryResponse record (ConsumptionHistoryRequest request){
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Mặt hàng", request.getProductId()));
 
-        ConsumptionHistory history = historyMapper.toConsumptionHistory(request);
-        history.setProduct(product);
+        ConsumptionHistory history = historyMapper.toConsumptionHistory(request, product);
 
         ConsumptionHistory saved = historyRepository.save(history);
         return historyMapper.toConsumptionHistoryResponse(saved);

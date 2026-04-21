@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class ConsumptionHistoryResponse {
     private Long id;
     private Long productId;
+    private String productName;
     private LocalDate periodStartDate; // ngày đầu kỳ
     private LocalDate periodEndDate; // ngày cuối kỳ
     private BigDecimal actualConsumption; // Q thực tế trong kỳ

@@ -1,11 +1,28 @@
-import { useState, useCallback } from 'react';
-import { Upload, FileSpreadsheet, AlertTriangle, XCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { parseFile, validateConsumptionData } from '@/utils/csvParser';
-import { mockProducts } from '@/data/mockData';
-import type { ImportResult, ConsumptionRecord } from '@/types/forecast';
+import { useState, useCallback } from "react";
+import {
+  Upload,
+  FileSpreadsheet,
+  AlertTriangle,
+  XCircle,
+  CheckCircle,
+  Loader2,
+  Download,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import api from "@/api/axiosConfig";
+import { generateTemplateFile } from "@/utils/templateGenerator";
+import type { ConsumptionRecord } from "@/types/forecast";
+
+interface ImportResultResponse {
+  totalRows: number;
+  successCount: number;
+  skipCount: number;
+  errorCount: number;
+  errors: string[];
+  modelReadiness: string;
+}
 
 interface FileImporterProps {
   onImportSuccess: (records: ConsumptionRecord[]) => void;
@@ -14,61 +31,113 @@ interface FileImporterProps {
 export default function FileImporter({ onImportSuccess }: FileImporterProps) {
   const [dragOver, setDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ImportResult | null>(null);
-  const [fileName, setFileName] = useState('');
+  const [result, setResult] = useState<ImportResultResponse | null>(null);
+  const [fileName, setFileName] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const validCodes = mockProducts.map(p => p.code);
+  const processFile = useCallback(
+    async (file: File) => {
+      if (!file.name.match(/\.(csv|xlsx|xls)$/i)) {
+        setError("Chỉ hỗ trợ file .csv hoặc .xlsx");
+        return;
+      }
 
-  const processFile = useCallback(async (file: File) => {
-    if (!file.name.match(/\.(csv|xlsx|xls)$/i)) {
-      setResult({ records: [], hardErrors: [{ row: 0, field: 'file', message: 'Chỉ hỗ trợ file .csv hoặc .xlsx', type: 'hard' }], softWarnings: [], totalRows: 0 });
-      return;
-    }
-    setLoading(true);
-    setFileName(file.name);
-    try {
-      const rows = await parseFile(file);
-      const importResult = validateConsumptionData(rows, validCodes);
-      setResult(importResult);
-    } catch (err: any) {
-      setResult({ records: [], hardErrors: [{ row: 0, field: 'file', message: err.message || 'Lỗi đọc file', type: 'hard' }], softWarnings: [], totalRows: 0 });
-    } finally {
-      setLoading(false);
-    }
-  }, [validCodes]);
+      setLoading(true);
+      setError(null);
+      setFileName(file.name);
+      setResult(null);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) processFile(file);
-  }, [processFile]);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
-  }, [processFile]);
+        const response = await api.post<{ data: ImportResultResponse }>(
+          "/consumption-history/import",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          },
+        );
 
-  const handleConfirmImport = () => {
-    if (result && result.hardErrors.length === 0 && result.records.length > 0) {
-      onImportSuccess(result.records);
-    }
+        const importResult = response.data;
+        setResult(importResult);
+
+        if (importResult.successCount > 0) {
+          onImportSuccess([]);
+        }
+      } catch (err: any) {
+        const errorMessage =
+          err.response?.data?.message || err.message || "Lỗi khi import file";
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onImportSuccess],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const file = e.dataTransfer.files?.[0];
+      if (file) processFile(file);
+    },
+    [processFile],
+  );
+
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) processFile(file);
+    },
+    [processFile],
+  );
+
+  const handleDownloadTemplate = () => {
+    generateTemplateFile();
   };
 
   return (
     <div className="space-y-4">
+      {/* Download Template Button */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleDownloadTemplate}
+          variant="outline"
+          size="sm"
+          className="gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Tải template mẫu
+        </Button>
+      </div>
+
       {/* Drop zone */}
       <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         className={cn(
           "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
-          dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/50"
+          dragOver
+            ? "border-primary bg-primary/5"
+            : "border-muted-foreground/30 hover:border-primary/50",
         )}
-        onClick={() => document.getElementById('file-input')?.click()}
+        onClick={() => document.getElementById("file-input")?.click()}
       >
-        <input id="file-input" type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileInput} />
+        <input
+          id="file-input"
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          className="hidden"
+          onChange={handleFileInput}
+        />
         {loading ? (
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -77,11 +146,25 @@ export default function FileImporter({ onImportSuccess }: FileImporterProps) {
         ) : (
           <div className="flex flex-col items-center gap-2">
             <Upload className="h-10 w-10 text-muted-foreground" />
-            <p className="font-medium text-foreground">Kéo thả file vào đây hoặc click để chọn</p>
-            <p className="text-sm text-muted-foreground">Hỗ trợ .csv và .xlsx — File <code>consumption_history</code></p>
+            <p className="font-medium text-foreground">
+              Kéo thả file vào đây hoặc click để chọn
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Hỗ trợ .csv và .xlsx
+            </p>
           </div>
         )}
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-destructive font-medium">
+            <XCircle className="h-5 w-5" />
+            {error}
+          </div>
+        </div>
+      )}
 
       {/* Results */}
       {result && (
@@ -92,90 +175,65 @@ export default function FileImporter({ onImportSuccess }: FileImporterProps) {
             <Badge variant="outline">{result.totalRows} dòng</Badge>
           </div>
 
-          {/* Hard errors */}
-          {result.hardErrors.length > 0 && (
+          {/* Success Summary */}
+          <div className="grid grid-cols-4 gap-4">
+            <div className="bg-status-success/10 border border-status-success/30 rounded-lg p-4">
+              <div className="text-sm text-muted-foreground">Thành công</div>
+              <div className="text-2xl font-bold text-status-success">
+                {result.successCount}
+              </div>
+            </div>
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+              <div className="text-sm text-muted-foreground">Bỏ qua</div>
+              <div className="text-2xl font-bold text-yellow-600">
+                {result.skipCount}
+              </div>
+            </div>
+            <div
+              className={cn(
+                "rounded-lg p-4 border",
+                result.errorCount > 0
+                  ? "bg-destructive/10 border-destructive/30"
+                  : "bg-muted",
+              )}
+            >
+              <div className="text-sm text-muted-foreground">Lỗi</div>
+              <div
+                className={cn(
+                  "text-2xl font-bold",
+                  result.errorCount > 0
+                    ? "text-destructive"
+                    : "text-muted-foreground",
+                )}
+              >
+                {result.errorCount}
+              </div>
+            </div>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+              <div className="text-sm text-muted-foreground">Tổng cộng</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {result.totalRows}
+              </div>
+            </div>
+          </div>
+
+          {/* Error Details */}
+          {result.errors.length > 0 && (
             <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2 text-destructive font-medium">
-                <XCircle className="h-5 w-5" />
-                {result.hardErrors.length} lỗi nghiêm trọng — không thể import
-              </div>
-              <div className="max-h-40 overflow-y-auto space-y-1">
-                {result.hardErrors.map((err, i) => (
-                  <p key={i} className="text-sm text-destructive/80">
-                    {err.row > 0 && <span className="font-mono">Dòng {err.row}: </span>}
-                    {err.message}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Soft warnings */}
-          {result.softWarnings.length > 0 && (
-            <div className="bg-status-warning/10 border border-status-warning/30 rounded-lg p-4 space-y-2">
-              <div className="flex items-center gap-2 text-status-warning font-medium">
                 <AlertTriangle className="h-5 w-5" />
-                {result.softWarnings.length} cảnh báo — vẫn có thể import
+                {result.errors.length} lỗi chi tiết
               </div>
               <div className="max-h-40 overflow-y-auto space-y-1">
-                {result.softWarnings.map((w, i) => (
-                  <p key={i} className="text-sm text-status-warning/80">
-                    {w.row > 0 && <span className="font-mono">Dòng {w.row}: </span>}
-                    {w.message}
+                {result.errors.slice(0, 20).map((err, i) => (
+                  <p key={i} className="text-sm text-destructive/80">
+                    • {err}
                   </p>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Success */}
-          {result.hardErrors.length === 0 && result.records.length > 0 && (
-            <div className="bg-status-success/10 border border-status-success/30 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-status-success font-medium">
-                  <CheckCircle className="h-5 w-5" />
-                  {result.records.length} bản ghi hợp lệ, sẵn sàng import
-                </div>
-                <Button onClick={handleConfirmImport} size="sm" className="gap-2">
-                  <CheckCircle className="h-4 w-4" />
-                  Xác nhận Import
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Preview table */}
-          {result.records.length > 0 && (
-            <div className="border rounded-lg overflow-hidden">
-              <div className="max-h-60 overflow-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted sticky top-0">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Mã SP</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Kỳ</th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">Tiêu thụ TT</th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">Tiêu thụ KH</th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">Lead time</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Ghi chú</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.records.slice(0, 20).map((r, i) => (
-                      <tr key={i} className="border-t border-border">
-                        <td className="px-3 py-2 font-mono">{r.productCode}</td>
-                        <td className="px-3 py-2">{r.periodStartDate}</td>
-                        <td className="px-3 py-2 text-right font-mono">{r.actualConsumption}</td>
-                        <td className="px-3 py-2 text-right font-mono text-muted-foreground">{r.plannedConsumption ?? '—'}</td>
-                        <td className="px-3 py-2 text-right font-mono">{r.actualLeadTimeDays}d</td>
-                        <td className="px-3 py-2 text-muted-foreground truncate max-w-[150px]">{r.notes || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {result.records.length > 20 && (
-                <p className="text-xs text-muted-foreground text-center py-2 bg-muted">
-                  Hiển thị 20/{result.records.length} bản ghi
+              {result.errors.length > 20 && (
+                <p className="text-xs text-muted-foreground">
+                  ... và {result.errors.length - 20} lỗi khác
                 </p>
               )}
             </div>

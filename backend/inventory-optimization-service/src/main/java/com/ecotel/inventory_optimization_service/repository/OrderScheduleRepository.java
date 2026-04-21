@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Long> {
@@ -142,4 +143,76 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
     List<OrderSchedule> findPendingReceipts(
             @Param("productId") Long productId,
             @Param("fromDate")  LocalDate fromDate);
+
+    /**
+     * Kiểm tra trùng lặp thời gian thực tế giữa các kế hoạch
+     * Dùng actual_first_order_date và actual_end_date
+     */
+    @Query("""
+        SELECT os
+        FROM OrderSchedule os
+        WHERE os.product.id = :productId
+          AND os.inventoryResult.inventoryParameter.status IN ('ACTIVE', 'SUPERSEDED')
+          AND os.orderDate <= :newEnd
+          AND os.expectedDeliveryDate >= :newStart
+        ORDER BY os.orderDate ASC
+        """)
+    List<OrderSchedule> findOverlappingSchedules(
+            @Param("productId") Long productId,
+            @Param("newStart") LocalDate newStart,
+            @Param("newEnd") LocalDate newEnd
+    );
+
+    /**
+     * Tìm ngày đặt hàng đầu tiên trong kế hoạch
+     */
+    @Query("""
+        SELECT MIN(os.orderDate)
+        FROM OrderSchedule os
+        WHERE os.inventoryResult.inventoryParameter.id = :parameterId
+        """)
+    Optional<LocalDate> findFirstOrderDate(@Param("parameterId") Long parameterId);
+
+    /**
+     * Tìm ngày giao hàng cuối cùng trong kế hoạch
+     */
+    @Query("""
+        SELECT MAX(os.expectedDeliveryDate)
+        FROM OrderSchedule os
+        WHERE os.inventoryResult.inventoryParameter.id = :parameterId
+        """)
+    Optional<LocalDate> findLastDeliveryDate(@Param("parameterId") Long parameterId);
+
+    /**
+     * Lấy tất cả order schedules của một parameter
+     */
+    @Query("""
+        SELECT os FROM OrderSchedule os
+        WHERE os.inventoryResult.inventoryParameter.id = :parameterId
+        ORDER BY os.orderDate ASC
+        """)
+    List<OrderSchedule> findByParameterId(@Param("parameterId") Long parameterId);
+
+    /**
+     * Lấy OrderSchedules có expectedDeliveryDate < cutoffDate
+     */
+    @Query("""
+        SELECT os FROM OrderSchedule os
+        WHERE os.inventoryResult.inventoryParameter.id = :parameterId
+          AND os.expectedDeliveryDate < :cutoffDate
+        ORDER BY os.orderDate ASC
+        """)
+    List<OrderSchedule> findByParameterIdAndDeliveryDateBefore(
+            @Param("parameterId") Long parameterId,
+            @Param("cutoffDate") LocalDate cutoffDate
+    );
+
+    /**
+     * Đếm số lượng schedules của một parameter
+     */
+    @Query("""
+        SELECT COUNT(os) FROM OrderSchedule os
+        WHERE os.inventoryResult.inventoryParameter.id = :parameterId
+        """)
+    long countByParameterId(@Param("parameterId") Long parameterId);
 }

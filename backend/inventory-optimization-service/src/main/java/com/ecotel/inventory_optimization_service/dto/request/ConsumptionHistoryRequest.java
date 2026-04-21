@@ -24,4 +24,7 @@ public class ConsumptionHistoryRequest {
     private BigDecimal actualSupplyRate;    // K thực tế
 
     private String notes;
+
+    public static class BatchUpdateRequest {
+    }
 }

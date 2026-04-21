@@ -114,6 +114,9 @@ public class InventoryParameter {
     @Column(name = "scheduled_receipt_date")
     private LocalDate scheduledReceiptDate;
 
+    @Column(name = "param_receipt")
+    private Long paramReceipt; // inventory_parameters.id của kế hoạch bị kế hoạch này ghì đè
+
     // === Cờ đề xuất tự động ===
     @Column(name = "q_is_suggested")
     @Builder.Default
@@ -136,4 +139,20 @@ public class InventoryParameter {
     @JsonIgnore
     @OneToOne(mappedBy = "inventoryParameter", cascade = CascadeType.ALL)
     private InventoryResult inventoryResult;
+
+    /**
+     * Ngày đặt hàng thực tế đầu tiên trong kỳ kế hoạch
+     * = min(order_date) từ OrderSchedules
+     * Có thể khác planStartDate nếu bắt đầu lập kế hoạch muộn
+     */
+    @Column(name = "actual_first_order_date")
+    private LocalDate actualFirstOrderDate;
+
+    /**
+     * Ngày kết thúc thực tế của kế hoạch
+     * = max(expected_delivery_date + Tn + Tt) từ OrderSchedules
+     * Có thể vượt qua planEndDate do lead time và thời gian sử dụng
+     */
+    @Column(name = "actual_end_date")
+    private LocalDate actualEndDate;
 }

@@ -1,9 +1,9 @@
-import axios from 'axios';
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:9000',
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:9000",
   timeout: 10000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { "Content-Type": "application/json" },
 });
 
 api.interceptors.response.use(
@@ -12,9 +12,9 @@ api.interceptors.response.use(
     return Promise.reject(new Error(response.data.message));
   },
   (error) => {
-    const message = error.response?.data?.message || 'Lỗi kết nối server';
-    return Promise.reject(new Error(message));
-  }
+    const message = error.response?.data?.message || "Lỗi kết nối server";
+    return Promise.reject(error); // ✅ giữ nguyên axios error
+  },
 );
 
 export default api;

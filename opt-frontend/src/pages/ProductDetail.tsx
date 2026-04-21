@@ -1,7 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import type { Product } from "@/types/inventory-opt/product";
-import type { OrderSchedule } from "@/types/inventory-opt/order-schedule";
+import type {
+  OrderSchedule,
+  OrderScheduleChain,
+} from "@/types/inventory-opt/order-schedule";
 import type { InventoryResult } from "@/types/inventory-opt/inventory-result";
 import api from "@/api/axiosConfig";
 import { formatCurrency, formatNumber, formatDate } from "@/utils/helpers";
@@ -81,7 +84,8 @@ export default function ProductDetail() {
 
   // ── Data state ─────────────────────────────────────────────────────────────
   const [results, setResults] = useState<InventoryResult[]>([]);
-  const [schedules, setSchedules] = useState<OrderSchedule[]>([]);
+  // const [schedules, setSchedules] = useState<OrderSchedule[]>([]);
+  const [schedules, setSchedules] = useState<OrderScheduleChain[]>([]);
   const [loading, setLoading] = useState(false);
   const [noData, setNoData] = useState(false);
 
@@ -160,20 +164,24 @@ export default function ProductDetail() {
     setNoData(false);
     setResults([]);
     setSchedules([]);
+    console.log("Fetching inventory results...");
 
     Promise.all([
       api.get(`/inventory-results/range/${productId}`, {
         params: { startDate: planStartDate, endDate: planEndDate },
       }),
-      api.get(`/order-schedules/${productId}`, {
-        params: { from: planStartDate, to: planEndDate },
-      }),
+      // api.get(`/order-schedules/${productId}`, {
+      //   params: { from: planStartDate, to: planEndDate },
+      // }),
+      api.get(`/order-schedules/product/${productId}/chain`),
     ])
       .then(([resResult, resSchedules]: any[]) => {
         if (cancelled) return;
         // API trả array of results
         const rawResults: InventoryResult[] = resResult.data;
-        const rawSchedules: OrderSchedule[] = resSchedules.data ?? [];
+        // const rawSchedules: OrderSchedule[] = resSchedules.data ?? [];
+        const rawSchedules: OrderScheduleChain[] =
+          resSchedules.data.schedules ?? [];
         console.log(
           "Loaded inventory results:",
           rawResults,
@@ -188,7 +196,9 @@ export default function ProductDetail() {
           setSchedules(rawSchedules);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("API error:", err.response);
+
         if (!cancelled) setNoData(true);
       })
       .finally(() => {
@@ -472,7 +482,7 @@ export default function ProductDetail() {
                       <td className="px-4 py-3 text-right font-mono">
                         {formatCurrency(o.estimatedCost)}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      {/* <td className="px-4 py-3 text-center">
                         {o.actualOrderDate ? (
                           <Badge className="bg-status-success text-destructive-foreground">
                             Đã đặt
@@ -484,7 +494,7 @@ export default function ProductDetail() {
                         ) : (
                           <Badge variant="secondary">Chờ</Badge>
                         )}
-                      </td>
+                      </td> */}
                     </tr>
                   ))}
                 </tbody>

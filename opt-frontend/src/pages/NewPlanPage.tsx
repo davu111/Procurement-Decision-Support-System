@@ -527,7 +527,7 @@ export default function NewPlanPage() {
               value={targetYear.toString()}
               onValueChange={(v) => handleYearChange(Number(v))}
             >
-              <SelectTrigger>
+              <SelectTrigger disabled={!productId}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -547,7 +547,7 @@ export default function NewPlanPage() {
               value={startMonth.toString()}
               onValueChange={(v) => handleStartMonthChange(Number(v))}
             >
-              <SelectTrigger>
+              <SelectTrigger disabled={!productId}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -571,7 +571,7 @@ export default function NewPlanPage() {
               value={endMonth.toString()}
               onValueChange={(v) => handleEndMonthChange(Number(v))}
             >
-              <SelectTrigger>
+              <SelectTrigger disabled={!productId}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

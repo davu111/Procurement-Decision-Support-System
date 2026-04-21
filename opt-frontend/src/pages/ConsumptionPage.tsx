@@ -202,7 +202,7 @@ export default function ConsumptionPage() {
           <div className="space-y-2">
             <Label>Lead time thực tế</Label>
             <Input
-              type="numb
+              type="number"
               value={actualLeadTime}
               onChange={(e) => setActualLeadTime(Number(e.target.value))}
             />
