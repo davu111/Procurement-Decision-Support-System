@@ -8,5 +8,19 @@ services:
     volumes:
       - product_mysql_data:/var/lib/mysql
 
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "8901:8901"     # API
+      - "8900:8900"     # Console UI
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin12345
+    volumes:
+      - minio_data:/data
+    command: server /data --address ":8901" --console-address ":8900"
+
 volumes:
+  minio_data:
   product_mysql_data:

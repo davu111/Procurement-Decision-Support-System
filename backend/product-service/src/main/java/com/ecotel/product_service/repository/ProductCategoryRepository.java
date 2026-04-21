@@ -1,4 +1,4 @@
-package com.ecotel.product_service.Repository;
+package com.ecotel.product_service.repository;
 
 import com.ecotel.product_service.model.ProductCategory;
 import org.springframework.data.jpa.repository.JpaRepository;

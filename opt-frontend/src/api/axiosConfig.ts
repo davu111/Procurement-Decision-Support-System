@@ -8,7 +8,8 @@ const api = axios.create({
 
 api.interceptors.response.use(
   (response) => {
-    if (response.data.success) return response.data;
+    if (response.data.success || response.data.code === 200)
+      return response.data;
     return Promise.reject(new Error(response.data.message));
   },
   (error) => {

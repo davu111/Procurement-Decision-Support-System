@@ -1,18 +1,15 @@
 package com.ecotel.product_service.service;
 
-import com.ecotel.product_service.Repository.ProductRepository;
+import com.ecotel.product_service.repository.ProductRepository;
 import com.ecotel.product_service.dto.response.*;
 import com.ecotel.product_service.enums.ProductStatus;
 import com.ecotel.product_service.mapper.ProductMapper;
 import com.ecotel.product_service.model.Product;
-import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;

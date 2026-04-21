@@ -1,6 +1,6 @@
 package com.ecotel.product_service.service;
 
-import com.ecotel.product_service.Repository.ProductCategoryRepository;
+import com.ecotel.product_service.repository.ProductCategoryRepository;
 import com.ecotel.product_service.dto.response.ProductCategoryResponse;
 import com.ecotel.product_service.mapper.ProductCategoryMapper;
 import lombok.RequiredArgsConstructor;
