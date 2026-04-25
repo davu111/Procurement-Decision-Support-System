@@ -1,11 +1,14 @@
 package com.ecotel.product_service.controller;
 
+import com.ecotel.product_service.dto.request.ProductRequest;
 import com.ecotel.product_service.dto.response.ApiResponse;
 import com.ecotel.product_service.dto.response.ProductInventoryResponse;
 import com.ecotel.product_service.dto.response.ProductResponse;
 import com.ecotel.product_service.enums.ProductStatus;
 import com.ecotel.product_service.service.ProductService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -57,6 +60,43 @@ public class ProductController {
         return ApiResponse.<String>builder()
                 .message("Product name retrieved successfully")
                 .data(productName)
+                .build();
+    }
+
+    @PostMapping
+    public ApiResponse<ProductResponse> create(@Valid @RequestBody ProductRequest request) {
+        ProductResponse result = productService.create(request);
+        return ApiResponse.<ProductResponse>builder()
+                .message("Create product successfully")
+                .data(result)
+                .build();
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<ProductResponse> update(
+            @PathVariable String id, @Valid @RequestBody ProductRequest request) {
+        ProductResponse result = productService.update(id, request);
+        return ApiResponse.<ProductResponse>builder()
+                .message("Update product successfully")
+                .data(result)
+                .build();
+    }
+
+    @PatchMapping("/deactivate/{id}")
+    public ApiResponse<ProductResponse> deactivate(@PathVariable String id) {
+        ProductResponse result = productService.deactivate(id);
+        return ApiResponse.<ProductResponse>builder()
+                .message("Deactive product successfully")
+                .data(result)
+                .build();
+    }
+
+    @PatchMapping("/activate/{id}")
+    public ApiResponse<ProductResponse> activate(@PathVariable String id) {
+        ProductResponse result = productService.active(id);
+        return ApiResponse.<ProductResponse>builder()
+                .message("Active product successfully")
+                .data(result)
                 .build();
     }
 }

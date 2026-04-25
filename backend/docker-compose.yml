@@ -301,39 +301,6 @@ services:
     networks:
       - micro-net
 
-  # ==================== Warehouse Site Service ====================
-  warehouse-site_mysql:
-    image: mysql:8.0.36
-    container_name: warehouse-site_mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${WAREHOUSE_SITE_MYSQL_DATABASE}
-    ports:
-      - "3346:3306"
-    volumes:
-      - warehouse-site_mysql_data:/var/lib/mysql
-    networks:
-      - micro-net
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
-
-  warehouse-site-service:
-    build: ./warehouse-site-service
-    container_name: warehouse-site-service
-    ports:
-      - "8086:8086"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://warehouse-site_mysql:3306/${WAREHOUSE_SITE_MYSQL_DATABASE}
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    depends_on:
-      warehouse-site_mysql:
-        condition: service_healthy
-    networks:
-      - micro-net
-
   # ==================== API Gateway ====================
   api-gateway:
     build: ./api-gateway-viet-bac
@@ -349,7 +316,6 @@ services:
       TRANSACTION_SERVICE_URL: http://transaction-service:8085
       VEHICLE_SERVICE_URL: http://vehicle-service:8080
       WAREHOUSE_SERVICE_URL: http://warehouse-service:8082
-      WAREHOUSE_SITE_SERVICE_URL: http://warehouse-site-service:8086
       CAMERA_SERVICE_WS_URL: ws://camera-service:8091
       FRONTEND_URL: http://localhost:5173
     networks:
@@ -368,7 +334,6 @@ volumes:
   transaction_mysql_data:
   vehicle_mysql_data:
   warehouse_mysql_data:
-  warehouse-site_mysql_data:
 
 networks:
   micro-net:

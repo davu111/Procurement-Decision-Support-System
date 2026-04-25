@@ -9,5 +9,4 @@ import java.util.Optional;
 
 @Repository
 public interface WarehouseRepository extends JpaRepository<Warehouse, String> {
-    List<Warehouse> findBySiteId(String siteId);
 }

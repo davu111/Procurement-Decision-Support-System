@@ -1,6 +1,5 @@
 package com.ecotel.warehouse_service.dto.response;
 
-import com.ecotel.warehouse_service.enums.WarehouseStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,7 +12,4 @@ import lombok.experimental.FieldDefaults;
 public class WarehouseResponse {
     String id;
     String warehouseName;
-    String location;
-    String siteId;
-    WarehouseStatus status;
 }

@@ -1,10 +1,9 @@
 export interface Product {
   id: number;
   code: string;
-  name: string;
-  description: string;
+  productName: string;
+  categoryId: string;
+  categoryName: string;
   unit: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  status: string;
 }

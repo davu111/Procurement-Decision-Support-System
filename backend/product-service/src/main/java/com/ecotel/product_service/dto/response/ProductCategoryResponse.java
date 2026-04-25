@@ -14,4 +14,6 @@ import lombok.experimental.FieldDefaults;
 public class ProductCategoryResponse {
     String id;
     String categoryName;
+    String description;
+    String isActive;
 }

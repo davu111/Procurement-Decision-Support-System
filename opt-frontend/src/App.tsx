@@ -6,7 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AppLayout from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import HeatmapPage from "@/pages/HeatmapPage";
-import ProductsPage from "@/pages/ProductsPage";
+import ProductsPage from "@/pages/product/ProductsPage";
+import ProductCategoriesPage from "@/pages/product/ProductCategoriesPage";
 import ProductDetail from "@/pages/ProductDetail";
 import NewPlanPage from "@/pages/NewPlanPage";
 import ConsumptionPage from "@/pages/ConsumptionPage";
@@ -29,6 +30,10 @@ const App = () => (
             <Route path="/" element={<Dashboard />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/:id" element={<ProductDetail />} />
+            <Route
+              path="/product-categories"
+              element={<ProductCategoriesPage />}
+            />
             <Route path="/new-plan" element={<NewPlanPage />} />
             <Route path="/consumption" element={<ConsumptionPage />} />
             <Route path="/forecast" element={<ForecastPage />} />

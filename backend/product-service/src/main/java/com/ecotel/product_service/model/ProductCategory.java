@@ -29,6 +29,10 @@ public class ProductCategory {
     @Column(name = "description", columnDefinition = "TEXT")
     String description;
 
+    @Column(name = "is_active")
+    @Builder.Default
+    Boolean isActive = true;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

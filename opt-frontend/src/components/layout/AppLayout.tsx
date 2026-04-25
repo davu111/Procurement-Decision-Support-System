@@ -12,6 +12,7 @@ import {
   ChevronRight,
   LineChart,
   Truck,
+  Tag,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Bảng điều khiển" },
   { to: "/products", icon: Package, label: "Mặt hàng" },
+  { to: "/product-categories", icon: Tag, label: "Danh mục sản phẩm" },
   { to: "/new-plan", icon: PlusCircle, label: "Kỳ kế hoạch mới" },
   { to: "/consumption", icon: ClipboardList, label: "Nhập tiêu thụ" },
   { to: "/forecast", icon: LineChart, label: "Import & Dự đoán" },

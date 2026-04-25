@@ -14,7 +14,6 @@
         <module>product-service</module>
         <module>transaction-service</module>
         <module>supplier-service</module>
-        <module>warehouse-site-service</module>
         <module>inventory-optimization-service</module>
     </modules>
 </project>

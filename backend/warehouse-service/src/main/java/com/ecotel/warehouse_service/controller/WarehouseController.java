@@ -1,9 +1,11 @@
 package com.ecotel.warehouse_service.controller;
 
+import com.ecotel.warehouse_service.dto.request.WarehouseRequest;
 import com.ecotel.warehouse_service.dto.response.ApiResponse;
 import com.ecotel.warehouse_service.dto.response.FullWarehouseResponse;
 import com.ecotel.warehouse_service.dto.response.WarehouseResponse;
 import com.ecotel.warehouse_service.service.WarehouseService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,16 +22,6 @@ public class WarehouseController {
         WarehouseResponse response = warehouseService.getWarehouseById(id);
         return ApiResponse.<WarehouseResponse>builder()
                 .message("Warehouse retrieved successfully")
-                .data(response)
-                .build();
-    }
-
-    @GetMapping("/by-site/{siteId}")
-    public ApiResponse<List<WarehouseResponse>> getWarehousesBySite(
-            @PathVariable String siteId) {
-        List<WarehouseResponse> response = warehouseService.getWarehousesBySiteId(siteId);
-        return ApiResponse.<List<WarehouseResponse>>builder()
-                .message("Warehouses retrieved successfully")
                 .data(response)
                 .build();
     }
@@ -80,6 +72,43 @@ public class WarehouseController {
         return ApiResponse.<String>builder()
                 .message("Get warehouse name by ID successful")
                 .data(warehouseName)
+                .build();
+    }
+
+    @PostMapping
+    public ApiResponse<WarehouseResponse> create(@Valid @RequestBody WarehouseRequest request) {
+        WarehouseResponse result = warehouseService.create(request);
+        return ApiResponse.<WarehouseResponse>builder()
+                .message("Create warehouse successfully")
+                .data(result)
+                .build();
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<WarehouseResponse> update(
+            @PathVariable String id, @Valid @RequestBody WarehouseRequest request) {
+        WarehouseResponse result = warehouseService.update(id, request);
+        return ApiResponse.<WarehouseResponse>builder()
+                .message("Update warehouse successfully")
+                .data(result)
+                .build();
+    }
+
+    @PatchMapping("/deactivate/{id}")
+    public ApiResponse<WarehouseResponse> deactivate(@PathVariable String id) {
+        WarehouseResponse result = warehouseService.deactivate(id);
+        return ApiResponse.<WarehouseResponse>builder()
+                .message("Deactive warehouse successfully")
+                .data(result)
+                .build();
+    }
+
+    @PatchMapping("/activate/{id}")
+    public ApiResponse<WarehouseResponse> activate(@PathVariable String id) {
+        WarehouseResponse result = warehouseService.active(id);
+        return ApiResponse.<WarehouseResponse>builder()
+                .message("Active warehouse successfully")
+                .data(result)
                 .build();
     }
 }

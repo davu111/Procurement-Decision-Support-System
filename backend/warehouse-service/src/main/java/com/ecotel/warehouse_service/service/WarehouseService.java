@@ -1,5 +1,6 @@
 package com.ecotel.warehouse_service.service;
 
+import com.ecotel.warehouse_service.dto.request.WarehouseRequest;
 import com.ecotel.warehouse_service.dto.response.FullWarehouseResponse;
 import com.ecotel.warehouse_service.dto.response.InventoryResponse;
 import com.ecotel.warehouse_service.dto.response.WarehouseResponse;
@@ -30,13 +31,6 @@ public class WarehouseService {
     // GET BY ID BATCH
     public List<WarehouseResponse> getWarehousesByIds(List<String> warehouseIds) {
         return warehouseRepository.findAllById(warehouseIds).stream()
-                .map(warehouseMapper::toWarehouseResponse)
-                .toList();
-    }
-
-    // GET BY SITE ID
-    public List<WarehouseResponse> getWarehousesBySiteId(String siteId) {
-        return warehouseRepository.findBySiteId(siteId).stream()
                 .map(warehouseMapper::toWarehouseResponse)
                 .toList();
     }
@@ -80,5 +74,32 @@ public class WarehouseService {
         return warehouseRepository.findById(warehouseId)
                 .map(Warehouse::getWarehouseName)
                 .orElse(null);
+    }
+
+
+    public WarehouseResponse create(WarehouseRequest warehouseRequest) {
+        Warehouse warehouse = warehouseMapper.toWarehouse(warehouseRequest);
+        return warehouseMapper.toWarehouseResponse(warehouseRepository.save(warehouse));
+    }
+
+    public WarehouseResponse update(String id, WarehouseRequest warehouseRequest) {
+        Warehouse warehouse = warehouseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Kho chứa không tồn tại"));
+        warehouseMapper.updateWarehouseFromRequest(warehouseRequest, warehouse);
+        return warehouseMapper.toWarehouseResponse(warehouseRepository.save(warehouse));
+    }
+
+    public WarehouseResponse deactivate(String id) {
+        Warehouse warehouse = warehouseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Kho chứa không tồn tại"));
+        warehouse.setActive(false);
+        return warehouseMapper.toWarehouseResponse(warehouseRepository.save(warehouse));
+    }
+
+    public WarehouseResponse active(String id) {
+        Warehouse warehouse = warehouseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Kho chứa không tồn tại"));
+        warehouse.setActive(true);
+        return warehouseMapper.toWarehouseResponse(warehouseRepository.save(warehouse));
     }
 }

@@ -13,4 +13,5 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE)
 public class ProductCategoryRequest {
     String categoryName;
+    String description;
 }

@@ -15,7 +15,6 @@ import lombok.experimental.FieldDefaults;
 public class ProductRequest {
     private String productName;
     private String categoryId;
-    private String categoryName;
     private String unit;
     private ProductStatus status;
 }

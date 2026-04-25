@@ -174,7 +174,7 @@ export default function ProductsPage() {
                   {imageUrl ? (
                     <img
                       src={imageUrl}
-                      alt={product.name}
+                      alt={product.productName}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
@@ -207,7 +207,7 @@ export default function ProductsPage() {
                         {product.code}
                       </p>
                       <h3 className="font-semibold text-foreground">
-                        {product.name}
+                        {product.productName}
                       </h3>
                     </div>
                     <div className="flex flex-col gap-2 items-end">
@@ -228,16 +228,15 @@ export default function ProductsPage() {
                             : "Ổn"}
                       </Badge>
                       <Badge
-                        variant={product.isActive ? "default" : "secondary"}
+                        variant={
+                          product.status === "ACTIVE" ? "default" : "secondary"
+                        }
                         className="text-xs"
                       >
-                        {product.isActive ? "Hoạt động" : "Ngừng"}
+                        {product.status === "ACTIVE" ? "Hoạt động" : "Ngừng"}
                       </Badge>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                    {product.description}
-                  </p>
                   <div className="flex justify-between text-sm mb-3 mt-auto">
                     <span className="text-muted-foreground">
                       Đơn vị: {product.unit}

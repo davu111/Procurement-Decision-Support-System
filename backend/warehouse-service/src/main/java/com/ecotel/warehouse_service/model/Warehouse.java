@@ -1,7 +1,5 @@
 package com.ecotel.warehouse_service.model;
 
-import com.ecotel.warehouse_service.enums.AreaCode;
-import com.ecotel.warehouse_service.enums.WarehouseStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,17 +22,11 @@ public class Warehouse {
     @GeneratedValue(strategy = jakarta.persistence.GenerationType.UUID)
     String id;
     String warehouseName;
-    @Enumerated(EnumType.STRING)
-    AreaCode areaCode;
-    String location;
 
-    @Column(name = "site_id", nullable = false, length = 45)
-    String siteId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "status")
     @Builder.Default
-    WarehouseStatus status = WarehouseStatus.ACTIVE;
+    boolean isActive = true;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

@@ -1,5 +1,8 @@
 package com.ecotel.product_service.service;
 
+import com.ecotel.product_service.dto.request.ProductRequest;
+import com.ecotel.product_service.model.ProductCategory;
+import com.ecotel.product_service.repository.ProductCategoryRepository;
 import com.ecotel.product_service.repository.ProductRepository;
 import com.ecotel.product_service.dto.response.*;
 import com.ecotel.product_service.enums.ProductStatus;
@@ -19,6 +22,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class ProductService {
     private final ProductRepository productRepository;
+    private final ProductCategoryRepository productCategoryRepository;
     private final ProductMapper productMapper;
     private final WebClient webClient;
 
@@ -232,4 +236,37 @@ public class ProductService {
                 .map(Product::getProductName)
                 .orElse(null);
     }
+
+    public ProductResponse create(ProductRequest productRequest) {
+        Product product = productMapper.toProduct(productRequest);
+        ProductCategory productCategory = productCategoryRepository.findById(productRequest.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại"));
+        product.setCategory(productCategory);
+        return productMapper.toProductResponse(productRepository.save(product));
+    }
+
+    public ProductResponse update(String id, ProductRequest productRequest) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mặt hàng không tồn tại"));
+        productMapper.updateProductFromRequest(productRequest, product);
+        ProductCategory productCategory = productCategoryRepository.findById(productRequest.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại"));
+        product.setCategory(productCategory);
+        return productMapper.toProductResponse(productRepository.save(product));
+    }
+
+    public ProductResponse deactivate(String id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mặt hàng không tồn tại"));
+        product.setStatus(ProductStatus.INACTIVE);
+        return productMapper.toProductResponse(productRepository.save(product));
+    }
+
+    public ProductResponse active(String id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mặt hàng không tồn tại"));
+        product.setStatus(ProductStatus.ACTIVE);
+        return productMapper.toProductResponse(productRepository.save(product));
+    }
+
 }
