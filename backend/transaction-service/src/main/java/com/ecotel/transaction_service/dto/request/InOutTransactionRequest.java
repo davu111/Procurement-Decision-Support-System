@@ -17,9 +17,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class InOutTransactionRequest {
     String transactionCode;
-    String planId;
     String warehouseId;
-    String vehicleId;
     WorkType workType;
     TransactionStatus status;
     LocalDateTime createdAt;

@@ -16,9 +16,7 @@ import java.util.List;
 public class InOutTransactionResponse {
     String id;
     String transactionCode;
-    String planId;
     String warehouseId;
-    String vehicleId;
     WorkType workType;
     TransactionStatus status;
     LocalDateTime createdAt;

@@ -13,6 +13,8 @@ import {
   LineChart,
   Truck,
   Tag,
+  Boxes,
+  History,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -25,6 +27,8 @@ const navItems = [
   { to: "/consumption", icon: ClipboardList, label: "Nhập tiêu thụ" },
   { to: "/forecast", icon: LineChart, label: "Import & Dự đoán" },
   { to: "/suppliers", icon: Truck, label: "Nhà cung cấp" },
+  { to: "/warehouses", icon: Boxes, label: "Kho hàng" },
+  { to: "/transactions", icon: History, label: "Lịch sử Nhập/Xuất" },
   { to: "/settings", icon: Settings, label: "Cấu hình kho" },
 ];
 

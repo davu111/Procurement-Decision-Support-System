@@ -1,7 +1,7 @@
 package com.ecotel.warehouse_service.controller;
 
+import com.ecotel.shared_library.dto.response.ApiResponse;
 import com.ecotel.warehouse_service.dto.request.WarehouseRequest;
-import com.ecotel.warehouse_service.dto.response.ApiResponse;
 import com.ecotel.warehouse_service.dto.response.FullWarehouseResponse;
 import com.ecotel.warehouse_service.dto.response.WarehouseResponse;
 import com.ecotel.warehouse_service.service.WarehouseService;

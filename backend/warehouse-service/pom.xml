@@ -69,6 +69,13 @@
 			<artifactId>lombok-mapstruct-binding</artifactId>
 			<version>0.2.0</version>
 		</dependency>
+
+		<!-- HTTP Client for Maps API -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
+		</dependency>
+
 		<!-- Swagger doc -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
@@ -88,6 +95,13 @@
 		<dependency>
 			<groupId>org.springframework.data</groupId>
 			<artifactId>spring-data-jpa</artifactId>
+		</dependency>
+
+		<!-- Shared Library -->
+		<dependency>
+			<groupId>com.ecotel</groupId>
+			<artifactId>shared-library</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
 

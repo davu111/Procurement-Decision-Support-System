@@ -1,5 +1,6 @@
 package com.ecotel.transaction_service.service;
 
+import com.ecotel.shared_library.service.ProductService;
 import com.ecotel.transaction_service.dto.request.InOutDetailRequest;
 import com.ecotel.transaction_service.dto.request.InOutTransactionRequest;
 import com.ecotel.transaction_service.dto.request.InOutTransactionUpdateRequest;
@@ -14,8 +15,13 @@ import com.ecotel.transaction_service.repository.InOutTransactionRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +36,7 @@ public class InOutTransactionService {
     private final InOutDetailRepository inOutDetailRepository;
     private final InOutTransactionMapper inOutTransactionMapper;
     private final InOutDetailMapper inOutDetailMapper;
+    private final ProductService productService;
 
     // GET TRANSACTION BY ID
     public InOutTransactionResponse getTransactionById(String transactionId) {
@@ -42,13 +49,47 @@ public class InOutTransactionService {
         return mapToResponseWithDetails(transaction);
     }
 
+    // GET TRANSACTION BY WAREHOUSEID
+    public Page<InOutTransactionResponse> getTransactionByWarehouseId(
+            String warehouseId,
+            int page,
+            int size,
+            LocalDateTime startDate,
+            LocalDateTime endDate
+    ) {
+        log.info("Fetching transactions with warehouseId={}, page={}, size={}",
+                warehouseId, page, size);
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        Page<InOutTransaction> transactionPage =
+                inOutTransactionRepository.findByWarehouseIdWithFilter(
+                        warehouseId, startDate, endDate, pageable
+                );
+
+        return transactionPage.map(this::mapToResponseWithDetails);
+    }
+
     // GET ALL TRANSACTIONS
-    public List<InOutTransactionResponse> getAllTransactions() {
-        log.info("Fetching all transactions");
-        List<InOutTransaction> transactions = inOutTransactionRepository.findAll();
-        return transactions.stream()
-                .map(this::mapToResponseWithDetails)
-                .collect(Collectors.toList());
+    public Page<InOutTransactionResponse> getAllTransactions(
+            int page,
+            int size,
+            LocalDateTime startDate,
+            LocalDateTime endDate
+    ) {
+        log.info("Fetching transactions with filter: page={}, size={}, startDate={}, endDate={}",
+                page, size, startDate, endDate);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<InOutTransaction> transactionPage =
+                inOutTransactionRepository.findAllWithFilter(startDate, endDate, pageable);
+
+        return transactionPage.map(this::mapToResponseWithDetails);
     }
 
     /**
@@ -280,28 +321,6 @@ public class InOutTransactionService {
     }
 
     /**
-     * Lấy danh sách transactions theo warehouse ID
-     */
-    public List<InOutTransactionResponse> getTransactionsByWarehouseId(String warehouseId) {
-        log.info("Fetching transactions for warehouse: {}", warehouseId);
-        List<InOutTransaction> transactions = inOutTransactionRepository.findByWarehouseId(warehouseId);
-        return transactions.stream()
-                .map(this::mapToResponseWithDetails)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Lấy danh sách transactions theo vehicle ID
-     */
-    public List<InOutTransactionResponse> getTransactionsByVehicleId(String vehicleId) {
-        log.info("Fetching transactions for vehicle: {}", vehicleId);
-        List<InOutTransaction> transactions = inOutTransactionRepository.findByVehicleId(vehicleId);
-        return transactions.stream()
-                .map(this::mapToResponseWithDetails)
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Lấy chi tiết của một transaction (chỉ details)
      */
     public List<InOutDetailResponse> getDetailsByTransactionId(String transactionId) {
@@ -329,6 +348,14 @@ public class InOutTransactionService {
                             .map(inOutDetailMapper::toInOutDetailResponse)
                             .collect(Collectors.toList())
             );
+
+            Map<String, String> productNames = productService.getProductNameByIds(
+                    response.getInOutDetails().stream()
+                            .map(InOutDetailResponse::getProductId)
+                            .toList()
+            );
+
+            response.getInOutDetails().forEach(detail -> detail.setProductName(productNames.get(detail.getProductId())));
         }
         return response;
     }

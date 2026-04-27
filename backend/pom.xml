@@ -15,5 +15,6 @@
         <module>transaction-service</module>
         <module>supplier-service</module>
         <module>inventory-optimization-service</module>
+        <module>shared-library</module>
     </modules>
 </project>

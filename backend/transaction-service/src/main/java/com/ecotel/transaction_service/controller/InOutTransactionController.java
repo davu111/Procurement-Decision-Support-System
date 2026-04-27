@@ -1,13 +1,17 @@
 package com.ecotel.transaction_service.controller;
 
+import com.ecotel.shared_library.dto.response.ApiResponse;
 import com.ecotel.transaction_service.dto.request.InOutTransactionRequest;
 import com.ecotel.transaction_service.dto.request.InOutTransactionUpdateRequest;
-import com.ecotel.transaction_service.dto.response.ApiResponse;
 import com.ecotel.transaction_service.dto.response.InOutTransactionResponse;
+import com.ecotel.transaction_service.dto.response.PageResponse;
+import com.ecotel.transaction_service.mapper.PageMapper;
 import com.ecotel.transaction_service.service.InOutTransactionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -15,14 +19,41 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InOutTransactionController {
     private final InOutTransactionService inOutTransactionService;
+    private final PageMapper pageMapper;
 
     // GET ALL TRANSACTIONS
     @GetMapping
-    public ApiResponse<List<InOutTransactionResponse>> getAllTransactions() {
-        List<InOutTransactionResponse> responses = inOutTransactionService.getAllTransactions();
-        return ApiResponse.<List<InOutTransactionResponse>>builder()
+    public ApiResponse<PageResponse<InOutTransactionResponse>> getAllTransactions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) LocalDateTime startDate,
+            @RequestParam(required = false) LocalDateTime endDate
+    ) {
+        Page<InOutTransactionResponse> result =
+                inOutTransactionService.getAllTransactions(page, size, startDate, endDate);
+
+        return ApiResponse.<PageResponse<InOutTransactionResponse>>builder()
                 .message("Transactions retrieved successfully")
-                .data(responses)
+                .data(pageMapper.toPageResponse(result))
+                .build();
+    }
+
+    @GetMapping("/warehouse/{warehouseId}")
+    public ApiResponse<PageResponse<InOutTransactionResponse>> getTransactionsByWarehouseId(
+            @PathVariable String warehouseId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) LocalDateTime startDate,
+            @RequestParam(required = false) LocalDateTime endDate
+    ) {
+        Page<InOutTransactionResponse> result =
+                inOutTransactionService.getTransactionByWarehouseId(
+                        warehouseId, page, size, startDate, endDate
+                );
+
+        return ApiResponse.<PageResponse<InOutTransactionResponse>>builder()
+                .message("Transactions retrieved successfully")
+                .data(pageMapper.toPageResponse(result))
                 .build();
     }
 

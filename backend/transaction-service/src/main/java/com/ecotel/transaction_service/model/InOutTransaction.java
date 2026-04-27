@@ -16,7 +16,6 @@ import java.util.Set;
 @Table(name = "inout_transaction", indexes = {
         @Index(name = "idx_transaction_code", columnList = "transaction_code"),
         @Index(name = "idx_warehouse_id", columnList = "warehouse_id"),
-        @Index(name = "idx_vehicle_id", columnList = "vehicle_id"),
         @Index(name = "idx_transaction_type", columnList = "transaction_type"),
         @Index(name = "idx_status", columnList = "status"),
         @Index(name = "idx_created_at", columnList = "created_at"),
@@ -37,16 +36,9 @@ public class InOutTransaction {
     @Column(name = "transaction_code", nullable = false, unique = true, length = 50)
     String transactionCode;
 
-    @Column(name = "plan_id", length = 45)
-    String planId;
-
     // Microservices: Chỉ lưu ID, không có quan hệ JPA
     @Column(name = "warehouse_id", nullable = false, length = 45)
     String warehouseId;
-
-    // Microservices: Chỉ lưu ID, không có quan hệ JPA
-    @Column(name = "vehicle_id", length = 45)
-    String vehicleId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "work_type", nullable = false, length = 10)

@@ -12,5 +12,6 @@ import java.math.BigDecimal;
 public class InOutDetailResponse {
     String id;
     String productId;
+    String productName;
     BigDecimal quantity;
 }

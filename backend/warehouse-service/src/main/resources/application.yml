@@ -26,5 +26,10 @@ springdoc:
 #        jwt:
 #          issuer-uri: ${OAUTH2_ISSUER_URI}
 #          jwk-set-uri: ${OAUTH2_JWK_SET_URI}
+
+external:
+  product-service:
+    url: ${PRODUCT_SERVICE_URL}
+
 server:
   port: 8082

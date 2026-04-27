@@ -1,6 +1,6 @@
 package com.ecotel.warehouse_service.exception;
 
-import com.ecotel.warehouse_service.dto.response.ApiResponse;
+import com.ecotel.shared_library.dto.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;

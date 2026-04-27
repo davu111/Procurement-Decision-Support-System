@@ -20,6 +20,10 @@ springdoc:
   swagger-ui:
     path: /transaction-service/swagger/swagger-ui.html
     disable-swagger-default-url: true
+
+external:
+  product-service:
+    url: ${PRODUCT_SERVICE_URL}
 #  security:
 #    oauth2:
 #      resourceserver:

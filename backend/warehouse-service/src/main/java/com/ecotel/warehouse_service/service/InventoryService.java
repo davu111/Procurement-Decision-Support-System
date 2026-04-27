@@ -1,5 +1,6 @@
 package com.ecotel.warehouse_service.service;
 
+import com.ecotel.shared_library.service.ProductService;
 import com.ecotel.warehouse_service.dto.request.TransactionRequest;
 import com.ecotel.warehouse_service.dto.response.InventoryResponse;
 import com.ecotel.warehouse_service.enums.WorkType;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,22 +24,17 @@ public class InventoryService {
     private final InventoryRepository inventoryRepository;
     private final WarehouseRepository warehouseRepository;
     private final InventoryMapper inventoryMapper;
+    private final ProductService productService;
 
-    public List<InventoryResponse> getInventoryByProducts(List<String> productIds, String warehouseId, String siteId) {
+    public List<InventoryResponse> getInventoryByProducts(List<String> productIds, String warehouseId) {
         System.out.println(productIds);
         System.out.println(warehouseId);
-        System.out.println(siteId);
         Specification<Inventory> spec = (root, query, cb) ->
                 root.get("productId").in(productIds);
 
         if (warehouseId != null && !warehouseId.equals("all")) {
             spec = spec.and((root, query, cb) ->
                     cb.equal(root.get("warehouse").get("id"), warehouseId));
-        }
-
-        if (siteId != null && !"all".equals(siteId)) {
-            spec = spec.and((root, query, cb) ->
-                    cb.equal(root.get("warehouse").get("siteId"), siteId));
         }
 
         return inventoryRepository.findAll(spec).stream()
@@ -52,9 +49,15 @@ public class InventoryService {
 
     // GET INVENTORY BY WAREHOUSE ID
     public List<InventoryResponse> getInventoryByWarehouseId(String warehouseId) {
-        return inventoryRepository.findByWarehouseId(warehouseId).stream()
+        List<InventoryResponse> response = inventoryRepository.findByWarehouseId(warehouseId).stream()
                 .map(inventoryMapper::toInventoryResponse)
                 .toList();
+        Map<String, String> productNames = productService.getProductNameByIds(
+                response.stream().map(InventoryResponse::getProductId).toList()
+        );
+        response.forEach(r -> r.setProductName(productNames.get(r.getProductId())));
+
+        return response;
     }
 
     // IMPORT/ EXPORT INVENTORY

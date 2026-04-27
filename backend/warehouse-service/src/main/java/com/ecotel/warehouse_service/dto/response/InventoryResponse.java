@@ -15,6 +15,7 @@ public class InventoryResponse {
     String id;
     String warehouseId;
     String productId;
+    String productName;
     BigDecimal quantity;
     String unit;
     LocalDateTime lastUpdated;

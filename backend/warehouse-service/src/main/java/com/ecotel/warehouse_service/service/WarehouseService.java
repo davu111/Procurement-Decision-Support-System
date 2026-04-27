@@ -92,14 +92,14 @@ public class WarehouseService {
     public WarehouseResponse deactivate(String id) {
         Warehouse warehouse = warehouseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Kho chứa không tồn tại"));
-        warehouse.setActive(false);
+        warehouse.setIsActive(false);
         return warehouseMapper.toWarehouseResponse(warehouseRepository.save(warehouse));
     }
 
     public WarehouseResponse active(String id) {
         Warehouse warehouse = warehouseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Kho chứa không tồn tại"));
-        warehouse.setActive(true);
+        warehouse.setIsActive(true);
         return warehouseMapper.toWarehouseResponse(warehouseRepository.save(warehouse));
     }
 }

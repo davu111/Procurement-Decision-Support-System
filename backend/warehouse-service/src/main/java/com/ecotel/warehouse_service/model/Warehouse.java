@@ -23,9 +23,9 @@ public class Warehouse {
     String id;
     String warehouseName;
 
-    @Column(name = "status")
+    @Column(name = "is_active")
     @Builder.Default
-    boolean isActive = true;
+    Boolean isActive = true;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

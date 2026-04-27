@@ -1,7 +1,7 @@
 package com.ecotel.warehouse_service.controller;
 
+import com.ecotel.shared_library.dto.response.ApiResponse;
 import com.ecotel.warehouse_service.dto.request.TransactionRequest;
-import com.ecotel.warehouse_service.dto.response.ApiResponse;
 import com.ecotel.warehouse_service.dto.response.InventoryResponse;
 import com.ecotel.warehouse_service.service.InventoryService;
 import lombok.RequiredArgsConstructor;
@@ -18,9 +18,8 @@ public class InventoryController {
     @PostMapping("/by-products")
     public ApiResponse<List<InventoryResponse>> getInventoryByProducts(
             @RequestBody List<String> productIds,
-            @RequestParam(defaultValue = "all") String warehouseId,
-            @RequestParam(defaultValue = "all") String siteId) {
-        List<InventoryResponse> response = inventoryService.getInventoryByProducts(productIds, warehouseId, siteId);
+            @RequestParam(defaultValue = "all") String warehouseId) {
+        List<InventoryResponse> response = inventoryService.getInventoryByProducts(productIds, warehouseId);
         return ApiResponse.<List<InventoryResponse>>builder()
                 .message("Inventory by products retrieved successfully")
                 .data(response)

@@ -15,6 +15,7 @@ import java.util.List;
 public class FullWarehouseResponse {
     String id;
     String warehouseName;
+    Boolean isActive;
     BigDecimal totalInventory;
     BigDecimal items;
     List<InventoryResponse> inventories;

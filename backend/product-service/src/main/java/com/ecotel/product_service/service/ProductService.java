@@ -237,6 +237,16 @@ public class ProductService {
                 .orElse(null);
     }
 
+    // GET PRODUCT NAMES BY ID
+    public Map<String, String> getProductNameByIds(List<String> productIds) {
+        List<Product> products = productRepository.findAllById(productIds);
+        Map<String, String> productNames = new HashMap<>();
+        for (Product product : products) {
+            productNames.put(product.getId(), product.getProductName());
+        }
+        return productNames;
+    }
+
     public ProductResponse create(ProductRequest productRequest) {
         Product product = productMapper.toProduct(productRequest);
         ProductCategory productCategory = productCategoryRepository.findById(productRequest.getCategoryId())

@@ -12,4 +12,5 @@ import lombok.experimental.FieldDefaults;
 public class WarehouseResponse {
     String id;
     String warehouseName;
+    Boolean isActive;
 }

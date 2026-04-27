@@ -8,6 +8,8 @@ import Dashboard from "@/pages/Dashboard";
 import HeatmapPage from "@/pages/HeatmapPage";
 import ProductsPage from "@/pages/product/ProductsPage";
 import ProductCategoriesPage from "@/pages/product/ProductCategoriesPage";
+import WarehousesPage from "@/pages/warehouse/WarehousePage";
+import TransactionHistoryPage from "@/pages/transaction/TransactionHistoryPage";
 import ProductDetail from "@/pages/ProductDetail";
 import NewPlanPage from "@/pages/NewPlanPage";
 import ConsumptionPage from "@/pages/ConsumptionPage";
@@ -34,6 +36,8 @@ const App = () => (
               path="/product-categories"
               element={<ProductCategoriesPage />}
             />
+            <Route path="/warehouses" element={<WarehousesPage />} />
+            <Route path="/transactions" element={<TransactionHistoryPage />} />
             <Route path="/new-plan" element={<NewPlanPage />} />
             <Route path="/consumption" element={<ConsumptionPage />} />
             <Route path="/forecast" element={<ForecastPage />} />

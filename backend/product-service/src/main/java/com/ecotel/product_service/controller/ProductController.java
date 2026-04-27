@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("api/products")
@@ -60,6 +61,16 @@ public class ProductController {
         return ApiResponse.<String>builder()
                 .message("Product name retrieved successfully")
                 .data(productName)
+                .build();
+    }
+
+    // GET PRODUCT NAME BY ID
+    @PostMapping("/names")
+    public ApiResponse<Map<String,String>> getProductNameByIds(@RequestBody List<String> productIds) {
+        Map<String, String> productNames = productService.getProductNameByIds(productIds);
+        return ApiResponse.<Map<String,String>>builder()
+                .message("Product names retrieved successfully")
+                .data(productNames)
                 .build();
     }
 
