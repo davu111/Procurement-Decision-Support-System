@@ -1,6 +1,6 @@
 package com.ecotel.product_service.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.ecotel.product_service.enums.ProductStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -8,15 +8,16 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class ApiResponse<T> {
-    @Builder.Default
-    int code = 200;
-
-    String message;
-    T data;
+public class ProductResponse {
+    private String id;
+    private String productName;
+    private String code;
+    private String categoryId;
+    private String categoryName;
+    private String unit;
+    private ProductStatus status;
 }
