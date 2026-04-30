@@ -1,9 +1,9 @@
 package com.ecotel.product_service.controller;
 
 import com.ecotel.product_service.dto.request.ProductCategoryRequest;
-import com.ecotel.product_service.dto.response.ApiResponse;
 import com.ecotel.product_service.dto.response.ProductCategoryResponse;
 import com.ecotel.product_service.service.ProductCategoryService;
+import com.ecotel.shared_library.dto.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

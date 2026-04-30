@@ -1,14 +1,7 @@
 package com.ecotel.inventory_optimization_service.dto.response;
 
-import com.ecotel.inventory_optimization_service.model.InventoryResult;
-import com.ecotel.inventory_optimization_service.model.Product;
-import com.ecotel.inventory_optimization_service.model.WarehouseConfig;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,7 +15,7 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class InventoryParameterResponse {
     Long id;
-    Long productId;
+    String productId;
     Long warehouseConfigId;
     UUID supplierProductId;
     LocalDate planStartDate;

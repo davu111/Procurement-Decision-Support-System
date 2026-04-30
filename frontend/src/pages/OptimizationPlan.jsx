@@ -47,7 +47,7 @@ const OptimizationPlan = () => {
     // load product list
     const fetchProducts = async () => {
       try {
-        const res = await axios.get("/inventory-products");
+        const res = await axios.get("/products");
         if (res.data && res.data.success) {
           setProducts(res.data.data);
         }

@@ -17,7 +17,6 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class InOutTransactionUpdateRequest {
     String id;
-    String transactionCode;
     String planId;
     String warehouseId;
     String vehicleId;

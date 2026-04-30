@@ -142,7 +142,7 @@ export default function ProductDetail() {
     setProduct(null);
     setProductError(false);
     api
-      .get(`/inventory-products/${productId}`)
+      .get(`/products/${productId}`)
       .then((res: any) => setProduct(res.data))
       .catch(() => setProductError(true));
   }, [productId]);
@@ -276,7 +276,9 @@ export default function ProductDetail() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            {product.productName}
+          </h1>
           <p className="text-muted-foreground">
             {product.code} · {product.unit}
           </p>

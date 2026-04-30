@@ -33,9 +33,6 @@ public class InOutTransaction {
     @Column(name = "id", length = 45, nullable = false, updatable = false)
     String id;
 
-    @Column(name = "transaction_code", nullable = false, unique = true, length = 50)
-    String transactionCode;
-
     // Microservices: Chỉ lưu ID, không có quan hệ JPA
     @Column(name = "warehouse_id", nullable = false, length = 45)
     String warehouseId;

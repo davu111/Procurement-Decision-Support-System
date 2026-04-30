@@ -100,7 +100,7 @@ public class InOutTransactionService {
      */
     @Transactional
     public InOutTransactionResponse createTransaction(InOutTransactionRequest request) {
-        log.info("Creating new transaction with code: {}", request.getTransactionCode());
+        log.info("Creating new transaction");
         
         // Map request thành entity transaction
         InOutTransaction transaction = inOutTransactionMapper.toInOutTransaction(request);

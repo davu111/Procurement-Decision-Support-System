@@ -5,9 +5,9 @@ import com.ecotel.inventory_optimization_service.dto.response.ImportResultRespon
 import com.ecotel.inventory_optimization_service.exception.ResourceNotFoundException;
 import com.ecotel.inventory_optimization_service.mapper.ConsumptionHistoryMapper;
 import com.ecotel.inventory_optimization_service.model.ConsumptionHistory;
-import com.ecotel.inventory_optimization_service.model.Product;
 import com.ecotel.inventory_optimization_service.repository.ConsumptionHistoryRepository;
-import com.ecotel.inventory_optimization_service.repository.ProductRepository;
+import com.ecotel.shared_library.dto.response.ProductResponse;
+import com.ecotel.shared_library.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -43,9 +43,9 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class ConsumptionHistoryImportService {
-    private final ProductRepository productRepository;
     private final ConsumptionHistoryRepository historyRepository;
     private final ConsumptionHistoryMapper mapper;
+    private final ProductService productService;
 
     private static final List<DateTimeFormatter> DATE_FORMATTERS = List.of(
             DateTimeFormatter.ofPattern("yyyy-MM-dd"),
@@ -240,9 +240,9 @@ public class ConsumptionHistoryImportService {
         // product_id — bắt buộc
         if (isBlank(productIdStr))
             throw new IllegalArgumentException("product_id không được trống");
-        Long productId;
+        String productId;
         try {
-            productId = Long.parseLong(productIdStr.trim());
+            productId = productIdStr.trim();
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("product_id không hợp lệ: " + productIdStr);
         }
@@ -339,25 +339,15 @@ public class ConsumptionHistoryImportService {
         int skipCount    = 0;
         int errorCount   = 0;
         List<String> errors     = new ArrayList<>();
-        Long         lastProductId = null;
+        String         lastProductId = null;
 
         for (int i = 0; i < requests.size(); i++) {
             ConsumptionHistoryRequest req = requests.get(i);
             int rowNum = i + 2; // +2 vì dòng 1 là header
 
-            // Validate product tồn tại
-            Product product;
-            try {
-                product = findProduct(req.getProductId());
-            } catch (ResourceNotFoundException e) {
-                errors.add("Dòng " + rowNum + ": " + e.getMessage());
-                errorCount++;
-                continue;
-            }
-
             // Lưu vào DB
             try {
-                ConsumptionHistory entity = mapper.toConsumptionHistory(req, product);
+                ConsumptionHistory entity = mapper.toConsumptionHistory(req);
                 historyRepository.save(entity);
                 successCount++;
                 lastProductId = req.getProductId();
@@ -398,9 +388,12 @@ public class ConsumptionHistoryImportService {
 
     // -------------------------------------------------------
 
-    private Product findProduct(Long productId) {
-        return productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Mặt hàng", productId));
+    private ProductResponse findProduct(String productId) {
+        ProductResponse product = productService.getProductById(productId);
+        if (product == null) {
+            throw new ResourceNotFoundException("Sản phẩm không tồn tại: " + productId);
+        }
+        return product;
     }
 
     private String modelReadinessMessage(int count) {

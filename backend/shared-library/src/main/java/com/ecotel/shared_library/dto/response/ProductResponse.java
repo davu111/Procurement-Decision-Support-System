@@ -1,6 +1,6 @@
-package com.ecotel.product_service.dto.response;
+package com.ecotel.shared_library.dto.response;
 
-import com.ecotel.product_service.enums.ProductStatus;
+import com.ecotel.shared_library.enums.ProductStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

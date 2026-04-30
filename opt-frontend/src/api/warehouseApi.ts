@@ -7,6 +7,7 @@ import type {
   InventoryItem,
   InOutTransaction,
   PageResponse,
+  InOutTransactionRequest,
 } from "@/types/warehouse/warehouse";
 
 export const warehouseApi = {
@@ -59,6 +60,18 @@ export const inventoryTransferApi = {
 };
 
 export const transactionApi = {
+  create: (data: InOutTransactionRequest) =>
+    inventoryApi
+      .post<never, { data: InOutTransaction }>("/transactions/create", data)
+      .then((r) => r.data),
+
+  generateReport: (transactionId: string) =>
+    inventoryApi
+      .post<never, { data: number }>("/transactions/generate", null, {
+        params: { transactionId },
+      })
+      .then((r) => r.data),
+
   getAll: (params: {
     page?: number;
     size?: number;
@@ -86,5 +99,16 @@ export const transactionApi = {
         never,
         { data: PageResponse<InOutTransaction> }
       >(`/transactions/warehouse/${warehouseId}`, { params })
+      .then((r) => r.data),
+};
+
+export const fileApi = {
+  getViewUrl: (fileId: number | string) =>
+    inventoryApi
+      .get<never, { data: string }>(`/files/${fileId}/view-url`)
+      .then((r) => r.data),
+  getDownloadUrl: (fileId: number | string) =>
+    inventoryApi
+      .get<never, { data: string }>(`/files/${fileId}/download-url`)
       .then((r) => r.data),
 };

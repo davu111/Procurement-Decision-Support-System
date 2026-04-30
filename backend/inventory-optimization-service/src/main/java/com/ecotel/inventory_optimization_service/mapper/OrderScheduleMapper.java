@@ -8,7 +8,6 @@ import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
 public interface OrderScheduleMapper {
-    @Mapping(source = "product.id", target = "productId")
     @Mapping(source = "inventoryResult.id", target = "inventoryResultId")
     OrderScheduleResponse toOrderScheduleResponse(OrderSchedule orderSchedule);
 }

@@ -45,7 +45,7 @@ spring:
             - id: transaction-service
               uri: ${TRANSACTION_SERVICE_URL}
               predicates:
-                - Path=/api/transactions/**
+                - Path=/api/transactions/**, /api/files/**
 
             # Supplier Service
             - id: supplier-service
@@ -58,7 +58,7 @@ spring:
               uri: ${INVENTORY_OPTIMIZATION_SERVICE_URL}
               predicates:
                 - Path=/api/inventory/**, /api/consumption-history/**,
-                  /api/inventory-products/**, /api/warehouse-config/**, /api/order-schedules/**,
+                  /api/warehouse-config/**, /api/order-schedules/**,
                   /api/inventory-results/**
 
             # Swagger UI routes

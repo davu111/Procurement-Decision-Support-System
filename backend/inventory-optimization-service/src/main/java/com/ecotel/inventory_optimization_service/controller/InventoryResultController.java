@@ -18,7 +18,7 @@ public class InventoryResultController {
 
     @GetMapping("/latest/{productId}")
     public ResponseEntity<ApiResponse<InventoryCalculationResult>> getLatestResult(
-            @PathVariable Long productId
+            @PathVariable String productId
     ) {
         InventoryCalculationResult result = resultService.getInventoryResultLatestByProductId(productId);
         return ResponseEntity.ok(ApiResponse.success(result));
@@ -26,7 +26,7 @@ public class InventoryResultController {
 
     @GetMapping("/range/{productId}")
     public ResponseEntity<ApiResponse<List<InventoryCalculationResult>>> getInventoryResultRange(
-            @PathVariable Long productId,
+            @PathVariable String productId,
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate
     ) {

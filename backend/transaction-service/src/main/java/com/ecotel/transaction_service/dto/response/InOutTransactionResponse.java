@@ -15,7 +15,6 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class InOutTransactionResponse {
     String id;
-    String transactionCode;
     String warehouseId;
     WorkType workType;
     TransactionStatus status;

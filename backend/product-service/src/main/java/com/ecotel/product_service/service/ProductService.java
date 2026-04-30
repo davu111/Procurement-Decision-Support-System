@@ -8,6 +8,7 @@ import com.ecotel.product_service.dto.response.*;
 import com.ecotel.product_service.enums.ProductStatus;
 import com.ecotel.product_service.mapper.ProductMapper;
 import com.ecotel.product_service.model.Product;
+import com.ecotel.shared_library.dto.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
@@ -228,6 +229,25 @@ public class ProductService {
                 .items(items)
                 .totalItems(items.size())
                 .build();
+    }
+
+    // GET MAP <PRODUCT ID, PRODUCT RESPONSE> BY IDS
+    public Map<String, ProductResponse> getProductMapByIds(List<String> productIds) {
+        List<ProductResponse> products = getProducts("all", null);
+        Map<String, ProductResponse> productMap = new HashMap<>();
+        for (ProductResponse product : products) {
+            if (productIds.contains(product.getId())) {
+                productMap.put(product.getId(), product);
+            }
+        }
+        return productMap;
+    }
+
+    public List<ProductResponse> getIsActiveTrue(){
+        List<Product> products = productRepository.findByIsActiveTrue();
+        return products.stream()
+                .map(productMapper::toProductResponse)
+                .toList();
     }
 
     // GET PRODUCT NAME BY ID

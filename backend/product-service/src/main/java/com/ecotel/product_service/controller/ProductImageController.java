@@ -1,11 +1,9 @@
 package com.ecotel.product_service.controller;
 
-import com.ecotel.product_service.dto.response.ApiResponse;
 import com.ecotel.product_service.service.MinioService;
 import com.ecotel.product_service.service.ProductImageService;
+import com.ecotel.shared_library.dto.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 

@@ -43,7 +43,7 @@ public class ForecastOrchestrator {
      *
      * @param periodsAhead số tháng muốn dự đoán (mặc định 3)
      */
-    public ForecastResult forecastDemand(Long productId, int periodsAhead) {
+    public ForecastResult forecastDemand(String productId, int periodsAhead) {
         List<ConsumptionHistory> history =
                 consumptionHistoryRepository.findByProductIdOrderByPeriodStartDateAsc(productId);
 
@@ -75,7 +75,7 @@ public class ForecastOrchestrator {
     }
 
     /** Overload mặc định 3 tháng */
-    public ForecastResult forecastDemand(Long productId) {
+    public ForecastResult forecastDemand(String productId) {
         return forecastDemand(productId, 6);
     }
 
@@ -83,7 +83,7 @@ public class ForecastOrchestrator {
      * Dự đoán Lead Time (ngày) cho tháng tiếp theo.
      * Lead time ổn định theo thời gian → WMA là đủ.
      */
-    public ForecastResult forecastLeadTime(Long productId) {
+    public ForecastResult forecastLeadTime(String productId) {
         List<ConsumptionHistory> history =
                 consumptionHistoryRepository.findByProductIdOrderByPeriodStartDateAsc(productId);
 

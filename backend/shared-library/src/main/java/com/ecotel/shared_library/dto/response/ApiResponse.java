@@ -15,7 +15,7 @@ import lombok.experimental.FieldDefaults;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
     @Builder.Default
-    int code = 200;
+    Integer code = 200;
 
     String message;
     T data;

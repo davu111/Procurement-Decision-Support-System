@@ -1,14 +1,13 @@
 package com.ecotel.product_service.controller;
 
 import com.ecotel.product_service.dto.request.ProductRequest;
-import com.ecotel.product_service.dto.response.ApiResponse;
 import com.ecotel.product_service.dto.response.ProductInventoryResponse;
 import com.ecotel.product_service.dto.response.ProductResponse;
 import com.ecotel.product_service.enums.ProductStatus;
 import com.ecotel.product_service.service.ProductService;
+import com.ecotel.shared_library.dto.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -54,6 +53,26 @@ public class ProductController {
                 .build();
     }
 
+    // GET MAP<ID, PRODUCT RESPONSE> BY IDS
+    @PostMapping("/get-map-products")
+    public ApiResponse<Map<String, ProductResponse>> getProductMapByIds(@RequestBody List<String> productIds) {
+        Map<String, ProductResponse> response = productService.getProductMapByIds(productIds);
+        return ApiResponse.<Map<String, ProductResponse>>builder()
+                .message("Product map retrieved successfully")
+                .data(response)
+                .build();
+    }
+
+    @GetMapping("/get-active")
+    public ApiResponse<List<ProductResponse>> getActive(){
+        List<ProductResponse> responses = productService.getIsActiveTrue();
+
+        return ApiResponse.<List<ProductResponse>>builder()
+                .message("Product active retrieved successfully")
+                .data(responses)
+                .build();
+    }
+
     // GET PRODUCT NAME BY ID
     @GetMapping("/name/{productId}")
     public ApiResponse<String> getProductNameById(@PathVariable String productId) {
@@ -64,7 +83,7 @@ public class ProductController {
                 .build();
     }
 
-    // GET PRODUCT NAME BY ID
+    // GET PRODUCT NAMES BY IDS
     @PostMapping("/names")
     public ApiResponse<Map<String,String>> getProductNameByIds(@RequestBody List<String> productIds) {
         Map<String, String> productNames = productService.getProductNameByIds(productIds);

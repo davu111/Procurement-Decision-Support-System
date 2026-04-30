@@ -16,12 +16,7 @@ import java.util.List;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class InOutTransactionRequest {
-    String transactionCode;
     String warehouseId;
     WorkType workType;
-    TransactionStatus status;
-    LocalDateTime createdAt;
-    LocalDateTime confirmedAt;
-    LocalDateTime updatedAt;
     List<InOutDetailRequest> inOutDetails;
 }

@@ -26,10 +26,8 @@ public class ConsumptionHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    private String productId;
 
     // Luôn là ngày 1 của tháng (vd: 2025-01-01)
     @Column(name = "period_start_date", nullable = false)

@@ -16,7 +16,7 @@ public class OrderScheduleDto {
     private Long id;
     private Long parameterId;
     private Long inventoryResultId;
-    private Long productId;
+    private String productId;
     private Integer orderSequence;
     private LocalDate orderDate;
     private LocalDate expectedDeliveryDate;

@@ -83,7 +83,7 @@ public class InventoryParameterController {
      */
     @PutMapping("/product/{productId}/actual-dates")
     public ResponseEntity<BatchUpdateResponse> updateActualDatesByProduct(
-            @PathVariable Long productId) {
+            @PathVariable String productId) {
         try {
             List<InventoryParameter> parameters = parameterRepository
                     .findByProductIdAndStatus(productId, List.of("ACTIVE", "SUPERSEDED"));

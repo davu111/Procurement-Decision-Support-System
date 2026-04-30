@@ -15,6 +15,7 @@ import lombok.experimental.FieldDefaults;
 public class ProductResponse {
     private String id;
     private String productName;
+    private String code;
     private String categoryId;
     private String categoryName;
     private String unit;

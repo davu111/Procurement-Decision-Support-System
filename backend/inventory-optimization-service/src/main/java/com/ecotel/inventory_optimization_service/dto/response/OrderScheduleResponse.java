@@ -1,14 +1,7 @@
 package com.ecotel.inventory_optimization_service.dto.response;
 
-import com.ecotel.inventory_optimization_service.model.InventoryResult;
-import com.ecotel.inventory_optimization_service.model.Product;
-import jakarta.persistence.Column;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,7 +15,7 @@ import java.time.LocalDateTime;
 public class OrderScheduleResponse {
     Long id;
     Long inventoryResultId; // để tiện trả về API, sẽ map sang InventoryResultResponse ở service
-    Long productId; // để tiện trả về API, sẽ map sang ProductResponse ở service
+    String productId; // để tiện trả về API, sẽ map sang ProductResponse ở service
     Integer orderSequence; // thứ tự lần đặt hàng (1, 2, 3...)
     LocalDate orderDate; // ngày đặt hàng
     LocalDate expectedDeliveryDate; // ngày dự kiến nhận hàng

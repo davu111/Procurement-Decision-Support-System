@@ -70,7 +70,7 @@ public class InventoryPlanningController {
      */
     @GetMapping("/predict-inventory/{productId}")
     public ResponseEntity<ApiResponse<PredictedInventoryResponse>> predictInventory(
-            @PathVariable Long productId,
+            @PathVariable String productId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate) {
         return ResponseEntity.ok(ApiResponse.success(
                 planningService.predictInventory(productId, targetDate)));
@@ -122,7 +122,7 @@ public class InventoryPlanningController {
             @RequestParam (required = false) String mode) {
         InventoryParameterRequest temp = InventoryParameterRequest.builder()
                 .startMonth(startMonth).endMonth(endMonth).year(year)
-                .productId(0L).demandQ(BigDecimal.ONE).storageCostCoefficientI(BigDecimal.ONE)
+                .productId("").demandQ(BigDecimal.ONE).storageCostCoefficientI(BigDecimal.ONE)
                 .build();
         try {
             PeriodResolver.validate(temp, LocalDate.now(), mode);
@@ -141,7 +141,7 @@ public class InventoryPlanningController {
 
     @GetMapping("/suggest/{productId}")
     public ResponseEntity<ApiResponse<ForecastSuggestionResponse>> getSuggestion(
-            @PathVariable Long productId) {
+            @PathVariable String productId) {
         return ResponseEntity.ok(ApiResponse.success(planningService.getSuggestion(productId)));
     }
 
@@ -155,7 +155,7 @@ public class InventoryPlanningController {
 
     @GetMapping("/schedule/{productId}")
     public ResponseEntity<ApiResponse<List<?>>> getScheduleByProduct(
-            @PathVariable Long productId,
+            @PathVariable String productId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -164,11 +164,11 @@ public class InventoryPlanningController {
 
     @GetMapping("/parameters/{id}")
     public ResponseEntity<ApiResponse<InventoryParameterResponse>> getParameterById(
-            @PathVariable Long id,
+            @PathVariable String productId,
             @RequestParam String yearMonth) {  // "2026-04"
 
         YearMonth ym = YearMonth.parse(yearMonth); // parse ISO format
         return ResponseEntity.ok(ApiResponse.success(
-                planningService.getParameterRange(id, ym)));
+                planningService.getParameterRange(productId, ym)));
     }
 }

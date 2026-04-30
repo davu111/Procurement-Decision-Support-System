@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -51,7 +53,7 @@ public class SupplierProductController {
      */
     @GetMapping("/api/supplier-products/by-product/{productId}")
     public ResponseEntity<ApiResponse<SupplierProductResponse>> getByProductId(
-            @PathVariable Long productId) {
+            @PathVariable String productId) {
         return ResponseEntity.ok(ApiResponse.success(
                 supplierProductService.getByProductId(productId)));
     }
@@ -73,5 +75,16 @@ public class SupplierProductController {
     public ResponseEntity<ApiResponse<Void>> activate(@PathVariable String id) {
         supplierProductService.activate(UUID.fromString(id));
         return ResponseEntity.ok(ApiResponse.success(null, "Đã hiệu hóa"));
+    }
+
+    @PostMapping("/api/supplier-products/get-map-product-unit")
+    public ApiResponse<Map<String, BigDecimal>> getMapProductUnit(@RequestBody List<String> productIds){
+        System.out.println(productIds);
+        Map<String, BigDecimal> productUnit = supplierProductService.getMapProductUnit(productIds);
+        System.out.println(productUnit);
+        return ApiResponse.<Map<String, BigDecimal>>builder()
+                .message("Get Supplier product map unit successful")
+                .data(productUnit)
+                .build();
     }
 }

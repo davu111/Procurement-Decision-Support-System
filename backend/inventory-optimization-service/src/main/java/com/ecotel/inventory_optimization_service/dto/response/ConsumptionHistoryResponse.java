@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 public class ConsumptionHistoryResponse {
     private Long id;
-    private Long productId;
+    private String productId;
     private String productName;
     private LocalDate periodStartDate; // ngày đầu kỳ
     private LocalDate periodEndDate; // ngày cuối kỳ

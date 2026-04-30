@@ -12,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderScheduleChainResponse {
-    private Long productId;
+    private String productId;
     private Long parameterId;
     private Integer totalSchedules;
     private List<OrderScheduleDto> schedules;

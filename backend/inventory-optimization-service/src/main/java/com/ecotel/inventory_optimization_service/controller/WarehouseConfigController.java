@@ -4,11 +4,11 @@ import com.ecotel.inventory_optimization_service.dto.request.WarehouseConfigRequ
 import com.ecotel.inventory_optimization_service.dto.response.ApiResponse;
 import com.ecotel.inventory_optimization_service.exception.ResourceNotFoundException;
 import com.ecotel.inventory_optimization_service.model.InventoryParameter;
-import com.ecotel.inventory_optimization_service.model.Product;
 import com.ecotel.inventory_optimization_service.model.WarehouseConfig;
 import com.ecotel.inventory_optimization_service.repository.InventoryParameterRepository;
-import com.ecotel.inventory_optimization_service.repository.ProductRepository;
 import com.ecotel.inventory_optimization_service.repository.WarehouseConfigRepository;
+import com.ecotel.shared_library.dto.response.ProductResponse;
+import com.ecotel.shared_library.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +23,7 @@ import java.util.List;
 public class WarehouseConfigController {
 
     private final WarehouseConfigRepository configRepository;
-    private final ProductRepository productRepository;
+    private final ProductService productService;
     private final InventoryParameterRepository inventoryParameterRepository;
 
     @GetMapping
@@ -37,12 +37,12 @@ public class WarehouseConfigController {
 
         // Lấy đơn giá trung bình để tính I nếu không truyền vào
         BigDecimal avgPrice = request.getAvgUnitPriceForCalculation();
-        List<Long> productIds = productRepository.findByIsActiveTrue().stream().map(Product::getId).toList();
+        List<String> productIds = productService.getActiveTrue().stream().map(ProductResponse::getId).toList();
         if (avgPrice == null) {
             avgPrice = inventoryParameterRepository.findByProductIdIn(productIds).stream()
                     .map(InventoryParameter::getSnapshotUnitPriceC)
                     .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(BigDecimal.valueOf(Math.max(productRepository.findByIsActiveTrue().size(), 1)),
+                    .divide(BigDecimal.valueOf(Math.max(productService.getActiveTrue().size(), 1)),
                             4, java.math.RoundingMode.HALF_UP);
         }
 

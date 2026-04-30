@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class ForecastSuggestionResponse {
 
-    private Long productId;
+    private String productId;
 
     // === Gợi ý từ AI ===
     private BigDecimal suggestedQ;          // Q đề xuất

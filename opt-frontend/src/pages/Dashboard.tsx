@@ -15,7 +15,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     api
-      .get("/inventory-products")
+      .get("/products")
       .then((response) => setProducts(response.data))
       .catch((error) => console.error("Error fetching products:", error));
 
@@ -86,7 +86,7 @@ export default function Dashboard() {
         orders={orderSchedules}
         products={products.map((p) => ({
           id: p.id,
-          name: p.name,
+          name: p.productName,
           unit: p.unit,
         }))}
       />

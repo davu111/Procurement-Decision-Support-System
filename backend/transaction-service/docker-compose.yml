@@ -8,5 +8,14 @@ services:
     volumes:
       - transaction_mysql_data:/var/lib/mysql
 
+  doc_converter:
+    build:
+      context: .
+      dockerfile: Dockerfile.libreoffice
+    container_name: doc_converter
+    volumes:
+      - D:/ADMIN/Java Spring Boot/inventory-optimization/backend/transaction-service/tmp:/tmp
+    tty: true
+
 volumes:
   transaction_mysql_data:

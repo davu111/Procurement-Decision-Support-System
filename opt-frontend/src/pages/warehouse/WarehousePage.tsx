@@ -13,6 +13,8 @@ import {
   Package,
   Eye,
   Trash2,
+  Download,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,9 +55,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { warehouseApi, inventoryTransferApi } from "@/api/warehouseApi";
+import {
+  warehouseApi,
+  inventoryTransferApi,
+  transactionApi,
+  fileApi,
+} from "@/api/warehouseApi";
 import { productApi, type ProductLite } from "@/api/productApi";
-import { type FullWarehouse, type WorkType } from "@/types/warehouse/warehouse";
+import type {
+  FullWarehouse,
+  WorkType,
+  InOutDetailRequest,
+} from "@/types/warehouse/warehouse";
 import { formatDate, formatNumber } from "@/utils/helpers";
 
 const warehouseSchema = z.object({
@@ -98,6 +109,14 @@ export default function WarehousesPage() {
     { productId: "", quantity: "" },
   ]);
   const [transferring, setTransferring] = useState(false);
+  // Report (docx) dialog
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportType, setReportType] = useState<WorkType>("IMPORT");
+  const [reportViewUrl, setReportViewUrl] = useState<string | null>(null);
+  const [reportDownloadUrl, setReportDownloadUrl] = useState<string | null>(
+    null,
+  );
 
   const loadWarehouses = async () => {
     setLoading(true);
@@ -236,6 +255,8 @@ export default function WarehousesPage() {
   const submitTransfer = async () => {
     if (!transferWarehouse) return;
     const productQuantities: Record<string, number> = {};
+    const inOutDetails: InOutDetailRequest[] = [];
+    const seen = new Set<string>();
     for (const l of lines) {
       const pid = l.productId.trim();
       const qty = Number(l.quantity);
@@ -248,6 +269,7 @@ export default function WarehousesPage() {
         return;
       }
       productQuantities[pid] = qty;
+      inOutDetails.push({ productId: pid, quantity: qty });
     }
     setTransferring(true);
     try {
@@ -256,13 +278,48 @@ export default function WarehousesPage() {
         workType: transferType,
         productQuantities,
       });
+      const tx = transactionApi.create({
+        warehouseId: transferWarehouse.id,
+        workType: transferType,
+        inOutDetails,
+      });
       toast({
         title:
           transferType === "IMPORT"
             ? "Nhập hàng thành công"
             : "Xuất hàng thành công",
       });
+      // 2. Đóng dialog nhập, mở dialog xem phiếu + bắt đầu generate
+      const currentType = transferType;
       setTransferOpen(false);
+      setReportType(currentType);
+      setReportViewUrl(null);
+      setReportDownloadUrl(null);
+      setReportOpen(true);
+      setReportLoading(true);
+      try {
+        // 3. Generate report -> fileId
+        const fileId = await transactionApi.generateReport(
+          String((await tx).id),
+        );
+        // 4. Lấy URL view + download song song
+        const [viewUrl, downloadUrl] = await Promise.all([
+          fileApi.getViewUrl(fileId),
+          fileApi.getDownloadUrl(fileId),
+        ]);
+        setReportViewUrl(viewUrl);
+        setReportDownloadUrl(downloadUrl);
+      } catch (e) {
+        toast({
+          title: "Lỗi tạo phiếu",
+          description:
+            e instanceof Error ? e.message : "Không thể tạo phiếu nhập/xuất",
+          variant: "destructive",
+        });
+      } finally {
+        setReportLoading(false);
+      }
+
       await loadWarehouses();
     } catch (e) {
       toast({
@@ -658,6 +715,52 @@ export default function WarehousesPage() {
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
               {transferType === "IMPORT" ? "Nhập hàng" : "Xuất hàng"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Report (docx) preview dialog */}
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {reportType === "IMPORT" ? "Phiếu nhập hàng" : "Phiếu xuất hàng"}
+            </DialogTitle>
+            <DialogDescription>
+              Xem trước file phiếu (.pdf) vừa được tạo. Bạn có thể tải về máy.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="h-[65vh] w-full border rounded-md overflow-hidden bg-muted/30">
+            {reportLoading ? (
+              <div className="h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <p className="text-sm">Đang tạo phiếu...</p>
+              </div>
+            ) : reportViewUrl ? (
+              <iframe
+                title="Phiếu nhập/xuất"
+                src={reportViewUrl}
+                className="h-full w-full"
+              />
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                Không có dữ liệu phiếu
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReportOpen(false)}>
+              Đóng
+            </Button>
+            <Button
+              disabled={!reportDownloadUrl}
+              onClick={() => {
+                if (reportDownloadUrl) window.open(reportDownloadUrl, "_blank");
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Tải xuống .pdf
             </Button>
           </DialogFooter>
         </DialogContent>

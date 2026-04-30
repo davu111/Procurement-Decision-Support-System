@@ -7,18 +7,27 @@ import com.ecotel.transaction_service.dto.response.InOutTransactionResponse;
 import com.ecotel.transaction_service.dto.response.PageResponse;
 import com.ecotel.transaction_service.mapper.PageMapper;
 import com.ecotel.transaction_service.service.InOutTransactionService;
+import com.ecotel.transaction_service.service.ReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/transactions")
 @RequiredArgsConstructor
 public class InOutTransactionController {
     private final InOutTransactionService inOutTransactionService;
+    private final ReportService reportService;
     private final PageMapper pageMapper;
 
     // GET ALL TRANSACTIONS
@@ -114,5 +123,21 @@ public class InOutTransactionController {
         return ApiResponse.<Void>builder()
                 .message("Transaction deleted successfully")
                 .build();
+    }
+
+    /**
+     * Tạo file Word và lưu vào server
+     *
+     * @param transactionId ID
+     * @return Đường dẫn file được tạo
+     */
+    @PostMapping("/generate")
+    public ApiResponse<Long> generateReport(
+            @RequestParam String transactionId) throws Exception {
+            Long fileUrl = reportService.generateReport(transactionId);
+            return ApiResponse.<Long>builder()
+                    .message("Generated file successful")
+                    .data(fileUrl)
+                    .build();
     }
 }

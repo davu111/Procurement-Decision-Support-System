@@ -8,7 +8,7 @@ import java.time.LocalDate;
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class ConsumptionHistoryRequest {
 
-    @NotNull private Long productId;
+    @NotNull private String productId;
 
     @NotNull private LocalDate periodStartDate;
 

@@ -29,7 +29,7 @@ public class SupplierProduct {
 
     // product_id là external reference sang Inventory Service - không có FK thật
     @Column(name = "product_id", nullable = false)
-    private Long productId;
+    private String productId;
 
     @Column(name = "product_name")
     private String productName;

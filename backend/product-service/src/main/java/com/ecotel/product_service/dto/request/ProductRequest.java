@@ -14,6 +14,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE)
 public class ProductRequest {
     private String productName;
+    private String code;
     private String categoryId;
     private String unit;
     private ProductStatus status;

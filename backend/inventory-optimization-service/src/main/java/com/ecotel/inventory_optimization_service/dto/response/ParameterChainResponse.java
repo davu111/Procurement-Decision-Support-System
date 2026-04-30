@@ -12,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ParameterChainResponse {
-    private Long productId;
+    private String productId;
     private Integer chainLength;
     private List<ParameterChainDto> parameters;
 }

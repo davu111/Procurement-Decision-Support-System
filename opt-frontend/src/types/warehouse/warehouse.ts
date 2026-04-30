@@ -55,6 +55,17 @@ export interface InOutTransaction {
   inOutDetails: InOutDetail[];
 }
 
+export interface InOutDetailRequest {
+  productId: string;
+  quantity: number;
+}
+
+export interface InOutTransactionRequest {
+  warehouseId: string;
+  workType: WorkType;
+  inOutDetails: InOutDetailRequest[];
+}
+
 export interface PageResponse<T> {
   content: T[];
   page: number;

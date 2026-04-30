@@ -16,14 +16,14 @@ public interface SupplierProductRepository extends JpaRepository<SupplierProduct
     List<SupplierProduct> findBySupplierIdAndIsActiveTrue(UUID supplierId);
 
     // Inventory Service gọi endpoint này để lấy K, A, C, L theo productId
-    Optional<SupplierProduct> findByProductIdAndIsActiveTrue(Long productId);
+    Optional<SupplierProduct> findByProductIdAndIsActiveTrue(String productId);
 
     // Kiểm tra trùng lặp supplier + product
-    boolean existsBySupplierIdAndProductId(UUID supplierId, Long productId);
+    boolean existsBySupplierIdAndProductId(UUID supplierId, String productId);
 
     // Tìm tất cả sản phẩm đang active
     List<SupplierProduct> findByIsActiveTrue();
 
     @Query("SELECT sp FROM SupplierProduct sp WHERE sp.productId = :productId AND sp.isActive = true")
-    Optional<SupplierProduct> findActiveByProductId(@Param("productId") Long productId);
+    Optional<SupplierProduct> findActiveByProductId(@Param("productId") String productId);
 }

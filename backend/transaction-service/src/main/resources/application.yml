@@ -24,11 +24,29 @@ springdoc:
 external:
   product-service:
     url: ${PRODUCT_SERVICE_URL}
+  warehouse-service:
+    url: ${WAREHOUSE_SERVICE_URL}
+  order-schedule-service:
+    url: ${ORDER_SCHEDULE_SERVICE_URL}
+  supplier-service:
+    url: ${SUPPLIER_SERVICE_URL}
+
+# File Upload/Download Configuration
+app:
+  template:
+    path: template/
+  output:
+    path: output/
 #  security:
 #    oauth2:
 #      resourceserver:
 #        jwt:
 #          issuer-uri: ${OAUTH2_ISSUER_URI}
 #          jwk-set-uri: ${OAUTH2_JWK_SET_URI}
+minio:
+  url: http://localhost:8901
+  access-key: admin
+  secret-key: admin12345
+  bucket: transactionfiles
 server:
   port: 8085

@@ -22,7 +22,7 @@ public class InventoryResultService {
     private final InventoryResultMapper inventoryResultMapper;
 
     // Get inventory results by parameter ID by product id
-    public InventoryCalculationResult getInventoryResultLatestByProductId(Long productId) {
+    public InventoryCalculationResult getInventoryResultLatestByProductId(String productId) {
         Long parameterId = inventoryParameterRepository.findTopByProductIdOrderByUpdatedAtDesc(productId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tham số tối ưu hóa cho sản phẩm ID: " + productId))
                 .getId();
@@ -34,7 +34,7 @@ public class InventoryResultService {
     }
 
     // Get inventory results by parameter ID by product id and date range
-    public List<InventoryCalculationResult> getInventoryResultByProductIdAndPlanStartDateBetween(Long productId, LocalDate startDate, LocalDate endDate) {
+    public List<InventoryCalculationResult> getInventoryResultByProductIdAndPlanStartDateBetween(String productId, LocalDate startDate, LocalDate endDate) {
         List<Long> parameterId = inventoryParameterRepository.findOverlappingPlans(productId, startDate, endDate)
                 .stream()
                 .map(InventoryParameter::getId)

@@ -51,14 +51,14 @@ public class ConsumptionHistoryController {
      */
     @GetMapping("/{productId}")
     public ResponseEntity<ApiResponse<List<ConsumptionHistoryResponse>>> getHistory(
-            @PathVariable Long productId) {
+            @PathVariable String productId) {
         List<ConsumptionHistoryResponse> history = consumptionHistoryService.getHistory(productId);
         return ResponseEntity.ok(ApiResponse.success(history));
     }
 
     @GetMapping("/{productId}/year/{year}")
     public ResponseEntity<ApiResponse<List<ConsumptionHistoryResponse>>> getHistoryByYear(
-            @PathVariable Long productId,
+            @PathVariable String productId,
             @PathVariable int year) {
         List<ConsumptionHistoryResponse> history = consumptionHistoryService.getByYear(productId, year);
         return ResponseEntity.ok(ApiResponse.success(history));

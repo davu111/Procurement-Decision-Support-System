@@ -12,8 +12,10 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -42,7 +44,7 @@ public class OrderScheduleController {
      */
     @GetMapping("/{productId}")
     public ResponseEntity<ApiResponse<List<OrderScheduleResponse>>> getScheduleByProduct(
-            @PathVariable Long productId,
+            @PathVariable String productId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         log.info("Lấy lịch kế hoạch đặt hàng cho sản phẩm ID: {}, từ {} đến {}", productId, from, to);
@@ -57,7 +59,7 @@ public class OrderScheduleController {
      */
     @GetMapping("/product/{productId}/chain")
     public ResponseEntity<ApiResponse<OrderScheduleChainResponse>> getOrderScheduleChain(
-            @PathVariable Long productId) {
+            @PathVariable String productId) {
         try {
             List<OrderSchedule> schedules = chainService.getActiveOrderScheduleChain(productId);
 
@@ -112,7 +114,7 @@ public class OrderScheduleController {
      */
     @GetMapping("/product/{productId}/parameter-chain")
     public ResponseEntity<ParameterChainResponse> getParameterChain(
-            @PathVariable Long productId) {
+            @PathVariable String productId) {
         try {
             List<InventoryParameter> chain = chainService.getParameterChain(productId);
 
@@ -132,12 +134,32 @@ public class OrderScheduleController {
         }
     }
 
+    @PostMapping("/last-order")
+    public ApiResponse<Map<String, BigDecimal>> getLastOrderQuantity(@RequestBody List<String> productIds, @RequestParam LocalDate date) {
+        try {
+            System.out.println(productIds);
+            System.out.println(date);
+            Map<String, BigDecimal> lastQuantities = scheduleService.getLatestOrderQuantity(productIds, date);
+            System.out.println(lastQuantities);
+            return ApiResponse.<Map<String, BigDecimal>>builder()
+                    .message("Get Map Last Order Successful")
+                    .data(lastQuantities)
+                    .build();
+        } catch (Exception e) {
+            log.error("Error getting last order quantities for products {}: {}",
+                    productIds, e.getMessage());
+            return ApiResponse.<Map<String, BigDecimal>>builder()
+                    .message("Get Map Last Order Failed")
+                    .build();
+        }
+    }
+
     private OrderScheduleDto toDto(OrderSchedule schedule) {
         return OrderScheduleDto.builder()
                 .id(schedule.getId())
                 .parameterId(schedule.getInventoryResult().getInventoryParameter().getId())
                 .inventoryResultId(schedule.getInventoryResult().getId())
-                .productId(schedule.getProduct().getId())
+                .productId(schedule.getProductId())
                 .orderSequence(schedule.getOrderSequence())
                 .orderDate(schedule.getOrderDate())
                 .expectedDeliveryDate(schedule.getExpectedDeliveryDate())

@@ -31,5 +31,8 @@ springdoc:
 
 supplier:
     url: ${SUPPLIER_URL}
+external:
+  product-service:
+    url: ${PRODUCT_SERVICE_URL}
 server:
   port: 8091

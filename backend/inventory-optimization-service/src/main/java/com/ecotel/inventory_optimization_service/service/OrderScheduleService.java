@@ -7,8 +7,11 @@ import com.ecotel.inventory_optimization_service.repository.OrderScheduleReposit
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,10 +26,24 @@ public class OrderScheduleService {
                 .toList();
     }
 
-    public List<OrderScheduleResponse> getScheduleByProductId(Long productId, LocalDate from, LocalDate to){
+    public List<OrderScheduleResponse> getScheduleByProductId(String productId, LocalDate from, LocalDate to){
         List<OrderSchedule> schedules = scheduleRepository.findEffectiveByProductIdAndDateRange(productId, from, to);
         return schedules.stream()
                 .map(scheduleMapper::toOrderScheduleResponse)
                 .toList();
+    }
+
+    public Map<String, BigDecimal> getLatestOrderQuantity(
+            List<String> productIds,
+            LocalDate date
+    ) {
+        List<OrderSchedule> schedules =
+                scheduleRepository.findLatestOrderBeforeDate(productIds, date);
+
+        return schedules.stream()
+                .collect(Collectors.toMap(
+                        OrderSchedule::getProductId,
+                        OrderSchedule::getOrderQuantity
+                ));
     }
 }

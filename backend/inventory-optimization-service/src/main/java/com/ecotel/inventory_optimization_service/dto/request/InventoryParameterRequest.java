@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 public class InventoryParameterRequest {
 
     @NotNull(message = "Mã mặt hàng không được trống")
-    private Long productId;
+    private String productId;
 
     private Long warehouseConfigId;
 

@@ -17,7 +17,7 @@ public class SupplierProductData {
     private String supplierId;
     private String supplierCode;
     private String supplierName;
-    private Long productId;
+    private String productId;
     private BigDecimal maxSupplyPerMonth;       // K/tháng
     private BigDecimal fixedOrderCost;          // A
     private BigDecimal unitPrice;               // C

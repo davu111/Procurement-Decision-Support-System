@@ -1,4 +1,4 @@
-package com.ecotel.product_service.enums;
+package com.ecotel.shared_library.enums;
 
 public enum ProductStatus {
     ACTIVE,      // Đang hoạt động

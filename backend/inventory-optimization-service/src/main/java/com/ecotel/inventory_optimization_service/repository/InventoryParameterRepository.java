@@ -22,7 +22,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
      */
     @Query("""
                 SELECT p FROM InventoryParameter p
-                WHERE p.product.id = :productId
+                WHERE p.productId = :productId
                   AND p.status IN ('ACTIVE', 'SUPERSEDED')
                   AND p.actualFirstOrderDate < :newStart
                   AND p.actualEndDate   > :newStart
@@ -30,7 +30,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
                 LIMIT 1
             """)
     List<InventoryParameter> findOverlapping(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("newStart") LocalDate newStart,
             @Param("newEnd") LocalDate newEnd);
 
@@ -44,32 +44,32 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
     @Query("""
                 UPDATE InventoryParameter p
                 SET p.status = 'CANCELLED'
-                WHERE p.product.id = :productId
+                WHERE p.productId = :productId
                   AND p.status IN ('ACTIVE', 'SUPERSEDED')
                   AND p.actualFirstOrderDate <= :newEnd
                   AND p.actualFirstOrderDate >= :newStart
                   AND p.actualEndDate   >= :newStart
             """)
     int findOverlappingToCancel(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("newStart") LocalDate newStart,
             @Param("newEnd") LocalDate newEnd);
 
     /**
      * Fallback: lấy kế hoạch gần nhất của sản phẩm để dùng snapshot K,A,C,L.
      */
-    Optional<InventoryParameter> findTopByProductIdOrderByPlanStartDateDesc(Long productId);
+    Optional<InventoryParameter> findTopByProductIdOrderByPlanStartDateDesc(String productId);
 
     /**
      * Tìm kế hoạch ACTIVE gần nhất của sản phẩm để tính tồn kho dự đoán.
      */
     @Query("""
             SELECT p FROM InventoryParameter p
-            WHERE p.product.id = :productId
+            WHERE p.productId = :productId
             AND p.status IN ('ACTIVE', 'SUPERSEDED')
             ORDER BY p.actualFirstOrderDate DESC
             """)
-    List<InventoryParameter> findLatestActive(@Param("productId") Long productId);
+    List<InventoryParameter> findLatestActive(@Param("productId") String productId);
 
     /**
      * Đánh dấu SUPERSEDED cho các kế hoạch nằm trong khoảng [start, end].
@@ -77,7 +77,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
      */
     @Query("""
             SELECT p FROM InventoryParameter p
-            WHERE p.product.id = :productId
+            WHERE p.productId = :productId
                       AND p.status IN ('ACTIVE', 'SUPERSEDED')
                       AND p.actualFirstOrderDate IS NOT NULL
                       AND p.actualEndDate IS NOT NULL
@@ -87,26 +87,26 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
             LIMIT 1
             """)
     List<InventoryParameter> findActiveToSupersede(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
     //    @Query("""
 //        SELECT p FROM InventoryParameter p
-//        WHERE p.product.id = :productId
+//        WHERE p.productId = :productId
 //        #AND p.planStartDate <= :endDate
 //        AND p.planEndDate   >= :startDate
 //        AND p.status = 'ACTIVE'
 //        """)
 //    List<InventoryParameter> findActiveToSupersede(
-//            @Param("productId") Long productId,
+//            @Param("productId") String productId,
 //            @Param("startDate") LocalDate startDate,
 //            @Param("endDate")   LocalDate endDate);
     @org.springframework.data.jpa.repository.Modifying
     @Query("""
                 UPDATE InventoryParameter p
                 SET p.status = 'SUPERSEDED'
-                WHERE p.product.id = :productId
+                WHERE p.productId = :productId
               AND p.status = 'ACTIVE'
               AND p.actualFirstOrderDate IS NOT NULL
               AND p.actualEndDate IS NOT NULL
@@ -114,7 +114,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
               AND p.actualEndDate > :startDate
             """)
     void supersede(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
@@ -123,22 +123,22 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
      */
     @Query("""
                 SELECT p FROM InventoryParameter p
-                WHERE p.product.id = :productId
+                WHERE p.productId = :productId
                   AND p.planEndDate >= :from
                   AND p.planStartDate <= :to
                 ORDER BY p.planStartDate ASC
             """)
     List<InventoryParameter> findByProductIdAndDateRange(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
 
     // Lay kỳ kế hoạch cụ thể cho sản phẩm + đơn vị kỳ gan nhat theo updated_at
     Optional<InventoryParameter> findTopByProductIdOrderByUpdatedAtDesc(
-            Long productId);
+            String productId);
 
     Optional<InventoryParameter> findByProductIdAndPlanStartDate(
-            Long productId, LocalDate planStartDate);
+            String productId, LocalDate planStartDate);
 
     /**
      * Tìm kế hoạch trùng lặp dựa trên THỜI GIAN THỰC TẾ
@@ -146,7 +146,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
      */
     @Query("""
             SELECT p FROM InventoryParameter p
-            WHERE p.product.id = :productId
+            WHERE p.productId = :productId
               AND p.status IN ('ACTIVE', 'SUPERSEDED')
               AND p.actualFirstOrderDate IS NOT NULL
               AND p.actualEndDate IS NOT NULL
@@ -155,12 +155,12 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
             ORDER BY p.actualFirstOrderDate DESC
             """)
     List<InventoryParameter> findOverlappingPlans(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("newStart") LocalDate newStart,
             @Param("newEnd") LocalDate newEnd
     );
 
-    Optional<InventoryParameter> findByProductIdIn(List<Long> productIds);
+    Optional<InventoryParameter> findByProductIdIn(List<String> productIds);
 
     /**
      * Tìm bản ghi InventoryParameter phù hợp nhất với product_id và khoảng thời gian yêu cầu.
@@ -178,7 +178,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
     @Query("""
             SELECT ip
             FROM InventoryParameter ip
-            WHERE ip.product.id = :productId
+            WHERE ip.productId = :productId
               AND YEAR(ip.planStartDate) * 100 + MONTH(ip.planStartDate) <= :yearMonth
               AND YEAR(ip.planEndDate)   * 100 + MONTH(ip.planEndDate)   >= :yearMonth
             ORDER BY
@@ -187,7 +187,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
             LIMIT 1
             """)
     Optional<InventoryParameter> findBestMatchByMonth(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("yearMonth") int yearMonth   // format: 202604
     );
 
@@ -196,7 +196,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
      */
     @Query("""
             SELECT p FROM InventoryParameter p
-            WHERE p.product.id = :productId
+            WHERE p.productId = :productId
               AND p.status IN ('ACTIVE', 'SUPERSEDED')
               AND (
                 (p.actualFirstOrderDate IS NOT NULL AND p.actualEndDate IS NOT NULL
@@ -208,7 +208,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
             ORDER BY COALESCE(p.actualFirstOrderDate, p.planStartDate) DESC
             """)
     List<InventoryParameter> findOverlappingHybrid(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("newStart") LocalDate newStart,
             @Param("newEnd") LocalDate newEnd
     );
@@ -217,12 +217,12 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
      */
     @Query("""
         SELECT ip FROM InventoryParameter ip
-        WHERE ip.product.id = :productId
+        WHERE ip.productId = :productId
         AND ip.status IN :statuses
         ORDER BY ip.planStartDate DESC
         """)
     List<InventoryParameter> findByProductIdAndStatus(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("statuses") List<String> statuses
     );
     /**
@@ -231,7 +231,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
      */
     @Query("""
         SELECT ip FROM InventoryParameter ip
-        WHERE ip.product.id = :productId
+        WHERE ip.productId = :productId
           AND ip.status IN ('ACTIVE', 'SUPERSEDED')
           AND NOT EXISTS (
             SELECT 1 FROM InventoryParameter ip2
@@ -243,7 +243,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
                ELSE ip.planStartDate 
           END DESC
         """)
-    List<InventoryParameter> findTopLevelParametersByProduct(@Param("productId") Long productId);
+    List<InventoryParameter> findTopLevelParametersByProduct(@Param("productId") String productId);
 
     /**
      * Kiểm tra xem có InventoryParameter nào ghì đè lên parameter này không

@@ -13,7 +13,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -38,7 +41,7 @@ public class SupplierProductService {
      * Endpoint chính mà Inventory Service gọi khi tạo kỳ kế hoạch mới.
      * Trả về K, A, C, L của sản phẩm từ nhà cung cấp đang active.
      */
-    public SupplierProductResponse getByProductId(Long productId) {
+    public SupplierProductResponse getByProductId(String productId) {
         SupplierProduct sp = supplierProductRepository
                 .findActiveByProductId(productId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -83,6 +86,18 @@ public class SupplierProductService {
         SupplierProduct sp = findById(id);
         sp.setIsActive(true);
         supplierProductRepository.save(sp);
+    }
+
+    // GET MAP <PRODUCT ID, UNIT PRICE> BY LIST<PRODUCT ID>
+    public Map<String, BigDecimal> getMapProductUnit(List<String> productIds) {
+        List<SupplierProduct> supplierProducts = supplierProductRepository.findAll();
+        Map<String, BigDecimal> productUnit = new HashMap<>();
+        for (SupplierProduct sp : supplierProducts) {
+            if (productIds.contains(sp.getProductId()))
+                productUnit.put(sp.getProductId(), sp.getUnitPrice());
+
+        }
+        return productUnit;
     }
 
     // -------------------------------------------------------

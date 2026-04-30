@@ -11,6 +11,8 @@ import com.ecotel.inventory_optimization_service.service.InventoryCalculationSer
 import com.ecotel.inventory_optimization_service.service.InventoryParameterService;
 import com.ecotel.inventory_optimization_service.service.forecast.ForecastOrchestrator;
 import com.ecotel.inventory_optimization_service.service.supplier.SupplierServiceClient;
+import com.ecotel.shared_library.dto.response.ProductResponse;
+import com.ecotel.shared_library.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,13 +32,13 @@ public class InventoryPlanningService {
     private final InventoryParameterRepository  parameterRepository;
     private final InventoryResultRepository     resultRepository;
     private final OrderScheduleRepository       scheduleRepository;
-    private final ProductRepository             productRepository;
     private final WarehouseConfigRepository     warehouseConfigRepository;
     private final InventoryCalculationService   calculationService;
     private final ForecastOrchestrator          forecastOrchestrator;
     private final SupplierServiceClient         supplierServiceClient;
     private final InventoryPlanningMapper inventoryPlanningMapper;
     private final InventoryParameterService inventoryParameterService;
+    private final ProductService productService;
 
     // -------------------------------------------------------
     // LUỒNG CHÍNH: TẠO / REPLAN KẾ HOẠCH
@@ -59,7 +61,7 @@ public class InventoryPlanningService {
 //            throw new IllegalStateException(buildOverlapMessage(overlapping));
 //        }
 
-        Product         product  = findProduct(request.getProductId());
+        ProductResponse product  = findProduct(request.getProductId());
         WarehouseConfig config   = resolveWarehouseConfig(request);
         SnapshotData    snapshot = resolveSnapshot(request);
 
@@ -111,7 +113,7 @@ public class InventoryPlanningService {
         }
 
         InventoryParameter param = InventoryParameter.builder()
-                .product(product)
+                .productId(product.getId())
                 .warehouseConfig(config)
                 .planStartDate(planStartDate)
                 .planEndDate(planEndDate)
@@ -198,7 +200,7 @@ public class InventoryPlanningService {
      * Công thức: mô phỏng theo mô hình bổ sung dần từ ngày bắt đầu kế hoạch active
      * đến targetDate, dựa trên Q/ngày và lịch đặt hàng hiện có.
      */
-    public PredictedInventoryResponse predictInventory(Long productId, LocalDate targetDate) {
+    public PredictedInventoryResponse predictInventory(String productId, LocalDate targetDate) {
         Optional<InventoryParameter> activeOpt =
                 parameterRepository.findLatestActive(productId).stream().findFirst();
 
@@ -299,7 +301,7 @@ public class InventoryPlanningService {
 
             schedules.add(OrderSchedule.builder()
                     .inventoryResult(savedResult)
-                    .product(param.getProduct())
+                    .productId(param.getProductId())
                     .orderSequence(sequence++)
                     .orderDate(orderDate)
                     .expectedDeliveryDate(deliveryDate)
@@ -388,7 +390,7 @@ public class InventoryPlanningService {
         }
         // Nếu tồn kho không bao giờ chạm B trong kỳ → không cần đặt
         log.warn("Tồn kho không chạm B trong kỳ, không sinh lịch (productId={})",
-                param.getProduct().getId());
+                param.getProductId());
         return planEnd.plusDays(1);
     }
 
@@ -421,7 +423,7 @@ public class InventoryPlanningService {
         // Xây dựng danh sách ngày nhận hàng từ lịch đặt hàng đã sinh
         List<OrderSchedule> schedules = scheduleRepository
                 .findByProductIdAndOrderDateBetween(
-                        param.getProduct().getId(), simStart, targetDate.plusDays(leadDays));
+                        param.getProductId(), simStart, targetDate.plusDays(leadDays));
 
         double inv = result.getReorderPointB().doubleValue();
         if (param.getInitialInventory() != null) {
@@ -458,7 +460,7 @@ public class InventoryPlanningService {
                 request.getProductId(), resolved.planStartDate(), resolved.planEndDate());
     }
 
-    public ForecastSuggestionResponse getSuggestion(Long productId) {
+    public ForecastSuggestionResponse getSuggestion(String productId) {
         ForecastResult demandForecast   = forecastOrchestrator.forecastDemand(productId);
         ForecastResult leadTimeForecast = forecastOrchestrator.forecastLeadTime(productId);
 
@@ -506,9 +508,12 @@ public class InventoryPlanningService {
                 .max(String::compareTo).orElse("?");
     }
 
-    private Product findProduct(Long id) {
-        return productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Mặt hàng", id));
+    private ProductResponse findProduct(String productId) {
+        ProductResponse product = productService.getProductById(productId);
+        if (product == null) {
+            throw new ResourceNotFoundException("Sản phẩm không tồn tại: " + productId);
+        }
+        return product;
     }
 
     private WarehouseConfig resolveWarehouseConfig(InventoryParameterRequest request) {
@@ -593,7 +598,7 @@ public class InventoryPlanningService {
         return result;
     }
 
-    public InventoryParameterResponse getParameterRange(Long productId, YearMonth yearMonth) {
+    public InventoryParameterResponse getParameterRange(String productId, YearMonth yearMonth) {
         int yearMonthInt = yearMonth.getYear() * 100 + yearMonth.getMonthValue(); // 202604
         InventoryParameter params = parameterRepository.findBestMatchByMonth(productId, yearMonthInt)
                 .orElse(null);

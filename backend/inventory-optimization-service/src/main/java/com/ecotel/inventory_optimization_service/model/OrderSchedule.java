@@ -29,10 +29,8 @@ public class OrderSchedule {
     @JoinColumn(name = "inventory_result_id", nullable = false)
     private InventoryResult inventoryResult;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    private String productId;
 
     @Column(name = "order_sequence", nullable = false)
     private Integer orderSequence; // thứ tự lần đặt hàng (1, 2, 3...)

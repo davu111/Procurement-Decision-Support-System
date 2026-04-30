@@ -40,7 +40,7 @@ export default function ForecastPage() {
 
   useEffect(() => {
     api
-      .get("/inventory-products")
+      .get("/products")
       .then((response) => setProducts(response.data))
       .catch((error) => {
         console.error("Error fetching products:", error);
@@ -141,7 +141,7 @@ export default function ForecastPage() {
               recordsForForecast,
               {
                 id: product.id,
-                name: product.name,
+                name: product.productName,
                 unit: product.unit,
               },
             );
@@ -175,7 +175,7 @@ export default function ForecastPage() {
 
           const historicalResult: ForecastResult = {
             productId: productId,
-            productName: product.name,
+            productName: product.productName,
             model: "HISTORICAL_DATA_ONLY",
             mape: 0,
             dataPointsUsed: recordsForForecast.length,
@@ -274,7 +274,7 @@ export default function ForecastPage() {
                     <SelectItem key={p.id} value={String(p.id)}>
                       <div className="flex items-center gap-2">
                         <span>
-                          {p.code} - {p.name}
+                          {p.code} - {p.productName}
                         </span>
                       </div>
                     </SelectItem>

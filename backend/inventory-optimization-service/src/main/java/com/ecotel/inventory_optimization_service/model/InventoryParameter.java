@@ -29,10 +29,8 @@ public class InventoryParameter {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    private String productId;
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)

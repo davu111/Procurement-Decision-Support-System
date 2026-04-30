@@ -40,7 +40,7 @@ public class SupplierServiceClient {
                 .build();
     }
 
-    public Optional<SupplierProductData> getByProductId(Long productId) {
+    public Optional<SupplierProductData> getByProductId(String productId) {
         try {
             ApiResponse<SupplierProductData> response = restClient.get()
                     .uri("/api/supplier-products/by-product/{id}", productId)

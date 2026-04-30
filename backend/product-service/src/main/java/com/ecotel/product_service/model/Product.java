@@ -30,6 +30,9 @@ public class Product {
     @Column(name = "product_name", nullable = false, length = 200)
     String productName;
 
+    @Column(name = "code", nullable = false, length = 25)
+    String code;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_product_category"))

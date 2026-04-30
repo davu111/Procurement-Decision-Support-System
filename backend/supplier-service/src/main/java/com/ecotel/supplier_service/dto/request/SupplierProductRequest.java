@@ -13,7 +13,7 @@ import java.time.LocalDate;
 public class SupplierProductRequest {
 
     @NotNull(message = "product_id không được trống")
-    private Long productId;
+    private String productId;
 
     @NotNull(message = "Năng lực cung cấp K không được trống")
     @DecimalMin(value = "0.0001", message = "K phải > 0")

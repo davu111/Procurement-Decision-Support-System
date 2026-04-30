@@ -4,28 +4,34 @@ import com.ecotel.shared_library.dto.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
-public class WarehouseService {
+public class OrderScheduleService {
     private final WebClient.Builder webClientBuilder;
 
-    @Value("${external.warehouse-service.url}")
-    private String warehouseServiceUrl;
+    @Value("${external.order-schedule-service.url}")
+    private String orderScheduleServiceUrl;
 
-    // GET WAREHOUSE NAME BY ID
-    public String getWarehouseNameById(String warehouseId) {
-        return webClientBuilder.build().get()
-                .uri(warehouseServiceUrl + "/warehouses/name/{warehouseId}", warehouseId)
-
+    // GET MAP PRODUCT, QUANTITY
+    public Map<String, BigDecimal> getLastOrder(List<String> productIds) {
+        return webClientBuilder.build().post()
+                .uri(orderScheduleServiceUrl + "/order-schedules/last-order?date=" + LocalDate.now())
+                .bodyValue(productIds)
 //                .headers(headers -> {
 //                    assert tokenValue != null;
 //                    headers.setBearerAuth(tokenValue);
 //                }) // ✅ Gắn Authorization header
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<ApiResponse<String>>() {
+                .bodyToMono(new ParameterizedTypeReference<ApiResponse<Map<String, BigDecimal>>>() {
                 })
                 .map(ApiResponse::getData)  // ⚡ Lấy data từ wrapper
                 .block();

@@ -9,7 +9,6 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface InventoryPlanningMapper {
     InventoryParameter toInventoryParameter(InventoryParameterRequest request);
-    @Mapping(target = "productId", source = "product.id")
     @Mapping(target = "warehouseConfigId", source = "warehouseConfig.id")
     InventoryParameterResponse toInventoryParameterResponse(InventoryParameter parameter);
 }

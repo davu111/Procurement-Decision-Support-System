@@ -13,7 +13,7 @@ import java.util.Optional;
 @Repository
 public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Long> {
 
-    List<OrderSchedule> findByProductIdOrderByOrderDateAsc(Long productId);
+    List<OrderSchedule> findByProductIdOrderByOrderDateAsc(String productId);
 
     List<OrderSchedule> findByInventoryResultIdOrderByOrderSequenceAsc(Long inventoryResultId);
 
@@ -21,10 +21,10 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
     List<OrderSchedule> findByOrderDateBetween(
             @Param("from") LocalDate from, @Param("to") LocalDate to);
 
-    @Query("SELECT o FROM OrderSchedule o WHERE o.product.id = :productId " +
+    @Query("SELECT o FROM OrderSchedule o WHERE o.productId = :productId " +
             "AND o.orderDate BETWEEN :from AND :to ORDER BY o.orderDate ASC")
     List<OrderSchedule> findByProductIdAndOrderDateBetween(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
 
@@ -60,11 +60,11 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
         SELECT o FROM OrderSchedule o
         JOIN o.inventoryResult ir
         JOIN ir.inventoryParameter ip
-        WHERE o.product.id = :productId
+        WHERE o.productId = :productId
           AND o.orderDate BETWEEN :from AND :to
           AND NOT EXISTS (
               SELECT 1 FROM InventoryParameter active
-              WHERE active.product.id = :productId
+              WHERE active.productId = :productId
                 AND active.status = 'ACTIVE'
                 AND active.id <> ip.id
                 AND o.orderDate BETWEEN active.planStartDate AND active.planEndDate
@@ -75,7 +75,7 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
                   ip.status = 'SUPERSEDED'
                   AND NOT EXISTS (
                       SELECT 1 FROM InventoryParameter laterActive
-                      WHERE laterActive.product.id = :productId
+                      WHERE laterActive.productId = :productId
                         AND laterActive.status = 'ACTIVE'
                         AND laterActive.planStartDate <= ip.planEndDate
                         AND o.orderDate >= laterActive.planStartDate
@@ -85,7 +85,7 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
         ORDER BY o.orderDate ASC
     """)
     List<OrderSchedule> findEffectiveByProductIdAndDateRange(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("from")      LocalDate from,
             @Param("to")        LocalDate to);
 
@@ -99,7 +99,7 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
         WHERE o.orderDate BETWEEN :from AND :to
           AND NOT EXISTS (
               SELECT 1 FROM InventoryParameter active
-              WHERE active.product.id = o.product.id
+              WHERE active.productId = o.productId
                 AND active.status = 'ACTIVE'
                 AND active.id <> ip.id
                 AND o.orderDate BETWEEN active.planStartDate AND active.planEndDate
@@ -110,7 +110,7 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
                   ip.status = 'SUPERSEDED'
                   AND NOT EXISTS (
                       SELECT 1 FROM InventoryParameter laterActive
-                      WHERE laterActive.product.id = o.product.id
+                      WHERE laterActive.productId = o.productId
                         AND laterActive.status = 'ACTIVE'
                         AND laterActive.planStartDate <= ip.planEndDate
                         AND o.orderDate >= laterActive.planStartDate
@@ -134,14 +134,14 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
      */
     @Query("""
         SELECT o FROM OrderSchedule o
-        WHERE o.product.id = :productId
+        WHERE o.productId = :productId
           AND o.actualDeliveryDate IS NULL
           AND o.orderDate < :fromDate
           AND o.expectedDeliveryDate > :fromDate
         ORDER BY o.expectedDeliveryDate ASC
     """)
     List<OrderSchedule> findPendingReceipts(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("fromDate")  LocalDate fromDate);
 
     /**
@@ -151,14 +151,14 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
     @Query("""
         SELECT os
         FROM OrderSchedule os
-        WHERE os.product.id = :productId
+        WHERE os.productId = :productId
           AND os.inventoryResult.inventoryParameter.status IN ('ACTIVE', 'SUPERSEDED')
           AND os.orderDate <= :newEnd
           AND os.expectedDeliveryDate >= :newStart
         ORDER BY os.orderDate ASC
         """)
     List<OrderSchedule> findOverlappingSchedules(
-            @Param("productId") Long productId,
+            @Param("productId") String productId,
             @Param("newStart") LocalDate newStart,
             @Param("newEnd") LocalDate newEnd
     );
@@ -215,4 +215,23 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
         WHERE os.inventoryResult.inventoryParameter.id = :parameterId
         """)
     long countByParameterId(@Param("parameterId") Long parameterId);
+
+    /**
+     * Lấy ngày đặt hàng gần nhất trước một ngày nhất định cho một danh sách sản phẩm.
+     */
+    @Query("""
+        SELECT os
+        FROM OrderSchedule os
+        WHERE os.productId IN :productIds
+          AND os.orderDate = (
+              SELECT MAX(os2.orderDate)
+              FROM OrderSchedule os2
+              WHERE os2.productId = os.productId
+                AND os2.orderDate <= :date
+          )
+    """)
+    List<OrderSchedule> findLatestOrderBeforeDate(
+            @Param("productIds") List<String> productIds,
+            @Param("date") LocalDate date
+    );
 }

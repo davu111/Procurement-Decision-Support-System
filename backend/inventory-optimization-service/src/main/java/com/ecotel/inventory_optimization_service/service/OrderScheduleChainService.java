@@ -29,7 +29,7 @@ public class OrderScheduleChainService {
      * @return Danh sách OrderSchedules được sắp xếp theo orderDate
      */
     @Transactional(readOnly = true)
-    public List<OrderSchedule> getActiveOrderScheduleChain(Long productId) {
+    public List<OrderSchedule> getActiveOrderScheduleChain(String productId) {
         // Tìm InventoryParameter không bị ghì đè (top-level)
         InventoryParameter topLevelParam = findTopLevelParameter(productId);
 
@@ -60,7 +60,7 @@ public class OrderScheduleChainService {
     /**
      * Tìm InventoryParameter không bị ghì đè (không có parameter nào khác có param_receipt = id này)
      */
-    private InventoryParameter findTopLevelParameter(Long productId) {
+    private InventoryParameter findTopLevelParameter(String productId) {
         List<InventoryParameter> candidates = parameterRepository
                 .findTopLevelParametersByProduct(productId);
 
@@ -164,7 +164,7 @@ public class OrderScheduleChainService {
      * Lấy toàn bộ chuỗi ghì đè (từ top đến bottom)
      */
     @Transactional(readOnly = true)
-    public List<InventoryParameter> getParameterChain(Long productId) {
+    public List<InventoryParameter> getParameterChain(String productId) {
         List<InventoryParameter> chain = new ArrayList<>();
         InventoryParameter currentParam = findTopLevelParameter(productId);
 
