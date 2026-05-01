@@ -13,6 +13,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE)
 public class ProductImageResponse {
     Long id;
+    String productId;
     String bucketName;
     String objectName;
     String contentType;

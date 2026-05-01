@@ -114,31 +114,50 @@ public class WordService {
      */
     private void replacePlaceholdersInParagraph(XWPFParagraph paragraph, TransactionReport transaction) {
         List<XWPFRun> runs = paragraph.getRuns();
-        if (runs == null || runs.isEmpty()) {
-            return;
-        }
+        if (runs == null || runs.isEmpty()) return;
 
-        // Gộp toàn bộ text của paragraph
-        StringBuilder fullText = new StringBuilder();
-        for (XWPFRun run : runs) {
-            String t = run.getText(0);
-            fullText.append(t != null ? t : "");
-        }
+        for (int i = 0; i < runs.size(); i++) {
+            XWPFRun run = runs.get(i);
+            String text = run.getText(0);
+            if (text == null) continue;
 
-        String combined = fullText.toString();
+            // Case 1: placeholder nằm trọn trong 1 run
+            if (text.contains("{{") && text.contains("}}")) {
+                String replaced = resolvePlaceholders(text, transaction);
+                run.setText(replaced, 0);
+            }
 
-        // Chỉ xử lý nếu có placeholder
-        if (!combined.contains("{{")) {
-            return;
-        }
+            // Case 2: placeholder bị split qua nhiều run
+            else if (text.contains("{{")) {
+                StringBuilder full = new StringBuilder(text);
+                int endRun = i;
 
-        // Thay thế tất cả placeholders
-        String replaced = resolvePlaceholders(combined, transaction);
+                // tìm run kết thúc }}
+                while (endRun + 1 < runs.size()) {
+                    endRun++;
+                    String next = runs.get(endRun).getText(0);
+                    if (next != null) {
+                        full.append(next);
+                        if (next.contains("}}")) break;
+                    }
+                }
 
-        // Ghi kết quả vào run đầu tiên, xóa nội dung các run còn lại
-        runs.get(0).setText(replaced, 0);
-        for (int i = 1; i < runs.size(); i++) {
-            runs.get(i).setText("", 0);
+                String combined = full.toString();
+
+                if (combined.contains("}}")) {
+                    String replaced = resolvePlaceholders(combined, transaction);
+
+                    // 👉 set vào run đầu tiên (GIỮ STYLE RUN NÀY)
+                    run.setText(replaced, 0);
+
+                    // 👉 clear các run còn lại (KHÔNG remove)
+                    for (int j = i + 1; j <= endRun; j++) {
+                        runs.get(j).setText("", 0);
+                    }
+
+                    i = endRun; // skip
+                }
+            }
         }
     }
 
@@ -387,8 +406,20 @@ public class WordService {
             for (XWPFTableCell cell : rows.get(i).getTableCells()) {
                 String text = getCellFullText(cell);
                 if (text.contains("{{grandTotal}}")) {
-                    setCellValue(cell, formatCurrency(grandTotal), null);
-                    return; // tìm thấy rồi thì dừng
+
+                    // TRY replace trực tiếp trong run (giữ format)
+                    for (XWPFParagraph p : cell.getParagraphs()) {
+                        for (XWPFRun r : p.getRuns()) {
+                            String t = r.getText(0);
+                            if (t != null && t.contains("{{grandTotal}}")) {
+                                r.setText(t.replace("{{grandTotal}}", formatCurrency(grandTotal)), 0);
+                                return;
+                            }
+                        }
+                    }
+
+                    // fallback (ít xảy ra)
+                    setCellValue(cell, formatCurrency(grandTotal), cell);
                 }
             }
         }

@@ -13,7 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -54,6 +58,15 @@ public class MinioService {
         ProductImageResponse image = service.getByProductId(productId);
         System.out.println(image);
         return generatePresignedUrl(image.getBucketName(), image.getObjectName());
+    }
+    public Map<String, String> getImageUrls(List<String> productIds) {
+        List<ProductImageResponse> images = service.getByProductIds(productIds);
+
+        return images.stream()
+                .collect(Collectors.toMap(
+                        ProductImageResponse::getProductId,
+                        img -> generatePresignedUrl(img.getBucketName(), img.getObjectName())
+                ));
     }
     // Upload image to Minio
     public void uploadProductImage(String productId, MultipartFile file) {

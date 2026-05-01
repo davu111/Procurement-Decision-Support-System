@@ -7,6 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/product-images")
 @RequiredArgsConstructor
@@ -20,6 +23,16 @@ public class ProductImageController {
         return ApiResponse.<String>builder()
                 .message("Product images retrieved successfully")
                 .data(minioService.getImageUrl(productId))
+                .build();
+    }
+
+    @PostMapping("/batch-urls")
+    public ApiResponse<Map<String, String>> getProductImagesBatch(@RequestBody List<String> productIds) {
+        Map<String, String> result = minioService.getImageUrls(productIds);
+
+        return ApiResponse.<Map<String, String>>builder()
+                .message("Product images retrieved successfully")
+                .data(result)
                 .build();
     }
 

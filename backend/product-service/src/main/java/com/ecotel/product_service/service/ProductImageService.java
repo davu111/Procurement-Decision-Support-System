@@ -20,6 +20,11 @@ public class ProductImageService {
                 .map(mapper::toProductImageResponse)
                 .orElse(null);
     }
+    public List<ProductImageResponse> getByProductIds(List<String> productIds) {
+        return repository.findByProductIdIn(productIds).stream()
+                .map(mapper::toProductImageResponse)
+                .toList();
+    }
 
     public List<ProductImageResponse> getAll() {
         return repository.findAll().stream()
