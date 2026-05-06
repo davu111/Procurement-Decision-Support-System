@@ -8,10 +8,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import FileImporter from "@/components/forecast/FileImporter";
 import ForecastChart from "@/components/forecast/ForecastChart";
+import ProductSelector from "@/components/product/ProductSelector";
 import type { Product } from "@/types/inventory-opt/product";
 import type { ConsumptionHistory } from "@/types/inventory-opt/consumption-history";
 import api from "@/api/axiosConfig";
@@ -40,7 +39,7 @@ export default function ForecastPage() {
 
   useEffect(() => {
     api
-      .get("/products")
+      .get("/products/all")
       .then((response) => setProducts(response.data))
       .catch((error) => {
         console.error("Error fetching products:", error);
@@ -48,18 +47,10 @@ export default function ForecastPage() {
       });
   }, []);
 
-  const [importedRecords, setImportedRecords] = useState<ConsumptionRecord[]>(
-    [],
-  );
-
   const [selectedProduct, setSelectedProduct] = useState<string | "">("");
   const [forecastResult, setForecastResult] = useState<ForecastResult | null>(
     null,
   );
-
-  const handleImportSuccess = (records: ConsumptionRecord[]) => {
-    setImportedRecords((prev) => [...prev, ...records]);
-  };
 
   const handleProductSelect = (id: string) => {
     setSelectedProduct(id);
@@ -75,7 +66,7 @@ export default function ForecastPage() {
       return;
     }
 
-    const productId = Number(selectedProduct);
+    const productId = selectedProduct;
     const product = products.find((p) => p.id === productId);
     if (!product) {
       setError("Không tìm thấy mặt hàng");
@@ -240,48 +231,20 @@ export default function ForecastPage() {
         </Alert>
       )}
 
-      {/* Step 1: Import */}
-      <div className="bg-card border rounded-lg p-5 space-y-4">
-        <h2 className="font-semibold text-foreground">
-          Bước 1: Import dữ liệu tiêu thụ
-        </h2>
-        <FileImporter onImportSuccess={handleImportSuccess} />
-
-        {importedRecords.length > 0 && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Badge variant="outline">{importedRecords.length} bản ghi</Badge>
-            đã có trong hệ thống
-          </div>
-        )}
-      </div>
-
       {/* Step 2: Select product & view forecast */}
       <div className="bg-card border rounded-lg p-5 space-y-4">
         <h2 className="font-semibold text-foreground">
-          Bước 2: Chọn mặt hàng để xem dự đoán
+          Chọn mặt hàng để xem dự đoán
         </h2>
 
         <div className="flex flex-col md:flex-row gap-4">
           <div className="max-w-sm space-y-2 flex-1">
             <Label>Mặt hàng</Label>
-            <Select value={selectedProduct} onValueChange={handleProductSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder="Chọn mặt hàng..." />
-              </SelectTrigger>
-              <SelectContent>
-                {products.map((p) => {
-                  return (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      <div className="flex items-center gap-2">
-                        <span>
-                          {p.code} - {p.productName}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+            <ProductSelector
+              mode="combobox"
+              value={selectedProduct}
+              onChange={handleProductSelect}
+            />
           </div>
 
           <div className="max-w-sm space-y-2 flex-1">

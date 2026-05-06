@@ -21,10 +21,51 @@ export interface FullWarehouse {
   items: number;
   inventories: InventoryItem[];
   isActive?: boolean | string;
+  configId?: number;
+}
+
+export interface WarehouseConfigResponse {
+  id: number;
+  interestRate: number;
+  warehouseMonthlyCost: number;
+  warehouseMaxCapacity: number;
+  spoilageRate: number;
+  insuranceRate: number;
+  storageCostCoefficient?: number;
+  updatedAt?: string;
+}
+
+export interface WarehouseConfigRequest {
+  warehouseId: string;
+  interestRate: number;
+  warehouseMonthlyCost: number;
+  warehouseMaxCapacity: number;
+  spoilageRate: number;
+  insuranceRate: number;
 }
 
 export interface WarehouseRequest {
   warehouseName: string;
+  warehouseConfigRequest: WarehouseConfigRequest;
+}
+
+export interface WarehouseConfigUpdateRequest {
+  id?: number;
+  warehouseId?: string;
+  interestRate?: number;
+  warehouseMonthlyCost?: number;
+  warehouseMaxCapacity?: number;
+  spoilageRate?: number;
+  insuranceRate?: number;
+  storageCostCoefficient?: number;
+  updatedAt?: string;
+}
+
+export interface WarehouseUpdateRequest {
+  id: string;
+  warehouseName?: string;
+  warehouseConfigUpdateRequest?: WarehouseConfigUpdateRequest;
+  isActive?: boolean;
 }
 
 export type WorkType = "IMPORT" | "EXPORT";

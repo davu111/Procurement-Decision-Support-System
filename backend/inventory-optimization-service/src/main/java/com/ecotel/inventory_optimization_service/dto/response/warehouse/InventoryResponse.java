@@ -1,4 +1,4 @@
-package com.ecotel.warehouse_service.dto.response;
+package com.ecotel.inventory_optimization_service.dto.response.warehouse;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;

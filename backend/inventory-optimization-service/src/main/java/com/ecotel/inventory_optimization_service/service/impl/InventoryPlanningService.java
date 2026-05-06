@@ -139,6 +139,8 @@ public class InventoryPlanningService {
 
         InventoryCalculationResult calcResult = calculationService.calculate(param);
         InventoryResult result = saveResult(param, calcResult);
+        calcResult.setId(result.getId());
+        calcResult.setInventoryParameterId(result.getInventoryParameter().getId());
         List<OrderSchedule> schedules = generateOrderSchedule(param, calcResult, previousParam);
 
         inventoryParameterService.updateActualDates(param, schedules, result);
@@ -522,7 +524,7 @@ public class InventoryPlanningService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Cấu hình kho", request.getWarehouseConfigId()));
         }
-        return warehouseConfigRepository.findByIsDefaultTrue().orElse(null);
+        throw new RuntimeException("Not found warehouse config with request" + request);
     }
 
     private SnapshotData resolveSnapshot(InventoryParameterRequest request) {

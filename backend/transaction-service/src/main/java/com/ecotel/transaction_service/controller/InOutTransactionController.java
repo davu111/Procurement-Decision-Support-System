@@ -1,23 +1,18 @@
 package com.ecotel.transaction_service.controller;
 
 import com.ecotel.shared_library.dto.response.ApiResponse;
+import com.ecotel.shared_library.dto.response.PageResponse;
 import com.ecotel.transaction_service.dto.request.InOutTransactionRequest;
 import com.ecotel.transaction_service.dto.request.InOutTransactionUpdateRequest;
 import com.ecotel.transaction_service.dto.response.InOutTransactionResponse;
-import com.ecotel.transaction_service.dto.response.PageResponse;
 import com.ecotel.transaction_service.mapper.PageMapper;
 import com.ecotel.transaction_service.service.InOutTransactionService;
 import com.ecotel.transaction_service.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 

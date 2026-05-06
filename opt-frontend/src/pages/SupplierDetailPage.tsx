@@ -6,7 +6,7 @@ import type {
   SupplierProduct,
   SupplierProductRequest,
 } from "@/types/inventory-opt/supplier";
-import { mockProducts } from "@/data/mockData";
+import ProductSelector from "@/components/product/ProductSelector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -343,26 +343,16 @@ export default function SupplierDetailPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
-            <div className="space-y-2 col-span-2">
-              <Label>
+            <div className="flex flex-col gap-1 space-y-2">
+              <Label className="mt-1">
                 Mặt hàng <span className="text-destructive">*</span>
               </Label>
-              <Select
+              <ProductSelector
+                mode="combobox"
                 value={form.productId ? form.productId.toString() : ""}
-                onValueChange={(v) => setField("productId", Number(v))}
+                onChange={(v) => setField("productId", Number(v))}
                 disabled={!!editingId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn mặt hàng..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockProducts.map((p) => (
-                    <SelectItem key={p.id} value={p.id.toString()}>
-                      {p.code} – {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             </div>
             <div className="space-y-2">
               <Label>K – Năng lực cung cấp / tháng</Label>

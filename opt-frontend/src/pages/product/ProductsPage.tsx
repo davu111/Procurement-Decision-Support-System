@@ -52,8 +52,27 @@ import type {
 } from "@/types/product/product";
 import type { ProductCategory } from "@/types/product/productCategory";
 import { isCategoryActive } from "@/types/product/productCategory";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 
 type StatusFilter = "ALL" | ProductStatus;
+type SortOption = "name_desc" | "name_asc" | "newest" | "oldest";
+
+const SORT_MAP: Record<SortOption, string> = {
+  name_desc: "productName,desc",
+  name_asc: "productName,asc",
+  newest: "updatedAt,desc",
+  oldest: "createdAt,asc",
+};
+
+const PAGE_SIZE = 12;
 
 const emptyForm: ProductRequest = {
   code: "",
@@ -73,6 +92,10 @@ export default function ProductsPage() {
 
   const [categoryId, setCategoryId] = useState<string>("all");
   const [status, setStatus] = useState<StatusFilter>("ALL");
+  const [sort, setSort] = useState<SortOption>("name_desc");
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -91,8 +114,21 @@ export default function ProductsPage() {
       const data = await productApi.list({
         categoryId,
         status: status === "ALL" ? undefined : status,
+        page,
+        size: PAGE_SIZE,
+        sort: SORT_MAP[sort],
       });
-      const list = data || [];
+      // Hỗ trợ cả PageResponse lẫn mảng thuần
+      let list: Product[] = [];
+      if (Array.isArray(data)) {
+        list = data;
+        setTotalPages(1);
+        setTotalElements(data.length);
+      } else if (data && Array.isArray((data as any).content)) {
+        list = (data as any).content;
+        setTotalPages((data as any).totalPages ?? 1);
+        setTotalElements((data as any).totalElements ?? list.length);
+      }
       setProducts(list);
       // Fetch ảnh hàng loạt
       const ids = list.map((p) => p.id).filter(Boolean);
@@ -130,10 +166,15 @@ export default function ProductsPage() {
     loadCategories();
   }, []);
 
+  // Reset về trang 0 khi đổi filter/sort
+  useEffect(() => {
+    setPage(0);
+  }, [categoryId, status, sort]);
+
   useEffect(() => {
     loadProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryId, status]);
+  }, [categoryId, status, sort, page]);
 
   const activeCategories = useMemo(
     () => categories.filter((c) => isCategoryActive(c.isActive)),
@@ -290,6 +331,31 @@ export default function ProductsPage() {
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Sắp xếp</Label>
+          <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name_desc">Tên sản phẩm (Z→A)</SelectItem>
+              <SelectItem value="name_asc">Tên sản phẩm (A→Z)</SelectItem>
+              <SelectItem value="newest">Mới nhất</SelectItem>
+              <SelectItem value="oldest">Cũ nhất</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="ml-auto text-xs text-muted-foreground">
+          {totalElements > 0 && (
+            <>
+              Tổng:{" "}
+              <span className="font-medium text-foreground">
+                {totalElements}
+              </span>{" "}
+              sản phẩm
+            </>
+          )}
+        </div>
       </div>
 
       {/* Grid */}
@@ -382,7 +448,66 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Create / Edit Dialog */}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page > 0) setPage(page - 1);
+                }}
+                className={cn(
+                  page === 0 && "pointer-events-none opacity-50",
+                  "cursor-pointer",
+                )}
+              />
+            </PaginationItem>
+            {Array.from({ length: totalPages }).map((_, idx) => {
+              // Hiển thị gọn: trang đầu, cuối, hiện tại ±1
+              const isEdge = idx === 0 || idx === totalPages - 1;
+              const isNear = Math.abs(idx - page) <= 1;
+              if (!isEdge && !isNear) {
+                if (idx === 1 || idx === totalPages - 2) {
+                  return (
+                    <PaginationItem key={`e-${idx}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  );
+                }
+                return null;
+              }
+              return (
+                <PaginationItem key={idx}>
+                  <PaginationLink
+                    isActive={idx === page}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPage(idx);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    {idx + 1}
+                  </PaginationLink>
+                </PaginationItem>
+              );
+            })}
+            <PaginationItem>
+              <PaginationNext
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page < totalPages - 1) setPage(page + 1);
+                }}
+                className={cn(
+                  page >= totalPages - 1 && "pointer-events-none opacity-50",
+                  "cursor-pointer",
+                )}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

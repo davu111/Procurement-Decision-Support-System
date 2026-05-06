@@ -3,6 +3,8 @@ import type {
   Warehouse,
   FullWarehouse,
   WarehouseRequest,
+  WarehouseUpdateRequest,
+  WarehouseConfigResponse,
   TransactionRequest,
   InventoryItem,
   InOutTransaction,
@@ -36,9 +38,9 @@ export const warehouseApi = {
       .post<never, { data: Warehouse }>("/warehouses", data)
       .then((r) => r.data),
 
-  update: (id: string, data: WarehouseRequest) =>
+  update: (data: WarehouseUpdateRequest) =>
     inventoryApi
-      .put<never, { data: Warehouse }>(`/warehouses/${id}`, data)
+      .put<never, { data: Warehouse }>("/warehouses", data)
       .then((r) => r.data),
 
   deactivate: (id: string) =>
@@ -49,6 +51,14 @@ export const warehouseApi = {
   activate: (id: string) =>
     inventoryApi
       .patch<never, { data: Warehouse }>(`/warehouses/activate/${id}`)
+      .then((r) => r.data),
+
+  getConfigById: (configId: number) =>
+    inventoryApi
+      .get<
+        never,
+        { data: WarehouseConfigResponse }
+      >(`/warehouse-config/${configId}`)
       .then((r) => r.data),
 };
 

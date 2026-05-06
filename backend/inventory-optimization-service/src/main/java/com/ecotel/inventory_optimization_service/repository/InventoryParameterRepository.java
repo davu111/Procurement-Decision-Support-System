@@ -160,7 +160,7 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
             @Param("newEnd") LocalDate newEnd
     );
 
-    Optional<InventoryParameter> findByProductIdIn(List<String> productIds);
+    List<InventoryParameter> findByProductIdIn(List<String> productIds);
 
     /**
      * Tìm bản ghi InventoryParameter phù hợp nhất với product_id và khoảng thời gian yêu cầu.

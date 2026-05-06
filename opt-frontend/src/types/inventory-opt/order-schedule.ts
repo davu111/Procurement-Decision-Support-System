@@ -1,7 +1,7 @@
 export interface OrderSchedule {
   id: number;
   inventoryResultId: number;
-  productId: number;
+  productId: string;
   orderSequence: number;
   orderDate: string;
   expectedDeliveryDate: string;
@@ -18,7 +18,7 @@ export interface OrderScheduleChain {
   id: number;
   inventoryResultId: number;
   parameterId: number;
-  productId: number;
+  productId: string;
   orderSequence: number;
   orderDate: string;
   expectedDeliveryDate: string;

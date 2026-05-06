@@ -15,7 +15,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     api
-      .get("/products")
+      .get("/products/all")
       .then((response) => setProducts(response.data))
       .catch((error) => console.error("Error fetching products:", error));
 

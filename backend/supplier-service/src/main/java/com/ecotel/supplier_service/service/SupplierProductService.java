@@ -1,5 +1,7 @@
 package com.ecotel.supplier_service.service;
 
+import com.ecotel.shared_library.dto.response.ProductResponse;
+import com.ecotel.shared_library.service.ProductService;
 import com.ecotel.supplier_service.dto.request.SupplierProductRequest;
 import com.ecotel.supplier_service.dto.request.SupplierProductUpdateRequest;
 import com.ecotel.supplier_service.dto.response.SupplierProductResponse;
@@ -27,10 +29,18 @@ public class SupplierProductService {
     private final SupplierProductRepository supplierProductRepository;
     private final SupplierRepository supplierRepository;
     private final SupplierProductMapper supplierProductMapper;
+    private final ProductService productService;
 
     public List<SupplierProductResponse> getBySupplierId(UUID supplierId) {
-        return supplierProductRepository.findBySupplierId(supplierId)
-                .stream().map(supplierProductMapper::toSupplierProductResponse).collect(Collectors.toList());
+        List<SupplierProductResponse> supplierProductResponses = supplierProductRepository.findBySupplierId(supplierId)
+                .stream().map(supplierProductMapper::toSupplierProductResponse).toList();
+        List<String> productIds = supplierProductResponses
+                .stream()
+                .map(SupplierProductResponse::getProductId)
+                .toList();
+        Map<String, String> productMap = productService.getProductNameByIds(productIds);
+        supplierProductResponses.forEach(sp -> {sp.setProductName(productMap.get(sp.getProductId()));});
+        return supplierProductResponses;
     }
 
     public SupplierProductResponse getById(UUID id) {

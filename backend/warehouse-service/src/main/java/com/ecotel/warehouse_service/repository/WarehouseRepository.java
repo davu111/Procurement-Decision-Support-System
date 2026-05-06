@@ -9,4 +9,5 @@ import java.util.Optional;
 
 @Repository
 public interface WarehouseRepository extends JpaRepository<Warehouse, String> {
+    Optional<Warehouse> findByConfigId(Long configId);
 }

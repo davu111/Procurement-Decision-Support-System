@@ -19,7 +19,7 @@ public class ProductService {
     // GET PRODUCT BY ID
     public ProductResponse getProductById(String id) {
         return webClient.get()
-                .uri(productServiceUrl + "/{id}", id)
+                .uri(productServiceUrl + "/products/{id}", id)
 //                .headers(headers -> {
 //                    assert tokenValue != null;
 //                    headers.setBearerAuth(tokenValue);
@@ -50,7 +50,7 @@ public class ProductService {
 
     // GET PRODUCT ACTIVE
     public List<ProductResponse> getActiveTrue() {
-        return webClient.post()
+        return webClient.get()
                 .uri(productServiceUrl + "/products/get-active")
 
 //                .headers(headers -> {

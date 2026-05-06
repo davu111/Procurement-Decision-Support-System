@@ -162,7 +162,7 @@ public class InventoryPlanningController {
                 scheduleRepository.findByProductIdAndOrderDateBetween(productId, from, to)));
     }
 
-    @GetMapping("/parameters/{id}")
+    @GetMapping("/parameters/{productId}")
     public ResponseEntity<ApiResponse<InventoryParameterResponse>> getParameterById(
             @PathVariable String productId,
             @RequestParam String yearMonth) {  // "2026-04"

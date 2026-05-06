@@ -11,6 +11,7 @@ import org.mapstruct.MappingTarget;
 @Mapper(componentModel = "spring")
 public interface SupplierProductMapper {
     SupplierProduct toSupplierProduct(SupplierProductRequest request);
+    @Mapping(target = "supplierName", source = "supplier.supplierName")
     SupplierProductResponse toSupplierProductResponse(SupplierProduct supplierProduct);
 
     @Mapping(target = "isActive", ignore = true) // Không cập nhật trường isActive từ request

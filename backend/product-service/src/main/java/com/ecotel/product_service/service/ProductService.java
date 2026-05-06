@@ -1,6 +1,7 @@
 package com.ecotel.product_service.service;
 
 import com.ecotel.product_service.dto.request.ProductRequest;
+import com.ecotel.product_service.mapper.PageMapper;
 import com.ecotel.product_service.model.ProductCategory;
 import com.ecotel.product_service.repository.ProductCategoryRepository;
 import com.ecotel.product_service.repository.ProductRepository;
@@ -9,9 +10,12 @@ import com.ecotel.product_service.enums.ProductStatus;
 import com.ecotel.product_service.mapper.ProductMapper;
 import com.ecotel.product_service.model.Product;
 import com.ecotel.shared_library.dto.response.ApiResponse;
+import com.ecotel.shared_library.dto.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -26,6 +30,7 @@ public class ProductService {
     private final ProductCategoryRepository productCategoryRepository;
     private final ProductMapper productMapper;
     private final WebClient webClient;
+    private final PageMapper pageMapper;
 
     // GET PRODUCTS WITH FILTERS
     public List<ProductResponse> getProducts(String categoryId, ProductStatus status) {
@@ -45,6 +50,31 @@ public class ProductService {
         return productRepository.findAll(spec).stream()
                 .map(productMapper::toProductResponse)
                 .toList();
+    }
+
+    // GET PRODUCTS WITH FILTERS PAGE
+    public PageResponse<ProductResponse> getProductsPage(
+            String categoryId,
+            ProductStatus status,
+            Pageable pageable
+    ) {
+        Specification<Product> spec = (root, query, cb) -> null;
+
+        if (categoryId != null && !"all".equals(categoryId)) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("category").get("id"), categoryId));
+        }
+
+        if (status != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("status"), status));
+        }
+
+        Page<Product> page = productRepository.findAll(spec, pageable);
+
+        Page<ProductResponse> mappedPage = page.map(productMapper::toProductResponse);
+
+        return pageMapper.toPageResponse(mappedPage);
     }
 
     // GET PRODUCT BY ID

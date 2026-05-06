@@ -8,25 +8,40 @@ import type {
 export interface ProductLite {
   id: string | number;
   productName?: string;
-  name?: string;
-  productCode?: string;
   code?: string;
   unit?: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 }
 
 export const productApi = {
   getAll: () =>
     inventoryApi
-      .get<never, { data: ProductLite[] }>("/products")
+      .get<never, { data: ProductLite[] }>("/products/all")
       .then((r) => r.data)
       .catch(() => [] as ProductLite[]),
 
-  list: (params?: { categoryId?: string; status?: ProductStatus }) =>
+  list: (params?: {
+    categoryId?: string;
+    status?: ProductStatus;
+    page?: number;
+    size?: number;
+    sort?: string; // e.g. "productName,asc" | "updatedAt,desc" | "createdAt,asc"
+  }) =>
     inventoryApi
-      .get<never, { data: Product[] }>("/products", {
+      .get<never, { data: PageResponse<Product> | Product[] }>("/products", {
         params: {
           categoryId: params?.categoryId ?? "all",
           ...(params?.status ? { status: params.status } : {}),
+          page: params?.page ?? 0,
+          size: params?.size ?? 12,
+          ...(params?.sort ? { sort: params.sort } : {}),
         },
       })
       .then((r) => r.data),

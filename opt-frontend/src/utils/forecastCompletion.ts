@@ -13,7 +13,7 @@ import type { ForecastSuggestionResponse } from "../types/inventory-opt/forecast
 export function completeForecastDataFromBackend(
   backendResponse: ForecastSuggestionResponse,
   consumptionRecords: ConsumptionRecord[],
-  product: { id: number; name: string; unit: string },
+  product: { id: string; name: string; unit: string },
 ): ForecastResult {
   const { demandForecast } = backendResponse;
 

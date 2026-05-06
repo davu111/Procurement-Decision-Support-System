@@ -1,4 +1,4 @@
-package com.ecotel.transaction_service.dto.response;
+package com.ecotel.shared_library.dto.response;
 
 import lombok.Builder;
 import lombok.Data;

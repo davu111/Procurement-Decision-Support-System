@@ -1,5 +1,5 @@
 export interface ConsumptionRecord {
-  productId: number;
+  productId: string;
   periodStartDate: string;
   periodEndDate: string;
   actualConsumption: number;
@@ -52,7 +52,7 @@ export interface ForecastPoint {
 }
 
 export interface ForecastResult {
-  productId: number;
+  productId: string;
   productName: string;
   model: ForecastModel;
   mape: number;

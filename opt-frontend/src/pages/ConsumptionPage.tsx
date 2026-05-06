@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { mockProducts } from "@/data/mockData";
 import api from "@/api/axiosConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { ConsumptionRecord } from "@/types/forecast";
 import { CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import ProductSelector from "@/components/product/ProductSelector";
+import FileImporter from "@/components/forecast/FileImporter";
+import { Badge } from "@/components/ui/badge";
 import type { ConsumptionHistoryRequest } from "@/types/inventory-opt/consumption-history";
 
 export default function ConsumptionPage() {
@@ -25,12 +28,20 @@ export default function ConsumptionPage() {
   const [actualLeadTime, setActualLeadTime] = useState(0);
   const [actualSupplyRate, setActualSupplyRate] = useState(0);
   const [notes, setNotes] = useState("");
+  const [importedRecords, setImportedRecords] = useState<ConsumptionRecord[]>(
+    [],
+  );
+
+  const handleImportSuccess = (records: ConsumptionRecord[]) => {
+    setImportedRecords((prev) => [...prev, ...records]);
+  };
 
   // 🔥 Call API khi product + month thay đổi
   useEffect(() => {
     if (!productId || !yearMonth) return;
 
     const fetchData = async () => {
+      console.log("Fetching data for", productId, yearMonth);
       try {
         const res = await api.get(`/inventory/parameters/${productId}`, {
           params: { yearMonth },
@@ -60,13 +71,15 @@ export default function ConsumptionPage() {
   const buildPeriodDates = (yearMonth: string) => {
     const [year, month] = yearMonth.split("-").map(Number);
 
-    // ngày đầu tháng
     const start = new Date(year, month - 1, 1);
-
-    // trick: ngày 0 của tháng sau = ngày cuối tháng hiện tại
     const end = new Date(year, month, 0);
 
-    const format = (d: Date) => d.toISOString().split("T")[0]; // YYYY-MM-DD
+    const format = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
 
     return {
       periodStartDate: format(start),
@@ -88,7 +101,7 @@ export default function ConsumptionPage() {
       const { periodStartDate, periodEndDate } = buildPeriodDates(yearMonth);
 
       const payload: ConsumptionHistoryRequest = {
-        productId: Number(productId),
+        productId: productId,
         periodStartDate,
         periodEndDate,
         actualConsumption: Number(actualConsumption),
@@ -125,6 +138,20 @@ export default function ConsumptionPage() {
     <div className="space-y-6 max-w-3xl">
       <h1 className="text-2xl font-bold">Nhập tiêu thụ thực tế</h1>
 
+      <div className="bg-card border rounded-lg p-5 space-y-4">
+        <h2 className="font-semibold text-foreground">
+          Import dữ liệu tiêu thụ
+        </h2>
+        <FileImporter onImportSuccess={handleImportSuccess} />
+
+        {importedRecords.length > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Badge variant="outline">{importedRecords.length} bản ghi</Badge>
+            đã có trong hệ thống
+          </div>
+        )}
+      </div>
+
       <form
         onSubmit={handleSubmit}
         className="bg-card border rounded-lg p-5 space-y-4"
@@ -135,24 +162,14 @@ export default function ConsumptionPage() {
           {/* Product */}
           <div className="space-y-2">
             <Label>Mặt hàng</Label>
-            <Select
+            <ProductSelector
+              mode="combobox"
               value={productId}
-              onValueChange={(v) => {
+              onChange={(v) => {
                 setProductId(v);
                 setYearMonth(""); // reset tháng
               }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Chọn mặt hàng..." />
-              </SelectTrigger>
-              <SelectContent>
-                {mockProducts.map((p) => (
-                  <SelectItem key={p.id} value={p.id.toString()}>
-                    {p.code} - {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           {/* Month selector */}

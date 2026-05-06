@@ -1,6 +1,6 @@
 export interface ConsumptionHistory {
   id: string;
-  productId: number;
+  productId: string;
   planningUnit: string;
   periodStartDate: string; // ngày đầu kỳ
   periodEndDate: string; // ngày cuối kỳ
@@ -13,7 +13,7 @@ export interface ConsumptionHistory {
 }
 
 export interface ConsumptionHistoryRequest {
-  productId: number;
+  productId: string;
   periodStartDate: string;
   periodEndDate: string;
   actualConsumption: number;

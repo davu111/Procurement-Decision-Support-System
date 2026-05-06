@@ -30,6 +30,8 @@ springdoc:
 external:
   product-service:
     url: ${PRODUCT_SERVICE_URL}
+  warehouse-config-service:
+    url: ${WAREHOUSE_CONFIG_URL}
 
 server:
   port: 8082

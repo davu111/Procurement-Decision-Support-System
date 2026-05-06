@@ -1,4 +1,4 @@
-package com.ecotel.inventory_optimization_service.dto.request;
+package com.ecotel.warehouse_service.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

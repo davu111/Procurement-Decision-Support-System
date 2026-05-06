@@ -23,9 +23,6 @@ public class WarehouseConfig {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "config_name", nullable = false, length = 100)
-    private String configName; // tên cấu hình (ví dụ: "Kho chính 2024")
-
     // === Thành phần tính I ===
 
     @Column(name = "interest_rate", nullable = false, precision = 8, scale = 4)
@@ -48,10 +45,6 @@ public class WarehouseConfig {
 
     @Column(name = "storage_cost_coefficient", nullable = false, precision = 8, scale = 4)
     private BigDecimal storageCostCoefficient; // I được tính tự động
-
-    @Column(name = "is_default", nullable = false)
-    @Builder.Default
-    private Boolean isDefault = false;
 
     @UpdateTimestamp
     @Column(name = "updated_at")

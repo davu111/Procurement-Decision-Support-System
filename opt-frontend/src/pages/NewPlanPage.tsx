@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { mockProducts, mockWarehouseConfig } from "@/data/mockData";
+import { mockWarehouseConfig } from "@/data/mockData";
+import { productApi } from "@/api/productApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +32,7 @@ import {
   Truck,
   Lightbulb,
 } from "lucide-react";
+import ProductSelector from "@/components/product/ProductSelector";
 import { formatCurrency, formatNumber, formatDate } from "@/utils/helpers";
 import inventoryApi from "@/api/axiosConfig";
 import type {
@@ -151,8 +153,19 @@ export default function NewPlanPage() {
   const [orderSchedules, setOrderSchedules] = useState<OrderSchedule[]>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // ── Products from API ──────────────────────────────────────────────────────
+  const [products, setProducts] = useState<any[]>([]);
+
   // ── Derived ────────────────────────────────────────────────────────────────
-  const selectedProduct = mockProducts.find((p) => p.id === Number(productId));
+  const selectedProduct = productId
+    ? products.find((p) => String(p.id) === productId)
+    : undefined;
+
+  // ── Fetch products on component mount ─────────────────────────────────────
+  useEffect(() => {
+    productApi.getAll().then((data) => setProducts(data));
+  }, []);
+
   const yearOptions = useMemo(() => getYearOptions(), []);
   const monthOptions = useMemo(() => getMonthOptions(targetYear), [targetYear]);
   const endMonthOptions = useMemo(
@@ -305,35 +318,7 @@ export default function NewPlanPage() {
           );
         }
       })
-      .catch(() => {
-        // fallback mock (dev)
-        const mock = {
-          productId: Number(productId),
-          suggestedQ: 105.5,
-          requiresManualInput: false,
-          supplierName: "Công ty TNHH Lương thực Miền Nam",
-          currentSupplyRateK: 166.67,
-          currentFixedOrderCostA: 2000000,
-          currentUnitPriceC: 8500000,
-          currentLeadTimeDays: 30,
-          demandForecast: {
-            forecastValue: 105.5,
-            modelUsed: "HOLT_WINTERS",
-            dataPointsUsed: 24,
-            mape: 8.3,
-            mapeWarning: false,
-          },
-          leadTimeForecast: {
-            forecastValue: 0.0967,
-            modelUsed: "WMA",
-            dataPointsUsed: 5,
-            mape: null,
-            mapeWarning: false,
-          },
-        } as ForecastSuggestion;
-        setSuggestion(mock);
-        setDemandQ(String(Math.round(105.5 * monthCount * 100) / 100));
-      })
+      .catch(() => {})
       .finally(() => setLoadingSuggestion(false));
   };
 
@@ -392,7 +377,7 @@ export default function NewPlanPage() {
       setSuccessMessage(
         "Replan thành công. Kế hoạch cũ đã được lưu lại làm lịch sử.",
       );
-      await fetchSchedules();
+      await fetchSchedules(result.id);
     } catch (e) {
       console.error("Replan error:", e);
     } finally {
@@ -422,7 +407,7 @@ export default function NewPlanPage() {
       const result = (res as any).data;
       setCalcResult(result);
       setSuccessMessage("Tạo kế hoạch thành công.");
-      await fetchSchedules();
+      await fetchSchedules(result.id);
     } catch (e) {
       console.error("Calculate error:", e);
     } finally {
@@ -430,15 +415,12 @@ export default function NewPlanPage() {
     }
   }
 
-  async function fetchSchedules() {
+  async function fetchSchedules(resultId?: number) {
+    console.log("Resolved period:", resolvedPeriod);
+    console.log("Calc result:", calcResult);
     if (!resolvedPeriod) return;
     try {
-      const res = await inventoryApi.get(`/order-schedules/${productId}`, {
-        params: {
-          from: resolvedPeriod.planStartDate,
-          to: resolvedPeriod.planEndDate,
-        },
-      });
+      const res = await inventoryApi.get(`/order-schedules/result/${resultId}`);
       const data = (res as any).data ?? [];
       setOrderSchedules(Array.isArray(data) ? data : []);
     } catch {
@@ -497,27 +479,17 @@ export default function NewPlanPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Mặt hàng */}
-          <div className="space-y-2 md:col-span-2">
-            <Label>Mặt hàng</Label>
-            <Select
+          <div className="flex flex-col gap-1 space-y-2">
+            <Label className="mt-2">Mặt hàng</Label>
+            <ProductSelector
+              mode="combobox"
               value={productId}
-              onValueChange={(v) => {
-                setProductId(v);
+              onChange={(id) => {
+                setProductId(id);
                 resetResults();
                 setSuggestion(null);
               }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Chọn mặt hàng..." />
-              </SelectTrigger>
-              <SelectContent>
-                {mockProducts.map((p) => (
-                  <SelectItem key={p.id} value={p.id.toString()}>
-                    {p.code} - {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           {/* Năm */}
@@ -643,7 +615,7 @@ export default function NewPlanPage() {
             ) : (
               <Sparkles className="h-4 w-4" />
             )}
-            Lấy gợi ý AI
+            Thông tin nhà cung cấp
           </Button>
         )}
       </div>
@@ -652,9 +624,9 @@ export default function NewPlanPage() {
       {suggestion && (
         <div className="bg-card border rounded-lg p-5 space-y-4">
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-foreground">Gợi ý từ AI</h2>
+            {/* <h2 className="font-semibold text-foreground">Gợi ý từ AI</h2> */}
             <Badge className="bg-status-success text-destructive-foreground">
-              SUPPLIER_SERVICE ✓
+              Thông tin nhà cung cấp ✓
             </Badge>
           </div>
 

@@ -49,9 +49,6 @@ public class Inventory {
     @Builder.Default
     BigDecimal quantity = BigDecimal.ZERO;
 
-    @Column(name = "unit")
-    String unit;
-
     @UpdateTimestamp
     @Column(name = "last_updated", nullable = false)
     LocalDateTime lastUpdated;

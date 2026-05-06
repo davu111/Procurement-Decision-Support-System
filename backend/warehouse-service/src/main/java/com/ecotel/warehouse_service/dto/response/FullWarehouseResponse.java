@@ -18,5 +18,6 @@ public class FullWarehouseResponse {
     Boolean isActive;
     BigDecimal totalInventory;
     BigDecimal items;
+    Long configId;
     List<InventoryResponse> inventories;
 }

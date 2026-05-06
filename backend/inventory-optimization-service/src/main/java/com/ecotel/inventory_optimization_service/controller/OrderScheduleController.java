@@ -52,6 +52,15 @@ public class OrderScheduleController {
         System.out.println(schedules);
         return ResponseEntity.ok(ApiResponse.success(schedules));
     }
+    // Lấy lịch theo inventoryResultId
+    @GetMapping("/result/{inventoryResultId}")
+    public ResponseEntity<ApiResponse<List<OrderScheduleResponse>>> getScheduleByResult(
+            @PathVariable Long inventoryResultId) {
+        log.info("Lấy lịch kế hoạch đặt hàng cho kết quả ID: {}", inventoryResultId);
+        List<OrderScheduleResponse> schedules = scheduleService.getScheduleByResultId(inventoryResultId);
+        System.out.println(schedules);
+        return ResponseEntity.ok(ApiResponse.success(schedules));
+    }
 
     /**
      * Lấy OrderSchedules hợp lệ theo chuỗi ghì đè của một product

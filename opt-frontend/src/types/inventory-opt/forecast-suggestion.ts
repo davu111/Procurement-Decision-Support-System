@@ -14,7 +14,7 @@ export interface BackendForecastResult {
 }
 
 export interface ForecastSuggestionResponse {
-  productId: number;
+  productId: string;
   planningUnit: "MONTH" | "QUARTER" | "YEAR";
   suggestedQ: number | null;
   demandForecast: BackendForecastResult;

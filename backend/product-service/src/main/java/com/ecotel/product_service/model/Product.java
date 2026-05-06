@@ -42,6 +42,9 @@ public class Product {
     @Column(name = "unit", nullable = false, length = 20)
     String unit;
 
+    @Column(name = "description", length = 500)
+    String description;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default

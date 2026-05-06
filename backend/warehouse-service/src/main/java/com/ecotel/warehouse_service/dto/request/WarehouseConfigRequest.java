@@ -1,7 +1,12 @@
-package com.ecotel.inventory_optimization_service.dto.request;
+package com.ecotel.warehouse_service.dto.request;
 
-import jakarta.validation.constraints.*;
-import lombok.*;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
 
 @Data @NoArgsConstructor @AllArgsConstructor @Builder

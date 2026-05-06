@@ -6,8 +6,12 @@ import com.ecotel.product_service.dto.response.ProductResponse;
 import com.ecotel.product_service.enums.ProductStatus;
 import com.ecotel.product_service.service.ProductService;
 import com.ecotel.shared_library.dto.response.ApiResponse;
+import com.ecotel.shared_library.dto.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,7 +23,7 @@ import java.util.Map;
 public class ProductController {
     private final ProductService productService;
 
-    @GetMapping
+    @GetMapping("/all")
     public ApiResponse<List<ProductResponse>> getProducts(
             @RequestParam(defaultValue = "all") String categoryId,
             @RequestParam(required = false) ProductStatus status
@@ -27,6 +31,23 @@ public class ProductController {
         return ApiResponse.<List<ProductResponse>>builder()
                 .message("Products retrieved successfully")
                 .data(productService.getProducts(categoryId, status))
+                .build();
+    }
+
+    @GetMapping
+    public ApiResponse<PageResponse<ProductResponse>> getProductsPage(
+            @RequestParam(defaultValue = "all") String categoryId,
+            @RequestParam(required = false) ProductStatus status,
+            @PageableDefault(
+                    page = 0,
+                    size = 10,
+                    sort = "productName",
+                    direction = Sort.Direction.ASC
+            ) Pageable pageable
+    ) {
+        return ApiResponse.<PageResponse<ProductResponse>>builder()
+                .message("Products page retrieved successfully")
+                .data(productService.getProductsPage(categoryId, status, pageable))
                 .build();
     }
 

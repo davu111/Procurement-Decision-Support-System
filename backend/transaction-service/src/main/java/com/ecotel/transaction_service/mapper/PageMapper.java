@@ -1,6 +1,6 @@
 package com.ecotel.transaction_service.mapper;
 
-import com.ecotel.transaction_service.dto.response.PageResponse;
+import com.ecotel.shared_library.dto.response.PageResponse;
 import org.mapstruct.Mapper;
 import org.springframework.data.domain.Page;
 

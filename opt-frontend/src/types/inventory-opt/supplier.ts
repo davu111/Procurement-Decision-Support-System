@@ -29,7 +29,7 @@ export interface SupplierProduct {
   supplierId: string;
   supplierCode: string;
   supplierName: string;
-  productId: number;
+  productId: string;
   productName: string;
   maxSupplyPerMonth: number;
   fixedOrderCost: number;
@@ -43,7 +43,7 @@ export interface SupplierProduct {
 }
 
 export interface SupplierProductRequest {
-  productId: number;
+  productId: string;
   maxSupplyPerMonth: number;
   fixedOrderCost: number;
   unitPrice: number;

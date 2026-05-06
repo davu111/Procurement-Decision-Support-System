@@ -1,4 +1,4 @@
-package com.ecotel.warehouse_service.dto.response;
+package com.ecotel.warehouse_service.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,9 +9,8 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE)
-public class WarehouseResponse {
+public class WarehouseUpdateRequest {
     String id;
     String warehouseName;
-    Long configId;
-    Boolean isActive;
+    WarehouseConfigUpdateRequest warehouseConfigUpdateRequest;
 }

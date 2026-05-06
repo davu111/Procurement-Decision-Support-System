@@ -1,11 +1,9 @@
-package com.ecotel.inventory_optimization_service.dto.response;
+package com.ecotel.inventory_optimization_service.dto.request;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,13 +12,11 @@ import java.time.LocalDateTime;
  * Cấu hình kho - dùng để tính tự động hệ số chi phí bảo quản I
  * I = interestRate + warehouseCostRate + spoilageRate + insuranceRate
  */
-@Entity
-@Table(name = "warehouse_config")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class WarehouseConfigResponse {
+public class WarehouseConfigUpdateRequest {
     private Long id;
     private BigDecimal interestRate; // lãi suất vốn vay/cơ hội (%/năm), ví dụ: 0.08
     private BigDecimal warehouseMonthlyCost; // chi phí thuê/khấu hao kho mỗi tháng

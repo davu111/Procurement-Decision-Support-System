@@ -1,4 +1,4 @@
-package com.ecotel.transaction_service.mapper;
+package com.ecotel.product_service.mapper;
 
 import com.ecotel.shared_library.dto.response.PageResponse;
 import org.mapstruct.Mapper;

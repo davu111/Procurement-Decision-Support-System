@@ -34,5 +34,7 @@ supplier:
 external:
   product-service:
     url: ${PRODUCT_SERVICE_URL}
+  warehouse-service:
+    url: ${WAREHOUSE_SERVICE_URL}
 server:
   port: 8091

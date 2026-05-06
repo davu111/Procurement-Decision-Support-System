@@ -27,6 +27,9 @@ public class Warehouse {
     @Builder.Default
     Boolean isActive = true;
 
+    @Column(name = "config_id")
+    Long configId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

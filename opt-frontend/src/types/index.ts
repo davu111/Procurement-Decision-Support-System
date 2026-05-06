@@ -26,6 +26,8 @@ export interface OrderSchedule {
 }
 
 export interface InventoryResult {
+  id: number;
+  InventoryParameterId: number;
   optimalOrderQtyS: number;
   optimalOrderCountN: number;
   optimalCycleTimeTau: number;
@@ -46,7 +48,7 @@ export interface InventoryResult {
 }
 
 export interface ForecastSuggestion {
-  productId: number;
+  productId: string;
   planningUnit: string;
   suggestedQ: number;
   requiresManualInput: boolean;
@@ -86,7 +88,7 @@ export interface WarehouseConfig {
 
 export interface ConsumptionHistory {
   id?: number;
-  productId: number;
+  productId: string;
   planningUnit: string;
   periodStartDate: string;
   periodEndDate: string;
@@ -97,8 +99,8 @@ export interface ConsumptionHistory {
   notes: string;
 }
 
-export type PlanningUnit = 'MONTH' | 'QUARTER' | 'YEAR';
-export type UrgencyLevel = 'red' | 'yellow' | 'green';
+export type PlanningUnit = "MONTH" | "QUARTER" | "YEAR";
+export type UrgencyLevel = "red" | "yellow" | "green";
 
 export interface UrgencyInfo {
   level: UrgencyLevel;

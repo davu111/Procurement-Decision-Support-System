@@ -33,6 +33,13 @@ public class OrderScheduleService {
                 .toList();
     }
 
+    public List<OrderScheduleResponse> getScheduleByResultId(Long inventoryResultId){
+        List<OrderSchedule> schedules = scheduleRepository.findByInventoryResultIdOrderByOrderSequenceAsc(inventoryResultId);
+        return schedules.stream()
+                .map(scheduleMapper::toOrderScheduleResponse)
+                .toList();
+    }
+
     public Map<String, BigDecimal> getLatestOrderQuantity(
             List<String> productIds,
             LocalDate date

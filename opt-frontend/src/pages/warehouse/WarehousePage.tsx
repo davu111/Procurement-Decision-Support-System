@@ -69,15 +69,36 @@ import type {
 } from "@/types/warehouse/warehouse";
 import { formatDate, formatNumber } from "@/utils/helpers";
 
+const warehouseConfigSchema = z.object({
+  interestRate: z.number().min(0, { message: "Lãi suất phải >= 0" }),
+  warehouseMonthlyCost: z.number().min(0, { message: "Chi phí kho phải >= 0" }),
+  warehouseMaxCapacity: z
+    .number()
+    .min(0.0001, { message: "Sức chứa tối đa phải > 0" }),
+  spoilageRate: z.number().min(0, { message: "Tỉ lệ hao hụt phải >= 0" }),
+  insuranceRate: z.number().min(0, { message: "Tỉ lệ bảo hiểm phải >= 0" }),
+});
+
 const warehouseSchema = z.object({
   warehouseName: z
     .string()
     .trim()
     .nonempty({ message: "Tên kho không được trống" })
     .max(100, { message: "Tên kho tối đa 100 ký tự" }),
+  warehouseConfigRequest: warehouseConfigSchema,
 });
 
 type ProductLine = { productId: string; quantity: string };
+
+interface WarehouseForm {
+  warehouseName: string;
+  interestRate: string;
+  warehouseMonthlyCost: string;
+  warehouseMaxCapacity: string;
+  spoilageRate: string;
+  insuranceRate: string;
+  storageCostCoefficient: string;
+}
 
 export default function WarehousesPage() {
   const { toast } = useToast();
@@ -90,9 +111,18 @@ export default function WarehousesPage() {
   // CRUD dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FullWarehouse | null>(null);
-  const [form, setForm] = useState({ warehouseName: "" });
+  const [form, setForm] = useState<WarehouseForm>({
+    warehouseName: "",
+    interestRate: "",
+    warehouseMonthlyCost: "",
+    warehouseMaxCapacity: "",
+    spoilageRate: "",
+    insuranceRate: "",
+    storageCostCoefficient: "",
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(false);
 
   // Toggle active confirmation
   const [confirmTarget, setConfirmTarget] = useState<FullWarehouse | null>(
@@ -167,24 +197,83 @@ export default function WarehousesPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ warehouseName: "" });
+    setForm({
+      warehouseName: "",
+      interestRate: "",
+      warehouseMonthlyCost: "",
+      warehouseMaxCapacity: "",
+      spoilageRate: "",
+      insuranceRate: "",
+      storageCostCoefficient: "",
+    });
     setErrors({});
     setDialogOpen(true);
   };
 
   const openEdit = (w: FullWarehouse) => {
     setEditing(w);
-    setForm({ warehouseName: w.warehouseName });
+    setForm({
+      warehouseName: w.warehouseName,
+      interestRate: "",
+      warehouseMonthlyCost: "",
+      warehouseMaxCapacity: "",
+      spoilageRate: "",
+      insuranceRate: "",
+      storageCostCoefficient: "",
+    });
     setErrors({});
     setDialogOpen(true);
+
+    // Load warehouse config if configId exists
+    console.log("Warehouse selected: ", w);
+    if (w.configId) {
+      loadWarehouseConfig(w.configId);
+    }
+  };
+
+  const loadWarehouseConfig = async (configId: number) => {
+    setLoadingConfig(true);
+    try {
+      const config = await warehouseApi.getConfigById(configId);
+      setForm((prev) => ({
+        ...prev,
+        interestRate: String(config.interestRate || ""),
+        warehouseMonthlyCost: String(config.warehouseMonthlyCost || ""),
+        warehouseMaxCapacity: String(config.warehouseMaxCapacity || ""),
+        spoilageRate: String(config.spoilageRate || ""),
+        insuranceRate: String(config.insuranceRate || ""),
+        storageCostCoefficient: String(config.storageCostCoefficient || ""),
+      }));
+    } catch (e) {
+      toast({
+        title: "Lỗi tải cấu hình kho",
+        description: e instanceof Error ? e.message : "Không thể tải cấu hình",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingConfig(false);
+    }
   };
 
   const submit = async () => {
-    const parsed = warehouseSchema.safeParse(form);
+    // Parse numeric values from form
+    const formData = {
+      warehouseName: form.warehouseName,
+      warehouseConfigRequest: {
+        interestRate: Number(form.interestRate),
+        warehouseMonthlyCost: Number(form.warehouseMonthlyCost),
+        warehouseMaxCapacity: Number(form.warehouseMaxCapacity),
+        spoilageRate: Number(form.spoilageRate),
+        insuranceRate: Number(form.insuranceRate),
+      },
+    };
+
+    const parsed = warehouseSchema.safeParse(formData);
     if (!parsed.success) {
       const errs: Record<string, string> = {};
       parsed.error.issues.forEach((i) => {
-        errs[i.path[0] as string] = i.message;
+        const path = i.path.join(".");
+        errs[path] = i.message;
       });
       setErrors(errs);
       return;
@@ -192,12 +281,26 @@ export default function WarehousesPage() {
     setErrors({});
     setSubmitting(true);
     try {
-      const payload = { warehouseName: parsed.data.warehouseName };
+      const data = parsed.data as any;
       if (editing) {
-        await warehouseApi.update(editing.id, payload);
+        await warehouseApi.update({
+          id: editing.id,
+          warehouseName: data.warehouseName,
+          warehouseConfigUpdateRequest: {
+            id: editing.configId,
+            warehouseId: editing.id,
+            interestRate: data.warehouseConfigRequest.interestRate,
+            warehouseMonthlyCost:
+              data.warehouseConfigRequest.warehouseMonthlyCost,
+            warehouseMaxCapacity:
+              data.warehouseConfigRequest.warehouseMaxCapacity,
+            spoilageRate: data.warehouseConfigRequest.spoilageRate,
+            insuranceRate: data.warehouseConfigRequest.insuranceRate,
+          },
+        });
         toast({ title: "Cập nhật kho thành công" });
       } else {
-        await warehouseApi.create(payload);
+        await warehouseApi.create(data);
         toast({ title: "Tạo kho mới thành công" });
       }
       setDialogOpen(false);
@@ -560,19 +663,26 @@ export default function WarehousesPage() {
 
       {/* Create/Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {editing ? "Sửa thông tin kho" : "Thêm kho mới"}
             </DialogTitle>
-            <DialogDescription>Nhập tên kho rồi nhấn Lưu</DialogDescription>
+            <DialogDescription>
+              {editing
+                ? "Cập nhật thông tin kho và cấu hình"
+                : "Nhập tên kho và cấu hình chi phí"}
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto">
+            {/* Warehouse Name */}
             <div className="space-y-1">
-              <Label>Tên kho</Label>
+              <Label>Tên kho *</Label>
               <Input
                 value={form.warehouseName}
-                onChange={(e) => setForm({ warehouseName: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, warehouseName: e.target.value })
+                }
                 placeholder="VD: Kho trung tâm"
               />
               {errors.warehouseName && (
@@ -581,16 +691,156 @@ export default function WarehousesPage() {
                 </p>
               )}
             </div>
+
+            {/* Configuration Section */}
+            <div className="border-t pt-4">
+              <h4 className="font-semibold mb-3 text-sm flex items-center gap-2">
+                Cấu hình kho
+                {loadingConfig && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </h4>
+              {loadingConfig ? (
+                <div className="flex justify-center py-4 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Interest Rate */}
+                  <div className="space-y-1">
+                    <Label>Lãi suất (%/năm) *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.interestRate}
+                      onChange={(e) =>
+                        setForm({ ...form, interestRate: e.target.value })
+                      }
+                      placeholder="VD: 0.08"
+                    />
+                    {errors["warehouseConfigRequest.interestRate"] && (
+                      <p className="text-sm text-destructive">
+                        {errors["warehouseConfigRequest.interestRate"]}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Warehouse Monthly Cost */}
+                  <div className="space-y-1">
+                    <Label>Chi phí kho/tháng *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.warehouseMonthlyCost}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          warehouseMonthlyCost: e.target.value,
+                        })
+                      }
+                      placeholder="VD: 1000"
+                    />
+                    {errors["warehouseConfigRequest.warehouseMonthlyCost"] && (
+                      <p className="text-sm text-destructive">
+                        {errors["warehouseConfigRequest.warehouseMonthlyCost"]}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Warehouse Max Capacity */}
+                  <div className="space-y-1">
+                    <Label>Sức chứa tối đa *</Label>
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      min="0.0001"
+                      value={form.warehouseMaxCapacity}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          warehouseMaxCapacity: e.target.value,
+                        })
+                      }
+                      placeholder="VD: 1000"
+                    />
+                    {errors["warehouseConfigRequest.warehouseMaxCapacity"] && (
+                      <p className="text-sm text-destructive">
+                        {errors["warehouseConfigRequest.warehouseMaxCapacity"]}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Spoilage Rate */}
+                  <div className="space-y-1">
+                    <Label>Tỉ lệ hao hụt (%/năm) *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.spoilageRate}
+                      onChange={(e) =>
+                        setForm({ ...form, spoilageRate: e.target.value })
+                      }
+                      placeholder="VD: 0.02"
+                    />
+                    {errors["warehouseConfigRequest.spoilageRate"] && (
+                      <p className="text-sm text-destructive">
+                        {errors["warehouseConfigRequest.spoilageRate"]}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Insurance Rate */}
+                  <div className="space-y-1">
+                    <Label>Tỉ lệ bảo hiểm (%/năm) *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.insuranceRate}
+                      onChange={(e) =>
+                        setForm({ ...form, insuranceRate: e.target.value })
+                      }
+                      placeholder="VD: 0.005"
+                    />
+                    {errors["warehouseConfigRequest.insuranceRate"] && (
+                      <p className="text-sm text-destructive">
+                        {errors["warehouseConfigRequest.insuranceRate"]}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Hệ số bảo quản (%/năm) *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.storageCostCoefficient}
+                      placeholder="VD: 0.005"
+                      readOnly
+                      className="bg-gray-100 text-gray-500 cursor-not-allowed"
+                    />
+                    {errors["warehouseConfigRequest.insuranceRate"] && (
+                      <p className="text-sm text-destructive">
+                        {errors["warehouseConfigRequest.insuranceRate"]}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
-              disabled={submitting}
+              disabled={submitting || loadingConfig}
             >
               Hủy
             </Button>
-            <Button onClick={submit} disabled={submitting}>
+            <Button onClick={submit} disabled={submitting || loadingConfig}>
               {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Lưu
             </Button>
@@ -658,10 +908,8 @@ export default function WarehousesPage() {
                       <SelectContent>
                         {products.map((p) => (
                           <SelectItem key={String(p.id)} value={String(p.id)}>
-                            {p.productName ?? p.name ?? `SP #${p.id}`}
-                            {(p.productCode ?? p.code)
-                              ? ` (${p.productCode ?? p.code})`
-                              : ""}
+                            {p.productName ?? `SP #${p.id}`}
+                            {p.code ? ` (${p.code})` : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>

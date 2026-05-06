@@ -2,6 +2,7 @@ package com.ecotel.warehouse_service.controller;
 
 import com.ecotel.shared_library.dto.response.ApiResponse;
 import com.ecotel.warehouse_service.dto.request.WarehouseRequest;
+import com.ecotel.warehouse_service.dto.request.WarehouseUpdateRequest;
 import com.ecotel.warehouse_service.dto.response.FullWarehouseResponse;
 import com.ecotel.warehouse_service.dto.response.WarehouseResponse;
 import com.ecotel.warehouse_service.service.WarehouseService;
@@ -65,6 +66,16 @@ public class WarehouseController {
                 .build();
     }
 
+    // GET FULL WAREHOUSE INFO BY CONFIG ID
+    @GetMapping("/full-info-config/{configId}")
+    public ApiResponse<FullWarehouseResponse> getFullWarehouseInfoByConfigId(@PathVariable Long configId) {
+        FullWarehouseResponse response = warehouseService.getWarehouseFullInfoByConfigId(configId);
+        return ApiResponse.<FullWarehouseResponse>builder()
+                .message("Warehouse full info by configId retrieved successfully")
+                .data(response)
+                .build();
+    }
+
     // GET WAREHOUSE NAME BY ID
     @GetMapping("/name/{warehouseId}")
     public ApiResponse<String> getWarehouseNameById(@PathVariable String warehouseId) {
@@ -84,10 +95,10 @@ public class WarehouseController {
                 .build();
     }
 
-    @PutMapping("/{id}")
+    @PutMapping()
     public ApiResponse<WarehouseResponse> update(
-            @PathVariable String id, @Valid @RequestBody WarehouseRequest request) {
-        WarehouseResponse result = warehouseService.update(id, request);
+            @Valid @RequestBody WarehouseUpdateRequest request) {
+        WarehouseResponse result = warehouseService.update(request);
         return ApiResponse.<WarehouseResponse>builder()
                 .message("Update warehouse successfully")
                 .data(result)

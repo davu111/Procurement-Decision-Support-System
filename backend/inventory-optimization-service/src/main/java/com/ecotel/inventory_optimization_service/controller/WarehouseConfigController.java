@@ -1,12 +1,15 @@
 package com.ecotel.inventory_optimization_service.controller;
 
 import com.ecotel.inventory_optimization_service.dto.request.WarehouseConfigRequest;
+import com.ecotel.inventory_optimization_service.dto.request.WarehouseConfigUpdateRequest;
 import com.ecotel.inventory_optimization_service.dto.response.ApiResponse;
+import com.ecotel.inventory_optimization_service.dto.response.WarehouseConfigResponse;
 import com.ecotel.inventory_optimization_service.exception.ResourceNotFoundException;
 import com.ecotel.inventory_optimization_service.model.InventoryParameter;
 import com.ecotel.inventory_optimization_service.model.WarehouseConfig;
 import com.ecotel.inventory_optimization_service.repository.InventoryParameterRepository;
 import com.ecotel.inventory_optimization_service.repository.WarehouseConfigRepository;
+import com.ecotel.inventory_optimization_service.service.WarehouseConfigService;
 import com.ecotel.shared_library.dto.response.ProductResponse;
 import com.ecotel.shared_library.service.ProductService;
 import jakarta.validation.Valid;
@@ -22,62 +25,43 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WarehouseConfigController {
 
-    private final WarehouseConfigRepository configRepository;
-    private final ProductService productService;
-    private final InventoryParameterRepository inventoryParameterRepository;
+    private final WarehouseConfigService warehouseConfigService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<WarehouseConfig>>> getAll() {
-        return ResponseEntity.ok(ApiResponse.success(configRepository.findAll()));
+    public ApiResponse<List<WarehouseConfigResponse>> getAll() {
+        return ApiResponse.<List<WarehouseConfigResponse>>builder()
+                .success(true)
+                .message("Get all warehouse config successful")
+                .data(warehouseConfigService.getAll())
+                .build();
+    }
+
+    @GetMapping("/{warehouseConfigId}")
+    public ApiResponse<WarehouseConfigResponse> getById(@PathVariable Long warehouseConfigId) {
+        return  ApiResponse.<WarehouseConfigResponse>builder()
+                .success(true)
+                .message("Get warehouse config with id successful")
+                .data(warehouseConfigService.getById(warehouseConfigId))
+                .build();
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<WarehouseConfig>> create(
+    public ApiResponse<WarehouseConfigResponse> create(
             @Valid @RequestBody WarehouseConfigRequest request) {
-
-        // Lấy đơn giá trung bình để tính I nếu không truyền vào
-        BigDecimal avgPrice = request.getAvgUnitPriceForCalculation();
-        List<String> productIds = productService.getActiveTrue().stream().map(ProductResponse::getId).toList();
-        if (avgPrice == null) {
-            avgPrice = inventoryParameterRepository.findByProductIdIn(productIds).stream()
-                    .map(InventoryParameter::getSnapshotUnitPriceC)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(BigDecimal.valueOf(Math.max(productService.getActiveTrue().size(), 1)),
-                            4, java.math.RoundingMode.HALF_UP);
-        }
-
-        WarehouseConfig config = WarehouseConfig.builder()
-                .configName(request.getConfigName())
-                .interestRate(request.getInterestRate())
-                .warehouseMonthlyCost(request.getWarehouseMonthlyCost())
-                .warehouseMaxCapacity(request.getWarehouseMaxCapacity())
-                .spoilageRate(request.getSpoilageRate())
-                .insuranceRate(request.getInsuranceRate())
-                .isDefault(Boolean.TRUE.equals(request.getIsDefault()))
-                .storageCostCoefficient(BigDecimal.ZERO) // sẽ tính lại
+        return ApiResponse.<WarehouseConfigResponse>builder()
+                .success(true)
+                .message("Create warehouse config successful")
+                .data(warehouseConfigService.create(request))
                 .build();
-
-        config.recalculateCoefficient(avgPrice);
-
-        // Nếu set default → bỏ default của config cũ
-        if (Boolean.TRUE.equals(request.getIsDefault())) {
-            configRepository.findByIsDefaultTrue().ifPresent(old -> {
-                old.setIsDefault(false);
-                configRepository.save(old);
-            });
-        }
-
-        return ResponseEntity.ok(ApiResponse.success(
-                configRepository.save(config),
-                String.format("Đã tạo cấu hình kho. Hệ số I = %.4f (%.2f%%/kỳ)",
-                        config.getStorageCostCoefficient(),
-                        config.getStorageCostCoefficient().doubleValue() * 100)));
     }
 
-    @GetMapping("/default")
-    public ResponseEntity<ApiResponse<WarehouseConfig>> getDefault() {
-        WarehouseConfig config = configRepository.findByIsDefaultTrue()
-                .orElseThrow(() -> new ResourceNotFoundException("Chưa có cấu hình kho mặc định"));
-        return ResponseEntity.ok(ApiResponse.success(config));
+    @PutMapping
+    public ApiResponse<WarehouseConfigResponse> update(
+            @Valid @RequestBody WarehouseConfigUpdateRequest request) {
+        return ApiResponse.<WarehouseConfigResponse>builder()
+                .success(true)
+                .message("Update warehouse config successful")
+                .data(warehouseConfigService.update(request))
+                .build();
     }
 }

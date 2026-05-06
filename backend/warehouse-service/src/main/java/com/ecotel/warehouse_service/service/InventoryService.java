@@ -1,5 +1,6 @@
 package com.ecotel.warehouse_service.service;
 
+import com.ecotel.shared_library.dto.response.ProductResponse;
 import com.ecotel.shared_library.service.ProductService;
 import com.ecotel.warehouse_service.dto.request.TransactionRequest;
 import com.ecotel.warehouse_service.dto.response.InventoryResponse;
@@ -52,10 +53,14 @@ public class InventoryService {
         List<InventoryResponse> response = inventoryRepository.findByWarehouseId(warehouseId).stream()
                 .map(inventoryMapper::toInventoryResponse)
                 .toList();
-        Map<String, String> productNames = productService.getProductNameByIds(
+        Map<String, ProductResponse> products = productService.getProductMapByIds(
                 response.stream().map(InventoryResponse::getProductId).toList()
         );
-        response.forEach(r -> r.setProductName(productNames.get(r.getProductId())));
+        response.forEach(r -> {
+            if (products.get(r.getProductId()) == null) System.out.println(r.getProductId());
+            r.setProductName(products.get(r.getProductId()).getProductName());
+            r.setUnit(products.get(r.getProductId()).getUnit());
+        });
 
         return response;
     }

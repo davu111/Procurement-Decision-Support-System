@@ -8,5 +8,4 @@ import java.util.Optional;
 
 @Repository
 public interface WarehouseConfigRepository extends JpaRepository<WarehouseConfig, Long> {
-    Optional<WarehouseConfig> findByIsDefaultTrue();
 }
