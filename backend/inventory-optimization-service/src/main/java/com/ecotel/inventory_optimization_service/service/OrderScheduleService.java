@@ -4,6 +4,7 @@ import com.ecotel.inventory_optimization_service.dto.response.OrderScheduleRespo
 import com.ecotel.inventory_optimization_service.mapper.OrderScheduleMapper;
 import com.ecotel.inventory_optimization_service.model.OrderSchedule;
 import com.ecotel.inventory_optimization_service.repository.OrderScheduleRepository;
+import com.ecotel.shared_library.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,12 +19,23 @@ import java.util.stream.Collectors;
 public class OrderScheduleService {
     private final OrderScheduleRepository scheduleRepository;
     private final OrderScheduleMapper scheduleMapper;
+    private final ProductService productService;
 
     public List<OrderScheduleResponse> getSchedule(LocalDate from, LocalDate to){
         List<OrderSchedule> schedules = scheduleRepository.findEffectiveByDateRange(from, to);
-        return schedules.stream()
+
+        List<OrderScheduleResponse> responses = schedules.stream()
                 .map(scheduleMapper::toOrderScheduleResponse)
                 .toList();
+
+        List<String> productIds = responses.stream().map(OrderScheduleResponse::getProductId).toList();
+        Map<String, String> productNames = productService.getProductNameByIds(productIds);
+
+        responses.forEach(r -> {
+            r.setProductName(productNames.get(r.getProductId()));
+        });
+
+        return responses;
     }
 
     public List<OrderScheduleResponse> getScheduleByProductId(String productId, LocalDate from, LocalDate to){

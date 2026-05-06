@@ -243,7 +243,7 @@ export default function HeatmapPage() {
       {/* Tooltip */}
       {hoveredOrders && hoveredDate && (
         <div className="bg-card rounded-lg border p-4 shadow-md">
-          <p className="font-medium text-sm text-foreground mb-2">
+          <p className="font-medium text-sm text-foreground mb-3">
             {new Date(hoveredDate).toLocaleDateString("vi-VN", {
               weekday: "long",
               day: "2-digit",
@@ -251,21 +251,25 @@ export default function HeatmapPage() {
               year: "numeric",
             })}
           </p>
-          {hoveredOrders.map((o) => (
-            <div
-              key={o.id}
-              className="flex justify-between text-sm text-muted-foreground"
-            >
-              <span>• {o.productName}</span>
-              <span className="font-mono">{formatNumber(o.orderQuantity)}</span>
-            </div>
-          ))}
-          <p className="text-sm font-medium mt-2 pt-2 border-t text-foreground">
-            Tổng chi phí:{" "}
-            {formatCurrency(
-              hoveredOrders.reduce((s, o) => s + o.estimatedCost, 0),
-            )}
-          </p>
+          <div className="space-y-2">
+            {hoveredOrders.map((o) => (
+              <div
+                key={o.id}
+                className="text-sm text-muted-foreground space-y-1 pb-2 border-b last:border-b-0"
+              >
+                <p className="font-medium text-foreground">{o.productName}</p>
+                <p className="text-xs">Mã sản phẩm: {o.productId}</p>
+                <p className="text-xs">Lần đặt #{o.orderSequence}</p>
+                <p className="text-xs">
+                  Ngày đặt: {new Date(o.orderDate).toLocaleDateString("vi-VN")}
+                </p>
+                <p className="text-xs">
+                  Dự kiến giao:{" "}
+                  {new Date(o.expectedDeliveryDate).toLocaleDateString("vi-VN")}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -277,25 +281,43 @@ export default function HeatmapPage() {
           </h3>
           <div className="space-y-3">
             {selectedOrders.map((o) => (
-              <div
-                key={o.id}
-                className="flex items-center justify-between p-3 bg-muted rounded-md"
-              >
-                <div>
+              <div key={o.id} className="p-4 bg-muted rounded-md space-y-2">
+                <div className="flex items-center justify-between">
                   <p className="font-medium text-foreground">{o.productName}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Lần đặt #{o.orderSequence} · Giao dự kiến:{" "}
-                    {new Date(o.expectedDeliveryDate).toLocaleDateString(
-                      "vi-VN",
-                    )}
-                  </p>
+                  <p className="text-xs text-muted-foreground">ID: {o.id}</p>
                 </div>
-                <div className="text-right">
-                  <p className="font-mono font-medium">
-                    {formatNumber(o.orderQuantity)}
+                <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                  <p>
+                    Mã sản phẩm:{" "}
+                    <span className="font-mono text-foreground">
+                      {o.productId}
+                    </span>
                   </p>
-                  <p className="text-sm text-muted-foreground font-mono">
-                    {formatCurrency(o.estimatedCost)}
+                  <p>
+                    Mã kết quả:{" "}
+                    <span className="font-mono text-foreground">
+                      {o.inventoryResultId}
+                    </span>
+                  </p>
+                  <p>
+                    Lần đặt:{" "}
+                    <span className="font-mono text-foreground">
+                      #{o.orderSequence}
+                    </span>
+                  </p>
+                  <p>
+                    Ngày đặt:{" "}
+                    <span className="font-mono text-foreground">
+                      {new Date(o.orderDate).toLocaleDateString("vi-VN")}
+                    </span>
+                  </p>
+                  <p className="col-span-2">
+                    Dự kiến giao:{" "}
+                    <span className="font-mono text-foreground">
+                      {new Date(o.expectedDeliveryDate).toLocaleDateString(
+                        "vi-VN",
+                      )}
+                    </span>
                   </p>
                 </div>
               </div>

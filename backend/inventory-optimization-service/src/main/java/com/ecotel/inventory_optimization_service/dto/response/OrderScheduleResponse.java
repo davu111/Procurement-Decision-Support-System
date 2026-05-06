@@ -16,6 +16,7 @@ public class OrderScheduleResponse {
     Long id;
     Long inventoryResultId; // để tiện trả về API, sẽ map sang InventoryResultResponse ở service
     String productId; // để tiện trả về API, sẽ map sang ProductResponse ở service
+    String productName;
     Integer orderSequence; // thứ tự lần đặt hàng (1, 2, 3...)
     LocalDate orderDate; // ngày đặt hàng
     LocalDate expectedDeliveryDate; // ngày dự kiến nhận hàng

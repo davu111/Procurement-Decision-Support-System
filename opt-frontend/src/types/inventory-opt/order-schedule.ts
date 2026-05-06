@@ -2,6 +2,7 @@ export interface OrderSchedule {
   id: number;
   inventoryResultId: number;
   productId: string;
+  productName: string;
   orderSequence: number;
   orderDate: string;
   expectedDeliveryDate: string;

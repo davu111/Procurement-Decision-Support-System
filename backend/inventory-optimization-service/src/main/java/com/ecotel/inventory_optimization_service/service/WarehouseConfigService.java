@@ -115,4 +115,9 @@ public class WarehouseConfigService {
                 .divide(BigDecimal.valueOf(Math.max(productService.getActiveTrue().size(), 1)),
                         4, java.math.RoundingMode.HALF_UP);
     }
+
+    public WarehouseConfigResponse getConfigByProductId(String productId) {
+        Long configId = warehouseServiceClient.getConfigIdByProductId(productId);
+        return getById(configId);
+    }
 }

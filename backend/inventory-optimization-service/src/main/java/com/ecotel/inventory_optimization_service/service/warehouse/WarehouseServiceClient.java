@@ -19,6 +19,7 @@ public class WarehouseServiceClient {
     @Value("${external.warehouse-service.url}")
     private String warehouseServiceUrl;
 
+    // GET WAREHOUSE FULL INFO BY CONFIG ID
     public FullWarehouseResponse getFullWarehouseInfoByConfigId(Long configId) {
         try {
             log.info("Fetching full warehouse info by configId: {}", configId);
@@ -35,6 +36,27 @@ public class WarehouseServiceClient {
                     .block();
         } catch (Exception e) {
             log.error("Error fetching warehouse info for configId: {}, URL: {}", configId, warehouseServiceUrl + "/warehouses/full-info-config/" + configId, e);
+            throw e;
+        }
+    }
+
+    // GET CONFIG ID BY PRODUCT ID
+    public Long getConfigIdByProductId(String productId) {
+        try {
+            log.info("Fetching configId by productId: {}", productId);
+            return webClientBuilder.build().get()
+                    .uri(warehouseServiceUrl + "/warehouses/config-product-id/{productId}", productId)
+                    //                .headers(headers -> {
+                    //                    assert tokenValue != null;
+                    //                    headers.setBearerAuth(tokenValue);
+                    //                }) // ✅ Gắn Authorization header
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<com.ecotel.shared_library.dto.response.ApiResponse<Long>>() {
+                    })
+                    .map(ApiResponse::getData)  // ⚡ Lấy data từ wrapper
+                    .block();
+        } catch (Exception e) {
+            log.error("Error fetching configId by productId: {}, URL: {}", productId, warehouseServiceUrl + "/warehouses/config-product-id/{productId}" + productId, e);
             throw e;
         }
     }

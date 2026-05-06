@@ -86,6 +86,16 @@ public class WarehouseController {
                 .build();
     }
 
+    // GET CONFIG ID BY PRODUCTID
+    @GetMapping("/config-product-id/{productId}")
+    public ApiResponse<Long> getConfigIdByProductId(@PathVariable String productId) {
+        Long configId = warehouseService.getConfigIdByProductId(productId);
+        return ApiResponse.<Long>builder()
+                .message("Get configId by productId successful")
+                .data(configId)
+                .build();
+    }
+
     @PostMapping
     public ApiResponse<WarehouseResponse> create(@Valid @RequestBody WarehouseRequest request) {
         WarehouseResponse result = warehouseService.create(request);

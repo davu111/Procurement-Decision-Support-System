@@ -25,11 +25,9 @@ const navItems = [
   { to: "/product-categories", icon: Tag, label: "Danh mục sản phẩm" },
   { to: "/new-plan", icon: PlusCircle, label: "Kỳ kế hoạch mới" },
   { to: "/consumption", icon: ClipboardList, label: "Nhập tiêu thụ" },
-  { to: "/forecast", icon: LineChart, label: "Import & Dự đoán" },
   { to: "/suppliers", icon: Truck, label: "Nhà cung cấp" },
   { to: "/warehouses", icon: Boxes, label: "Kho hàng" },
   { to: "/transactions", icon: History, label: "Lịch sử Nhập/Xuất" },
-  { to: "/settings", icon: Settings, label: "Cấu hình kho" },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {

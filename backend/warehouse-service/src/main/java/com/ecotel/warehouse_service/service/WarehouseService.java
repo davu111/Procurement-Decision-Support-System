@@ -9,6 +9,7 @@ import com.ecotel.warehouse_service.dto.response.WarehouseConfigResponse;
 import com.ecotel.warehouse_service.dto.response.WarehouseResponse;
 import com.ecotel.warehouse_service.mapper.WarehouseMapper;
 import com.ecotel.warehouse_service.model.Warehouse;
+import com.ecotel.warehouse_service.repository.InventoryRepository;
 import com.ecotel.warehouse_service.repository.WarehouseRepository;
 import com.ecotel.warehouse_service.service.external.WarehouseConfigService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class WarehouseService {
 
     private final InventoryService inventoryService;
     private final WarehouseConfigService warehouseConfigService;
+    private final InventoryRepository inventoryRepository;
 
     // GET BY ID
     public WarehouseResponse getWarehouseById(String warehouseId) {
@@ -120,5 +122,11 @@ public class WarehouseService {
                 .orElseThrow(() -> new RuntimeException("Kho chứa không tồn tại"));
         warehouse.setIsActive(true);
         return warehouseMapper.toWarehouseResponse(warehouseRepository.save(warehouse));
+    }
+
+    public Long getConfigIdByProductId(String productId) {
+        return inventoryRepository.findConfigIdByProductId(productId)
+                .orElseThrow(() -> new RuntimeException(
+                        "No warehouse found for productId: " + productId));
     }
 }

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { mockWarehouseConfig } from "@/data/mockData";
 import { productApi } from "@/api/productApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,8 +115,10 @@ export default function NewPlanPage() {
   const [endMonth, setEndMonth] = useState(CURRENT_MONTH);
   const [targetYear, setTargetYear] = useState(CURRENT_YEAR);
   const [demandQ, setDemandQ] = useState("");
-  const [storageI, setStorageI] = useState(
-    mockWarehouseConfig.storageCostCoefficient.toString(),
+  const [storageI, setStorageI] = useState("");
+  const [loadingWarehouseConfig, setLoadingWarehouseConfig] = useState(false);
+  const [warehouseConfigId, setWarehouseConfigId] = useState<number | null>(
+    null,
   );
 
   // ── Flow mode ──────────────────────────────────────────────────────────────
@@ -165,6 +166,34 @@ export default function NewPlanPage() {
   useEffect(() => {
     productApi.getAll().then((data) => setProducts(data));
   }, []);
+
+  // ── Fetch warehouse config when product changes ───────────────────────────
+  useEffect(() => {
+    if (!productId) {
+      setStorageI("");
+      setWarehouseConfigId(null);
+      return;
+    }
+
+    setLoadingWarehouseConfig(true);
+    inventoryApi
+      .get(`/warehouse-config/product/${productId}`)
+      .then((res: any) => {
+        const config = res.data;
+        if (config?.id != null) {
+          setWarehouseConfigId(config.id);
+        }
+        if (config?.storageCostCoefficient != null) {
+          setStorageI(config.storageCostCoefficient.toString());
+        }
+      })
+      .catch(() => {
+        // Fallback: người dùng tự nhập
+        setStorageI("");
+        setWarehouseConfigId(null);
+      })
+      .finally(() => setLoadingWarehouseConfig(false));
+  }, [productId]);
 
   const yearOptions = useMemo(() => getYearOptions(), []);
   const monthOptions = useMemo(() => getMonthOptions(targetYear), [targetYear]);
@@ -389,6 +418,7 @@ export default function NewPlanPage() {
   function buildPayload() {
     return {
       productId: Number(productId),
+      warehouseConfigId,
       startMonth,
       endMonth,
       year: targetYear,
@@ -808,12 +838,20 @@ export default function NewPlanPage() {
               <span className="text-muted-foreground font-normal">
                 (theo năm, backend tự chia 12)
               </span>
+              {loadingWarehouseConfig && (
+                <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Đang tải...
+                </span>
+              )}
             </Label>
             <Input
               type="number"
               value={storageI}
               onChange={(e) => setStorageI(e.target.value)}
               step="0.001"
+              placeholder="Hệ số bảo quản sẽ tự cập nhật khi chọn mặt hàng..."
+              disabled={loadingWarehouseConfig}
             />
           </div>
         </div>

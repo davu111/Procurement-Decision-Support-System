@@ -33,7 +33,7 @@ export default function ForecastPage() {
   >([]);
   const currentYear = new Date().getFullYear();
 
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -47,7 +47,7 @@ export default function ForecastPage() {
       });
   }, []);
 
-  const [selectedProduct, setSelectedProduct] = useState<string | "">("");
+  const [selectedProduct, setSelectedProduct] = useState<string | "">("1");
   const [forecastResult, setForecastResult] = useState<ForecastResult | null>(
     null,
   );
@@ -218,10 +218,6 @@ export default function ForecastPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Import & Dự đoán</h1>
-        <p className="text-muted-foreground mt-1">
-          Import dữ liệu tiêu thụ lịch sử, hệ thống tự động chọn mô hình và đưa
-          ra dự đoán
-        </p>
       </div>
 
       {/* Error Alert */}
