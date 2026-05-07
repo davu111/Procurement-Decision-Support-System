@@ -29,8 +29,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Bảng điều khiển</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-3xl font-bold font-display text-gray-900">Bảng điều khiển</h1>
+        <p className="text-sm text-gray-400 mt-1">
           Tổng quan tình trạng đặt hàng hôm nay
         </p>
       </div>

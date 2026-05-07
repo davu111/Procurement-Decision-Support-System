@@ -16,6 +16,7 @@ import {
   Download,
   FileText,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -446,60 +447,52 @@ export default function WarehousesPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-3xl font-bold font-display text-gray-900">
             Quản lý Kho hàng
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-gray-400 mt-1">
             Thêm/sửa kho, theo dõi tồn kho và thực hiện nhập/xuất hàng
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" /> Thêm kho mới
+        <Button onClick={openCreate} className="gap-2">
+          <Plus className="h-4 w-4" /> Thêm kho mới
         </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">
-              Tổng số kho
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{warehouses.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">
-              Đang hoạt động
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{totalActive}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">
-              Tổng tồn kho
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatNumber(totalInventoryAll)}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
+          <p className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-3">
+            Tổng số kho
+          </p>
+          <p className="text-3xl font-bold font-display text-gray-900">
+            {warehouses.length}
+          </p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
+          <p className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-3">
+            Đang hoạt động
+          </p>
+          <p className="text-3xl font-bold font-display text-emerald-600">
+            {totalActive}
+          </p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
+          <p className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-3">
+            Tổng tồn kho
+          </p>
+          <p className="text-3xl font-bold font-display text-primary">
+            {formatNumber(totalInventoryAll)}
+          </p>
+        </div>
       </div>
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <Input
           placeholder="Tìm kho theo tên..."
-          className="pl-9"
+          className="pl-9 rounded-xl border-gray-200"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -525,12 +518,22 @@ export default function WarehousesPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Tên kho</TableHead>
-                  <TableHead className="text-right">Số mặt hàng</TableHead>
-                  <TableHead className="text-right">Tổng tồn</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
+                <TableRow className="bg-gray-50/80">
+                  <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                    Tên kho
+                  </TableHead>
+                  <TableHead className="text-right text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                    Số mặt hàng
+                  </TableHead>
+                  <TableHead className="text-right text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                    Tổng tồn
+                  </TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                    Trạng thái
+                  </TableHead>
+                  <TableHead className="text-right text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                    Thao tác
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -539,70 +542,89 @@ export default function WarehousesPage() {
                   return (
                     <TableRow
                       key={w.id}
+                      className="hover:bg-gray-50/50 transition-colors"
                       data-state={selectedId === w.id ? "selected" : undefined}
                     >
-                      <TableCell className="font-medium">
+                      <TableCell className="font-semibold text-gray-900">
                         {w.warehouseName}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right font-mono text-sm text-gray-700">
                         {formatNumber(Number(w.totalInventory ?? 0))}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right font-mono text-sm text-gray-700">
                         {formatNumber(Number(w.items ?? 0))}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={active ? "default" : "secondary"}>
-                          {active ? "Hoạt động" : "Vô hiệu hóa"}
-                        </Badge>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full",
+                            active
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                              : "bg-gray-100 text-gray-400 border border-gray-200",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "w-1.5 h-1.5 rounded-full",
+                              active ? "bg-emerald-500" : "bg-gray-300",
+                            )}
+                          />
+                          {active ? "Hoạt động" : "Vô hiệu"}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                        <div className="flex justify-end gap-0.5">
+                          <button
                             title="Xem tồn kho"
                             onClick={() => setSelectedId(w.id)}
+                            className={cn(
+                              "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                              selectedId === w.id
+                                ? "bg-primary/10 text-primary"
+                                : "text-gray-400 hover:text-primary hover:bg-primary/10",
+                            )}
                           >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                          <button
                             title="Nhập hàng"
                             disabled={!active}
                             onClick={() => openTransfer(w, "IMPORT")}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                           >
-                            <ArrowDownToLine className="h-4 w-4 text-success" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                            <ArrowDownToLine className="h-3.5 w-3.5" />
+                          </button>
+                          <button
                             title="Xuất hàng"
                             disabled={!active}
                             onClick={() => openTransfer(w, "EXPORT")}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                           >
-                            <ArrowUpFromLine className="h-4 w-4 text-warning" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                            <ArrowUpFromLine className="h-3.5 w-3.5" />
+                          </button>
+                          <button
                             title="Sửa"
                             onClick={() => openEdit(w)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
                           >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
                             title={active ? "Vô hiệu hóa" : "Kích hoạt"}
                             onClick={() => setConfirmTarget(w)}
+                            className={cn(
+                              "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                              active
+                                ? "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                                : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50",
+                            )}
                           >
                             {active ? (
-                              <PowerOff className="h-4 w-4 text-destructive" />
+                              <PowerOff className="h-3.5 w-3.5" />
                             ) : (
-                              <Power className="h-4 w-4 text-success" />
+                              <Power className="h-3.5 w-3.5" />
                             )}
-                          </Button>
+                          </button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -676,28 +698,31 @@ export default function WarehousesPage() {
           </DialogHeader>
           <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto">
             {/* Warehouse Name */}
-            <div className="space-y-1">
-              <Label>Tên kho *</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
+                Tên kho <span className="text-red-400">*</span>
+              </Label>
               <Input
                 value={form.warehouseName}
                 onChange={(e) =>
                   setForm({ ...form, warehouseName: e.target.value })
                 }
                 placeholder="VD: Kho trung tâm"
+                className="rounded-xl"
               />
               {errors.warehouseName && (
-                <p className="text-sm text-destructive">
+                <p className="text-xs text-red-500 mt-1">
                   {errors.warehouseName}
                 </p>
               )}
             </div>
 
             {/* Configuration Section */}
-            <div className="border-t pt-4">
-              <h4 className="font-semibold mb-3 text-sm flex items-center gap-2">
+            <div className="border-t border-gray-100 pt-4">
+              <h4 className="font-semibold mb-4 text-sm flex items-center gap-2 text-gray-700">
                 Cấu hình kho
                 {loadingConfig && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                 )}
               </h4>
               {loadingConfig ? (
@@ -882,27 +907,49 @@ export default function WarehousesPage() {
       <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2.5">
+              <div
+                className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center",
+                  transferType === "IMPORT" ? "bg-primary/10" : "bg-amber-50",
+                )}
+              >
+                {transferType === "IMPORT" ? (
+                  <ArrowDownToLine className="h-4 w-4 text-primary" />
+                ) : (
+                  <ArrowUpFromLine className="h-4 w-4 text-amber-600" />
+                )}
+              </div>
               {transferType === "IMPORT"
                 ? "Nhập hàng vào kho"
                 : "Xuất hàng khỏi kho"}
-              {transferWarehouse ? ` — ${transferWarehouse.warehouseName}` : ""}
+              {transferWarehouse && (
+                <span className="text-gray-400 font-normal text-base">
+                  — {transferWarehouse.warehouseName}
+                </span>
+              )}
             </DialogTitle>
             <DialogDescription>
               Chọn sản phẩm và nhập số lượng. Có thể thêm nhiều dòng.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 py-2 max-h-[50vh] overflow-y-auto">
+          <div className="space-y-2.5 py-2 max-h-[50vh] overflow-y-auto">
             {lines.map((line, idx) => (
-              <div key={idx} className="flex gap-2 items-start">
+              <div
+                key={idx}
+                className="flex gap-2 items-center bg-gray-50 rounded-xl p-2"
+              >
+                <span className="w-6 h-6 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-400 shrink-0">
+                  {idx + 1}
+                </span>
                 <div className="flex-1">
                   {products.length > 0 ? (
                     <Select
                       value={line.productId}
                       onValueChange={(v) => updateLine(idx, { productId: v })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="rounded-xl border-gray-200 bg-white">
                         <SelectValue placeholder="Chọn sản phẩm" />
                       </SelectTrigger>
                       <SelectContent>
@@ -921,6 +968,7 @@ export default function WarehousesPage() {
                       onChange={(e) =>
                         updateLine(idx, { productId: e.target.value })
                       }
+                      className="rounded-xl"
                     />
                   )}
                 </div>
@@ -928,25 +976,29 @@ export default function WarehousesPage() {
                   type="number"
                   min="0"
                   step="any"
-                  className="w-32"
+                  className="w-32 rounded-xl font-mono bg-white"
                   placeholder="Số lượng"
                   value={line.quantity}
                   onChange={(e) =>
                     updateLine(idx, { quantity: e.target.value })
                   }
                 />
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
                   onClick={() => removeLine(idx)}
                   disabled={lines.length === 1}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-white transition-colors disabled:opacity-30"
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
             ))}
-            <Button variant="outline" size="sm" onClick={addLine}>
-              <Plus className="h-4 w-4 mr-1" /> Thêm dòng
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addLine}
+              className="rounded-xl gap-1"
+            >
+              <Plus className="h-3.5 w-3.5" /> Thêm dòng
             </Button>
           </div>
 
@@ -955,14 +1007,19 @@ export default function WarehousesPage() {
               variant="outline"
               onClick={() => setTransferOpen(false)}
               disabled={transferring}
+              className="rounded-xl"
             >
               Hủy
             </Button>
-            <Button onClick={submitTransfer} disabled={transferring}>
-              {transferring && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
-              {transferType === "IMPORT" ? "Nhập hàng" : "Xuất hàng"}
+            <Button
+              onClick={submitTransfer}
+              disabled={transferring}
+              className="rounded-xl gap-2"
+            >
+              {transferring && <Loader2 className="h-4 w-4 animate-spin" />}
+              {transferType === "IMPORT"
+                ? "Xác nhận nhập hàng"
+                : "Xác nhận xuất hàng"}
             </Button>
           </DialogFooter>
         </DialogContent>

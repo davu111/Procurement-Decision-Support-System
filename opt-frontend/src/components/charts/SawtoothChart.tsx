@@ -4,6 +4,7 @@ import type { OrderSchedule } from "@/types/inventory-opt/order-schedule";
 import {
   ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -69,11 +70,11 @@ function fmtDate(dateStr: string) {
 }
 
 const SEGMENT_COLORS = [
-  "hsl(215 70% 50%)",
-  "hsl(142 60% 40%)",
-  "hsl(280 60% 55%)",
-  "hsl(25 80% 50%)",
-  "hsl(340 70% 50%)",
+  "#6366F1", // primary
+  "#10B981", // emerald
+  "#8B5CF6", // violet
+  "#F59E0B", // amber
+  "#EC4899", // pink
 ];
 
 // ── Marker shapes ──────────────────────────────────────────────────────────────
@@ -81,7 +82,7 @@ const SEGMENT_COLORS = [
 const OrderMarkerShape = (props: any) => {
   const { cx, cy, payload } = props;
   if (cx == null || cy == null) return null;
-  const color = payload?.isWarning ? "hsl(38 92% 50%)" : "hsl(0 72% 51%)";
+  const color = payload?.isWarning ? "#F59E0B" : "#EF4444";
   return (
     <g>
       <polygon
@@ -101,8 +102,8 @@ const DeliveryMarkerShape = (props: any) => {
     <g>
       <polygon
         points={`${cx},${cy - 4} ${cx - 7},${cy + 8} ${cx + 7},${cy + 8}`}
-        fill="hsl(142 71% 35%)"
-        stroke="hsl(142 71% 35%)"
+        fill="#10B981"
+        stroke="#10B981"
         strokeWidth={1}
       />
     </g>
@@ -424,10 +425,23 @@ export default function SawtoothChart({
           data={mergedData}
           margin={{ top: 20, right: 90, bottom: 40, left: 20 }}
         >
+          {/* Gradient bóng nhạt dưới đường tồn kho theo từng segment */}
+          <defs>
+            {builtSegments.map((seg, i) => (
+              <linearGradient
+                key={`grad-${i}`}
+                id={`gradInv-${i}`}
+                x1="0" y1="0" x2="0" y2="1"
+              >
+                <stop offset="0%" stopColor={seg.color} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={seg.color} stopOpacity={0} />
+              </linearGradient>
+            ))}
+          </defs>
           <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="hsl(var(--border))"
-            opacity={0.5}
+            strokeDasharray="4 4"
+            stroke="#F1F5F9"
+            vertical={false}
           />
 
           <XAxis
@@ -435,26 +449,30 @@ export default function SawtoothChart({
             type="number"
             domain={[minDay - 1, maxDay + 1]}
             ticks={ticks}
-            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 10, fill: "#94A3B8" }}
+            axisLine={false}
+            tickLine={false}
             tickFormatter={(val) => fmtDate(addDaysStr(refDateStr, val))}
             label={{
               value: "Thời gian",
               position: "bottom",
               offset: 20,
-              style: { fontSize: 12, fill: "hsl(var(--muted-foreground))" },
+              style: { fontSize: 12, fill: "#94A3B8" },
             }}
           />
 
           <YAxis
             domain={[0, Math.ceil(maxY)]}
-            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 10, fill: "#94A3B8" }}
+            axisLine={false}
+            tickLine={false}
             tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
             label={{
               value: "Tồn kho",
               angle: -90,
               position: "insideLeft",
               offset: -5,
-              style: { fontSize: 12, fill: "hsl(var(--muted-foreground))" },
+              style: { fontSize: 12, fill: "#94A3B8" },
             }}
           />
 
@@ -464,22 +482,22 @@ export default function SawtoothChart({
               const p = payload[0]?.payload as ChartPoint;
               if (!p) return null;
               return (
-                <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg text-xs space-y-1">
-                  <p className="font-medium text-foreground">
+                <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.12)] text-xs space-y-2 min-w-[160px]">
+                  <p className="font-medium text-gray-400">
                     {new Date(p.date).toLocaleDateString("vi-VN")}
                   </p>
-                  <p className="text-muted-foreground">
+                  <p className="text-gray-900 font-medium">
                     Tồn kho:{" "}
-                    <span className="font-mono font-bold text-foreground">
+                    <span className="font-mono font-bold text-gray-900 text-sm">
                       {p.inventory.toLocaleString("vi-VN", {
                         maximumFractionDigits: 2,
                       })}
                     </span>
                   </p>
                   {p.segmentB != null && (
-                    <p className="text-muted-foreground">
+                    <p className="text-gray-500">
                       B (kỳ này):{" "}
-                      <span className="font-mono text-foreground">
+                      <span className="font-mono font-medium">
                         {p.segmentB.toLocaleString("vi-VN", {
                           maximumFractionDigits: 1,
                         })}
@@ -487,12 +505,12 @@ export default function SawtoothChart({
                     </p>
                   )}
                   {p.orderMarker !== undefined && (
-                    <p className="text-destructive font-medium">
+                    <p className="text-red-500 font-medium pt-1 border-t border-gray-50 mt-1">
                       Ngày đặt hàng {p.isWarning ? "Tràn kỳ" : ""}
                     </p>
                   )}
                   {p.deliveryMarker !== undefined && (
-                    <p className="text-emerald-600 font-medium">
+                    <p className="text-emerald-500 font-medium pt-1 border-t border-gray-50 mt-1">
                       Ngày nhận hàng
                     </p>
                   )}
@@ -507,8 +525,8 @@ export default function SawtoothChart({
               key={`so-${i}`}
               x1={area.from}
               x2={area.to}
-              fill="hsl(0 72% 51%)"
-              fillOpacity={0.12}
+              fill="#EF4444"
+              fillOpacity={0.08}
               strokeOpacity={0}
             />
           ))}
@@ -519,7 +537,7 @@ export default function SawtoothChart({
               key={`lt-${i}`}
               x1={area.from}
               x2={area.to}
-              fill="hsl(215 70% 50%)"
+              fill="#6366F1"
               fillOpacity={0.06}
               strokeOpacity={0}
             />
@@ -534,7 +552,7 @@ export default function SawtoothChart({
                   key={`sep-${i}`}
                   x1={seg.chartEnd}
                   x2={seg.chartEnd + 1}
-                  fill="hsl(var(--border))"
+                  fill="#E2E8F0"
                   fillOpacity={0.4}
                   strokeOpacity={0}
                 />
@@ -590,13 +608,13 @@ export default function SawtoothChart({
                   { x: chartStart, y: ML },
                   { x: chartEnd, y: ML },
                 ]}
-                stroke="hsl(142 71% 35%)"
+                stroke="#10B981"
                 strokeWidth={1.5}
                 strokeDasharray="8 4"
                 ifOverflow="visible"
                 label={makeLabel(
                   `S*(1-Q/K)=${ML.toFixed(0)}`,
-                  "hsl(142 71% 35%)",
+                  "#10B981",
                   showMLLabel,
                 )}
               />,
@@ -606,13 +624,13 @@ export default function SawtoothChart({
                   { x: chartStart, y: Z },
                   { x: chartEnd, y: Z },
                 ]}
-                stroke="hsl(38 92% 50%)"
+                stroke="#F59E0B"
                 strokeWidth={1.5}
                 strokeDasharray="4 4"
                 ifOverflow="visible"
                 label={makeLabel(
                   `Z=${Z.toFixed(0)}`,
-                  "hsl(38 92% 50%)",
+                  "#F59E0B",
                   showZLabel,
                 )}
               />,
@@ -622,18 +640,35 @@ export default function SawtoothChart({
                   { x: chartStart, y: B },
                   { x: chartEnd, y: B },
                 ]}
-                stroke="hsl(0 72% 51%)"
+                stroke="#EF4444"
                 strokeWidth={1.5}
                 strokeDasharray="8 4"
                 ifOverflow="visible"
                 label={makeLabel(
                   `B=${B.toFixed(0)}`,
-                  "hsl(0 72% 51%)",
+                  "#EF4444",
                   showBLabel,
                 )}
               />,
             ];
           })}
+
+          {/* Bóng gradient dưới đường tồn kho — vẽ trước Line để không che đường */}
+          {builtSegments.map((seg, i) => (
+            <Area
+              key={`area-${i}`}
+              data={seg.points}
+              dataKey="inventory"
+              type="linear"
+              stroke="none"
+              fill={`url(#gradInv-${i})`}
+              fillOpacity={1}
+              legendType="none"
+              connectNulls={false}
+              dot={false}
+              activeDot={false}
+            />
+          ))}
 
           {/* Đường tồn kho — 1 Line per segment, màu riêng */}
           {builtSegments.map((seg, i) => (
@@ -645,7 +680,7 @@ export default function SawtoothChart({
               stroke={seg.color}
               strokeWidth={2.5}
               dot={false}
-              activeDot={{ r: 4, fill: seg.color }}
+              activeDot={{ r: 6, fill: seg.color, strokeWidth: 2, stroke: "#fff" }}
               connectNulls={false}
             />
           ))}

@@ -12,6 +12,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -280,92 +281,104 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6">
+      {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-3xl font-bold font-display text-gray-900">
             Danh sách mặt hàng
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-gray-400 mt-1">
             Quản lý và theo dõi tình trạng từng mặt hàng
           </p>
         </div>
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} className="gap-2">
           <Plus className="h-4 w-4" /> Thêm sản phẩm
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-card border rounded-lg p-4 flex flex-wrap items-end gap-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <Filter className="h-4 w-4" /> Bộ lọc
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Danh mục</Label>
-          <Select value={categoryId} onValueChange={setCategoryId}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả danh mục</SelectItem>
-              {categories.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.categoryName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Trạng thái</Label>
-          <Select
-            value={status}
-            onValueChange={(v) => setStatus(v as StatusFilter)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Tất cả</SelectItem>
-              <SelectItem value="ACTIVE">Hoạt động</SelectItem>
-              <SelectItem value="INACTIVE">Ngừng hoạt động</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Sắp xếp</Label>
-          <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name_desc">Tên sản phẩm (Z→A)</SelectItem>
-              <SelectItem value="name_asc">Tên sản phẩm (A→Z)</SelectItem>
-              <SelectItem value="newest">Mới nhất</SelectItem>
-              <SelectItem value="oldest">Cũ nhất</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="ml-auto text-xs text-muted-foreground">
+      {/* ── Filter bar ──────────────────────────────────────────────────────── */}
+      <Card className="p-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex items-center gap-1.5 self-end pb-2">
+            <Filter className="h-4 w-4 text-gray-400" />
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Bộ lọc</span>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold">Danh mục</Label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger className="w-[200px] rounded-xl border-gray-200">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả danh mục</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.categoryName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold">Trạng thái</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
+              <SelectTrigger className="w-[160px] rounded-xl border-gray-200">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tất cả</SelectItem>
+                <SelectItem value="ACTIVE">Hoạt động</SelectItem>
+                <SelectItem value="INACTIVE">Ngừng hoạt động</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold">Sắp xếp</Label>
+            <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
+              <SelectTrigger className="w-[190px] rounded-xl border-gray-200">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name_desc">Tên sản phẩm (Z→A)</SelectItem>
+                <SelectItem value="name_asc">Tên sản phẩm (A→Z)</SelectItem>
+                <SelectItem value="newest">Mới nhất</SelectItem>
+                <SelectItem value="oldest">Cũ nhất</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {totalElements > 0 && (
-            <>
-              Tổng:{" "}
-              <span className="font-medium text-foreground">
-                {totalElements}
-              </span>{" "}
-              sản phẩm
-            </>
+            <div className="ml-auto self-end pb-2">
+              <span className="text-xs text-gray-400">
+                Tổng <span className="font-semibold text-gray-700">{totalElements}</span> sản phẩm
+              </span>
+            </div>
           )}
         </div>
-      </div>
+      </Card>
 
-      {/* Grid */}
+      {/* ── Product Grid ────────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="text-center py-16 text-muted-foreground">
-          Đang tải...
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-2xl bg-white border border-gray-100 overflow-hidden animate-pulse">
+              <div className="aspect-[4/3] bg-gray-100" />
+              <div className="p-4 space-y-3">
+                <div className="h-3 bg-gray-100 rounded w-1/3" />
+                <div className="h-4 bg-gray-100 rounded w-2/3" />
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : products.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          Không có sản phẩm
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center">
+            <ImageIcon className="h-8 w-8 text-gray-300" />
+          </div>
+          <p className="text-gray-500 font-medium">Không có sản phẩm</p>
+          <p className="text-sm text-gray-400">Thêm sản phẩm đầu tiên để bắt đầu</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -375,71 +388,100 @@ export default function ProductsPage() {
               <div
                 key={product.id}
                 className={cn(
-                  "bg-card border rounded-lg overflow-hidden hover:shadow-md transition-shadow",
-                  !isActive && "opacity-70",
+                  "group relative bg-white rounded-2xl border border-gray-100 overflow-hidden",
+                  "shadow-[0_2px_12px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_24px_rgba(99,102,241,0.12)]",
+                  "transition-all duration-200 hover:-translate-y-0.5",
+                  !isActive && "opacity-60",
                 )}
               >
+                {/* Image area */}
                 <div
-                  className="aspect-video bg-muted flex items-center justify-center cursor-pointer overflow-hidden"
+                  className="relative aspect-[4/3] bg-gray-50 flex items-center justify-center cursor-pointer overflow-hidden"
                   onClick={() => navigate(`/products/${product.id}`)}
                 >
                   {product.imageUrl ? (
                     <img
                       src={product.imageUrl}
                       alt={product.productName}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
-                    <ImageIcon className="h-10 w-10 text-muted-foreground/50" />
-                  )}
-                </div>
-                <div className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-mono text-xs text-muted-foreground truncate">
-                        {product.code ?? product.code ?? product.id}
-                      </p>
-                      <h3 className="font-semibold text-foreground truncate">
-                        {product.productName}
-                      </h3>
+                    <div className="flex flex-col items-center gap-2">
+                      <ImageIcon className="h-10 w-10 text-gray-200" />
+                      <span className="text-xs text-gray-300">Chưa có ảnh</span>
                     </div>
-                    <Badge variant={isActive ? "default" : "secondary"}>
-                      {isActive ? "Hoạt động" : "Ngừng"}
-                    </Badge>
-                  </div>
-                  {product.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {product.description}
-                    </p>
                   )}
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Đơn vị: {product.unit}</span>
-                    {product.categoryName && (
-                      <span>{product.categoryName}</span>
+                  {/* Status badge overlay */}
+                  <div className="absolute top-3 right-3">
+                    <span className={cn(
+                      "inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm",
+                      isActive
+                        ? "bg-emerald-50/90 text-emerald-700 border border-emerald-100"
+                        : "bg-white/90 text-gray-400 border border-gray-200",
+                    )}>
+                      <span className={cn(
+                        "w-1.5 h-1.5 rounded-full",
+                        isActive ? "bg-emerald-500" : "bg-gray-300",
+                      )} />
+                      {isActive ? "Hoạt động" : "Ngừng"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-4">
+                  <div
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/products/${product.id}`)}
+                  >
+                    <p className="font-mono text-[11px] text-gray-400 mb-0.5">
+                      {product.code ?? product.id}
+                    </p>
+                    <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">
+                      {product.productName}
+                    </h3>
+                    {product.description && (
+                      <p className="text-xs text-gray-400 mt-1.5 line-clamp-2">
+                        {product.description}
+                      </p>
                     )}
                   </div>
-                  <div className="flex gap-2 pt-2 border-t">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => openEdit(product)}
-                    >
-                      <Pencil className="h-3.5 w-3.5" /> Sửa
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={isActive ? "destructive" : "default"}
-                      className="flex-1"
-                      onClick={() => setToggleTarget(product)}
-                    >
-                      {isActive ? (
-                        <PowerOff className="h-3.5 w-3.5" />
-                      ) : (
-                        <Power className="h-3.5 w-3.5" />
+
+                  {/* Footer: meta + icon actions */}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {product.categoryName && (
+                        <span className="text-[11px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md font-medium">
+                          {product.categoryName}
+                        </span>
                       )}
-                      {isActive ? "Ngừng" : "Kích hoạt"}
-                    </Button>
+                      <span className="text-[11px] text-gray-400">{product.unit}</span>
+                    </div>
+
+                    {/* Icon-only actions — nhỏ gọn, không chiếm diện tích */}
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        onClick={() => openEdit(product)}
+                        title="Sửa sản phẩm"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setToggleTarget(product)}
+                        title={isActive ? "Ngừng hoạt động" : "Kích hoạt"}
+                        className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                          isActive
+                            ? "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                            : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50",
+                        )}
+                      >
+                        {isActive
+                          ? <PowerOff className="h-3.5 w-3.5" />
+                          : <Power className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

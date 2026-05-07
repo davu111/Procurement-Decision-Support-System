@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ForecastChart from "@/components/forecast/ForecastChart";
 import ProductSelector from "@/components/product/ProductSelector";
+import { Card } from "@/components/ui/card";
 import type { Product } from "@/types/inventory-opt/product";
 import type { ConsumptionHistory } from "@/types/inventory-opt/consumption-history";
 import api from "@/api/axiosConfig";
@@ -216,9 +217,6 @@ export default function ForecastPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Import & Dự đoán</h1>
-      </div>
 
       {/* Error Alert */}
       {error && (
@@ -227,9 +225,8 @@ export default function ForecastPage() {
         </Alert>
       )}
 
-      {/* Step 2: Select product & view forecast */}
-      <div className="bg-card border rounded-lg p-5 space-y-4">
-        <h2 className="font-semibold text-foreground">
+      <Card className="p-5 space-y-4">
+        <h2 className="text-xl font-semibold font-display text-gray-900">
           Chọn mặt hàng để xem dự đoán
         </h2>
 
@@ -263,13 +260,12 @@ export default function ForecastPage() {
             </Select>
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* Loading State */}
       {loading && (
-        <div className="bg-card border rounded-lg p-5">
-          <p className="text-muted-foreground">Đang tải dữ liệu...</p>
-        </div>
+        <Card className="p-5">
+          <p className="text-gray-400 font-body">Đang tải dữ liệu...</p>
+        </Card>
       )}
 
       {/* Forecast Chart */}
@@ -286,12 +282,12 @@ export default function ForecastPage() {
         selectedProduct &&
         selectedYear &&
         !error && (
-          <div className="bg-card border rounded-lg p-5">
-            <p className="text-muted-foreground text-sm">
+          <Card className="p-5">
+            <p className="text-gray-400 font-body text-sm">
               Không có dữ liệu để hiển thị. Hãy kiểm tra dữ liệu tiêu thụ đã
               import.
             </p>
-          </div>
+          </Card>
         )}
     </div>
   );

@@ -8,10 +8,11 @@ import type {
 import type { InventoryResult } from "@/types/inventory-opt/inventory-result";
 import api from "@/api/axiosConfig";
 import { formatCurrency, formatNumber, formatDate } from "@/utils/helpers";
-import { ArrowLeft, TrendingUp, CalendarSearch } from "lucide-react";
+import { ArrowLeft, TrendingUp, CalendarSearch, Package2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -84,7 +85,6 @@ export default function ProductDetail() {
 
   // ── Data state ─────────────────────────────────────────────────────────────
   const [results, setResults] = useState<InventoryResult[]>([]);
-  // const [schedules, setSchedules] = useState<OrderSchedule[]>([]);
   const [schedules, setSchedules] = useState<OrderScheduleChain[]>([]);
   const [loading, setLoading] = useState(false);
   const [noData, setNoData] = useState(false);
@@ -102,7 +102,6 @@ export default function ProductDetail() {
     .sort((a, b) => a.orderDate.localeCompare(b.orderDate));
 
   useEffect(() => {
-    // Nếu client-side validation fail thì không gọi API
     if (clientValidationError) {
       setPeriodError(clientValidationError);
       setResolvedPeriod(null);
@@ -120,8 +119,6 @@ export default function ProductDetail() {
           params: { startMonth, endMonth, year: targetYear, mode: "history" },
         })
         .then((res: any) => {
-          console.log("resolve-period response:", res); // ← thêm dòng này
-
           setResolvedPeriod(res.data);
           setPeriodError(null);
         })
@@ -147,14 +144,8 @@ export default function ProductDetail() {
       .catch(() => setProductError(true));
   }, [productId]);
 
-  // ── Load result + schedules — chỉ chạy khi resolvedPeriod hợp lệ ──────────
+  // ── Load result + schedules ────────────────────────────────────────────────
   useEffect(() => {
-    console.log(
-      "Triggering data load for productId:",
-      productId,
-      "with resolvedPeriod:",
-      resolvedPeriod,
-    );
     if (!resolvedPeriod) return;
 
     const { planStartDate, planEndDate } = resolvedPeriod;
@@ -164,30 +155,18 @@ export default function ProductDetail() {
     setNoData(false);
     setResults([]);
     setSchedules([]);
-    console.log("Fetching inventory results...");
 
     Promise.all([
       api.get(`/inventory-results/range/${productId}`, {
         params: { startDate: planStartDate, endDate: planEndDate },
       }),
-      // api.get(`/order-schedules/${productId}`, {
-      //   params: { from: planStartDate, to: planEndDate },
-      // }),
       api.get(`/order-schedules/product/${productId}/chain`),
     ])
       .then(([resResult, resSchedules]: any[]) => {
         if (cancelled) return;
-        // API trả array of results
         const rawResults: InventoryResult[] = resResult.data;
-        // const rawSchedules: OrderSchedule[] = resSchedules.data ?? [];
         const rawSchedules: OrderScheduleChain[] =
           resSchedules.data.schedules ?? [];
-        console.log(
-          "Loaded inventory results:",
-          rawResults,
-          "and order schedules:",
-          rawSchedules,
-        );
 
         if (!rawResults || rawResults.length === 0) {
           setNoData(true);
@@ -196,9 +175,7 @@ export default function ProductDetail() {
           setSchedules(rawSchedules);
         }
       })
-      .catch((err) => {
-        console.error("API error:", err.response);
-
+      .catch(() => {
         if (!cancelled) setNoData(true);
       })
       .finally(() => {
@@ -213,7 +190,6 @@ export default function ProductDetail() {
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleYearChange = useCallback((year: number) => {
     setTargetYear(year);
-    // Clamp startMonth/endMonth về tháng hợp lệ nếu chọn năm hiện tại
     if (year === CURRENT_YEAR) {
       setStartMonth((prev) => Math.max(prev, CURRENT_MONTH));
       setEndMonth((prev) => Math.max(prev, CURRENT_MONTH));
@@ -223,7 +199,6 @@ export default function ProductDetail() {
   const handleStartMonthChange = useCallback(
     (month: number) => {
       setStartMonth(month);
-      // endMonth không được nhỏ hơn startMonth mới
       if (endMonth < month) setEndMonth(month);
     },
     [endMonth],
@@ -231,9 +206,8 @@ export default function ProductDetail() {
 
   // ── Options ────────────────────────────────────────────────────────────────
   const yearOptions = useMemo(() => getYearOptions(), []);
-  const monthOptions = useMemo(() => getMonthOptions(targetYear), [targetYear]);
+  const monthOptions = useMemo(() => getMonthOptions(), []);
 
-  // endMonth options: thêm disable nếu < startMonth
   const endMonthOptions = useMemo(
     () =>
       monthOptions.map((opt) => ({
@@ -246,21 +220,18 @@ export default function ProductDetail() {
   // ── Render guards ──────────────────────────────────────────────────────────
   if (productError)
     return (
-      <div className="text-center py-20">
-        <p className="text-muted-foreground mb-4">Không tìm thấy sản phẩm.</p>
-        <Button onClick={() => navigate(-1)}>Quay lại</Button>
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <Package2 className="h-16 w-16 text-gray-200" />
+        <p className="text-gray-500 text-lg font-medium">Không tìm thấy sản phẩm.</p>
+        <Button variant="outline" onClick={() => navigate(-1)}>Quay lại</Button>
       </div>
     );
 
   if (!product)
     return (
-      <div className="text-center py-20">
-        <p className="text-muted-foreground animate-pulse">
-          Đang tải mặt hàng…
-        </p>
-        <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
-          Quay lại
-        </Button>
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <div className="w-10 h-10 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
+        <p className="text-gray-400 text-sm animate-pulse">Đang tải mặt hàng…</p>
       </div>
     );
 
@@ -270,37 +241,44 @@ export default function ProductDetail() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate(-1)}
+          className="rounded-xl border border-gray-100 shadow-sm hover:bg-gray-50"
+        >
+          <ArrowLeft className="h-5 w-5 text-gray-600" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-3xl font-bold font-display text-gray-900">
             {product.productName}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-gray-400 mt-1 font-mono">
             {product.code} · {product.unit}
           </p>
         </div>
       </div>
 
-      {/* Filter panel */}
-      <div className="bg-card border rounded-lg p-5 space-y-4">
+      {/* ── Filter Panel ────────────────────────────────────────────────────── */}
+      <Card className="p-5 space-y-4">
         <div className="flex items-center gap-2">
-          <CalendarSearch className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-foreground">Kỳ kế hoạch</h2>
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <CalendarSearch className="h-4 w-4 text-primary" />
+          </div>
+          <h2 className="text-sm font-semibold text-gray-900">Kỳ kế hoạch</h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Năm */}
-          <div className="space-y-2">
-            <Label>Năm</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Năm</Label>
             <Select
               value={targetYear.toString()}
               onValueChange={(v) => handleYearChange(Number(v))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="rounded-xl border-gray-200">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -314,13 +292,13 @@ export default function ProductDetail() {
           </div>
 
           {/* Tháng bắt đầu */}
-          <div className="space-y-2">
-            <Label>Từ tháng</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Từ tháng</Label>
             <Select
               value={startMonth.toString()}
               onValueChange={(v) => handleStartMonthChange(Number(v))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="rounded-xl border-gray-200">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -338,13 +316,13 @@ export default function ProductDetail() {
           </div>
 
           {/* Tháng kết thúc */}
-          <div className="space-y-2">
-            <Label>Đến tháng</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Đến tháng</Label>
             <Select
               value={endMonth.toString()}
               onValueChange={(v) => setEndMonth(Number(v))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="rounded-xl border-gray-200">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -362,147 +340,137 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        {/* Period preview */}
+        {/* Status messages */}
         {resolvingPeriod && (
-          <p className="text-xs text-muted-foreground animate-pulse">
-            Đang xác minh kỳ…
-          </p>
+          <div className="flex items-center gap-2">
+            <div className="w-3.5 h-3.5 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+            <p className="text-xs text-gray-400">Đang xác minh kỳ…</p>
+          </div>
         )}
         {!resolvingPeriod && periodError && (
-          <p className="text-xs text-destructive">{periodError}</p>
-        )}
-        {/* {!resolvingPeriod && resolvedPeriod && (
-          <div className="text-xs text-muted-foreground space-y-0.5">
-            <p>
-              📅{" "}
-              <span className="font-medium text-foreground">
-                {resolvedPeriod.label}
-              </span>{" "}
-              ({resolvedPeriod.planStartDate} → {resolvedPeriod.planEndDate})
-            </p>
-            <div>
-              🚚 Lịch đặt hàng bắt đầu từ:{" "}
-              <span className="font-medium text-foreground">
-                {resolvedPeriod.scheduleStartDate}
-              </span>
-              {resolvedPeriod.isCurrentMonth && (
-                <Badge variant="secondary" className="ml-2 text-[10px]">
-                  Tháng hiện tại
-                </Badge>
-              )}
-            </div>
-          </div>
-        )} */}
-      </div>
-
-      {/* Loading */}
-      {loading && (
-        <div className="text-center py-16">
-          <p className="text-muted-foreground text-sm animate-pulse">
-            Đang tải dữ liệu kỳ {filterLabel}…
+          <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">
+            {periodError}
           </p>
-        </div>
+        )}
+        {!resolvingPeriod && resolvedPeriod && (
+          <p className="text-xs text-gray-400">
+            Kỳ đã chọn:{" "}
+            <span className="font-medium text-gray-600">{resolvedPeriod.label}</span>
+            {" "}({resolvedPeriod.planStartDate} → {resolvedPeriod.planEndDate})
+          </p>
+        )}
+      </Card>
+
+      {/* ── Loading ─────────────────────────────────────────────────────────── */}
+      {loading && (
+        <Card className="flex flex-col items-center justify-center py-16 gap-4">
+          <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+          <p className="text-gray-400 text-sm">
+            Đang tải dữ liệu kỳ <span className="font-medium text-gray-600">{filterLabel}</span>…
+          </p>
+        </Card>
       )}
 
-      {/* No data */}
+      {/* ── No data ─────────────────────────────────────────────────────────── */}
       {!loading && noData && (
-        <div className="bg-card border rounded-lg flex flex-col items-center justify-center py-16 gap-3">
-          <CalendarSearch className="h-10 w-10 text-muted-foreground/40" />
-          <p className="text-base font-medium text-foreground">
+        <Card className="flex flex-col items-center justify-center py-16 gap-3">
+          <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center">
+            <CalendarSearch className="h-8 w-8 text-gray-300" />
+          </div>
+          <p className="text-base font-semibold font-display text-gray-900">
             Không có kế hoạch cho {filterLabel}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-400">
             Vui lòng chọn kỳ khác hoặc kiểm tra lại dữ liệu.
           </p>
-        </div>
+        </Card>
       )}
 
-      {/* Main content */}
+      {/* ── Main content ────────────────────────────────────────────────────── */}
       {!loading && !noData && results.length > 0 && (
         <>
           {/* Sawtooth Chart */}
-          <div className="bg-card border rounded-lg p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="h-5 w-5 text-muted-foreground" />
-              <h2 className="text-lg font-semibold text-foreground">
-                Biểu đồ tồn kho (Răng cưa) — {filterLabel}
-              </h2>
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold font-display text-gray-900">
+                  Biểu đồ tồn kho dự đoán
+                </h2>
+                <p className="text-xs text-gray-400 mt-0.5">{filterLabel}</p>
+              </div>
             </div>
-            {console.log(
-              "Rendering SawtoothChart with results:",
-              results,
-              "and schedules:",
-              schedules,
-            )}
             <SawtoothChart results={results} schedules={schedules} />
-          </div>
+          </Card>
 
           {/* Order schedule table */}
-          <div className="bg-card border rounded-lg overflow-hidden">
-            <div className="px-5 py-4 border-b">
-              <h2 className="text-lg font-semibold text-foreground">
-                Lịch đặt hàng — {filterLabel}
+          <Card className="p-0 overflow-hidden">
+            {/* Table header */}
+            <div className="px-6 py-4 border-b border-gray-100 bg-white">
+              <h2 className="text-xl font-semibold font-display text-gray-900">
+                Lịch đặt hàng
               </h2>
+              <p className="text-xs text-gray-400 mt-0.5">{filterLabel} · {allSchedulesSorted.length} lần đặt</p>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Lần
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Ngày đặt
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Ngày giao
-                    </th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">
-                      Số lượng
-                    </th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">
-                      Chi phí
-                    </th>
-                    <th className="text-center px-4 py-3 font-medium text-muted-foreground">
-                      Trạng thái
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {allSchedulesSorted.map((o) => (
-                    <tr key={o.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 font-mono">
-                        #{o.orderSequence}
-                      </td>
-                      <td className="px-4 py-3">{formatDate(o.orderDate)}</td>
-                      <td className="px-4 py-3">
-                        {formatDate(o.expectedDeliveryDate)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono">
-                        {formatNumber(o.orderQuantity)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono">
-                        {formatCurrency(o.estimatedCost)}
-                      </td>
-                      {/* <td className="px-4 py-3 text-center">
-                        {o.actualOrderDate ? (
-                          <Badge className="bg-status-success text-destructive-foreground">
-                            Đã đặt
-                          </Badge>
-                        ) : o.isReorderWarning ? (
-                          <Badge className="bg-status-danger text-destructive-foreground">
-                            Cần đặt ngay
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Chờ</Badge>
-                        )}
-                      </td> */}
+
+            {allSchedulesSorted.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-2">
+                <p className="text-sm text-gray-400">Chưa có lịch đặt hàng</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/50">
+                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                        Lần
+                      </th>
+                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                        Ngày đặt
+                      </th>
+                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                        Ngày giao
+                      </th>
+                      <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                        Số lượng
+                      </th>
+                      <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                        Chi phí
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {allSchedulesSorted.map((o, idx) => (
+                      <tr
+                        key={o.id}
+                        className="hover:bg-gray-50/60 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold font-mono">
+                            #{o.orderSequence}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-700">
+                          {formatDate(o.orderDate)}
+                        </td>
+                        <td className="px-6 py-4 text-gray-700">
+                          {formatDate(o.expectedDeliveryDate)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono font-semibold text-gray-900">
+                          {formatNumber(o.orderQuantity)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-gray-700">
+                          {formatCurrency(o.estimatedCost)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
         </>
       )}
     </div>

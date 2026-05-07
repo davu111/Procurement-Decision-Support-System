@@ -63,12 +63,12 @@ export default function ForecastChart({
   const forecastPoint = chartData.find((p) => p.forecastValue !== null);
 
   return (
-    <div className="bg-card border rounded-lg overflow-hidden">
+    <div className="bg-white border border-gray-100 shadow-[0_2px_16px_rgba(0,0,0,0.06)] rounded-2xl overflow-hidden">
       {/* Header */}
-      <div className="p-5 border-b border-border">
+      <div className="p-5 border-b border-gray-100">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h2 className="text-lg font-bold text-foreground">
+            <h2 className="text-xl font-bold font-display text-gray-900">
               {result.productName} — Dự đoán
             </h2>
             <div className="flex items-center gap-2 mt-1">
@@ -110,39 +110,67 @@ export default function ForecastChart({
               data={chartData}
               margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
             >
+              <defs>
+                {/* Gradient bóng cho đường Thực tế — indigo */}
+                <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366F1" stopOpacity={0.18} />
+                  <stop offset="100%" stopColor="#6366F1" stopOpacity={0} />
+                </linearGradient>
+                {/* Gradient bóng cho đường Dự đoán — emerald */}
+                <linearGradient id="gradForecast" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10B981" stopOpacity={0.15} />
+                  <stop offset="100%" stopColor="#10B981" stopOpacity={0} />
+                </linearGradient>
+                {/* Confidence band */}
+                <linearGradient id="gradConfidence" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10B981" stopOpacity={0.08} />
+                  <stop offset="100%" stopColor="#10B981" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
               <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="hsl(var(--border))"
+                strokeDasharray="4 4"
+                stroke="#F1F5F9"
+                vertical={false}
               />
               <XAxis
                 dataKey="period"
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fontSize: 11, fill: "#94A3B8" }}
+                axisLine={false}
+                tickLine={false}
                 tickFormatter={(v: string) => {
                   const [y, m] = v.split("-");
                   return `T${parseInt(m)}/${y.slice(2)}`;
                 }}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fontSize: 11, fill: "#94A3B8" }}
+                axisLine={false}
+                tickLine={false}
                 tickFormatter={(v: number) => formatNumber(v, 0)}
               />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                }}
-                formatter={(value: number, name: string) => {
-                  const labels: Record<string, string> = {
-                    actual: "Thực tế",
-                    planned: "Kế hoạch cũ",
-                    forecastValue: "Dự đoán",
-                  };
-                  return [
-                    formatNumber(value) + " " + result.unit,
-                    labels[name] || name,
-                  ];
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  return (
+                    <div className="bg-white rounded-xl px-4 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-gray-100 min-w-[160px]">
+                      <p className="text-xs text-gray-400 mb-2">{label}</p>
+                      {payload.map((entry: any, index: number) => {
+                        if (entry.name === 'upperBound' || entry.name === 'lowerBound') return null;
+                        const labels: Record<string, string> = {
+                          actual: "Thực tế",
+                          planned: "Kế hoạch cũ",
+                          forecastValue: "Dự đoán",
+                        };
+                        const name = labels[entry.name] || entry.name;
+                        return (
+                          <div key={index} className="flex justify-between items-center gap-4 text-sm mb-1 last:mb-0">
+                            <span className="font-medium" style={{ color: entry.color }}>{name}</span>
+                            <span className="font-bold font-mono text-gray-900">{formatNumber(entry.value)} {result.unit}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
                 }}
               />
               <Legend
@@ -160,62 +188,93 @@ export default function ForecastChart({
               <Area
                 dataKey="upperBound"
                 stroke="none"
-                fill="hsl(25, 95%, 53%)"
-                fillOpacity={0.1}
+                fill="url(#gradConfidence)"
+                fillOpacity={1}
                 name="upperBound"
                 legendType="none"
               />
               <Area
                 dataKey="lowerBound"
                 stroke="none"
-                fill="hsl(var(--background))"
+                fill="#ffffff"
                 fillOpacity={1}
                 name="lowerBound"
                 legendType="none"
+              />
+
+              {/* Bóng gradient dưới đường thực tế */}
+              <Area
+                type="monotone"
+                dataKey="actual"
+                stroke="none"
+                fill="url(#gradActual)"
+                fillOpacity={1}
+                legendType="none"
+                name="actual_area"
+                connectNulls={false}
+                dot={false}
+                activeDot={false}
+              />
+              {/* Bóng gradient dưới đường dự đoán */}
+              <Area
+                type="monotone"
+                dataKey="forecastValue"
+                stroke="none"
+                fill="url(#gradForecast)"
+                fillOpacity={1}
+                legendType="none"
+                name="forecast_area"
+                connectNulls={false}
+                dot={false}
+                activeDot={false}
               />
 
               {/* Today line */}
               {todayPeriod && (
                 <ReferenceLine
                   x={todayPeriod}
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="#94A3B8"
                   strokeDasharray="4 4"
                   label={{
                     value: "Hôm nay",
                     position: "top",
                     fontSize: 11,
-                    fill: "hsl(var(--muted-foreground))",
+                    fill: "#94A3B8",
                   }}
                 />
               )}
 
-              {/* Lines */}
+              {/* Đường thực tế — indigo (màu chủ đạo) */}
               <Line
                 type="monotone"
                 dataKey="actual"
-                stroke="hsl(210, 70%, 40%)"
+                stroke="#6366F1"
                 strokeWidth={2.5}
-                dot={{ r: 3, fill: "hsl(210, 70%, 40%)" }}
+                dot={{ r: 4, fill: "#6366F1", strokeWidth: 2, stroke: "#fff" }}
+                activeDot={{ r: 6, fill: "#6366F1", strokeWidth: 2, stroke: "#fff" }}
                 connectNulls={false}
                 name="actual"
               />
+              {/* Kế hoạch cũ — gray dạt */}
               <Line
                 type="monotone"
                 dataKey="planned"
-                stroke="hsl(var(--muted-foreground))"
+                stroke="#CBD5E1"
                 strokeWidth={1.5}
                 strokeDasharray="6 4"
                 dot={false}
                 connectNulls={false}
                 name="planned"
               />
+              {/* Dự đoán — emerald */}
               <Line
                 type="monotone"
                 dataKey="forecastValue"
-                stroke="hsl(25, 95%, 53%)"
+                stroke="#10B981"
                 strokeWidth={2.5}
-                strokeDasharray="8 4"
-                dot={{ r: 4, fill: "hsl(25, 95%, 53%)" }}
+                strokeDasharray="6 4"
+                dot={{ r: 4, fill: "#10B981", strokeWidth: 2, stroke: "#fff" }}
+                activeDot={{ r: 6, fill: "#10B981", strokeWidth: 2, stroke: "#fff" }}
                 connectNulls={false}
                 name="forecastValue"
               />
