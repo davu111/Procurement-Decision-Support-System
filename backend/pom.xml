@@ -7,7 +7,6 @@
 
     <modules>
         <module>api-gateway-viet-bac</module>
-	    <module>vehicle-service</module>
         <module>plan-service</module>
         <module>warehouse-service</module>
         <module>employee-service</module>
