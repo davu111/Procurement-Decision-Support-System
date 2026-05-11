@@ -12,4 +12,4 @@ export const keycloakInitOptions = {
 
 // LOGIN URL - để redirect về khi logout
 export const LOGIN_URL = "http://localhost:5173/login";
-export const DASHBOARD_URL = "http://localhost:5173/dashboard";
+export const DASHBOARD_URL = "http://localhost:5173/";
