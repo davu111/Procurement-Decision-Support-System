@@ -4,7 +4,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: mysql
     ports:
-      - "3343:3306"
+      - "3353:3306"
     volumes:
       - employee_mysql_data:/var/lib/mysql
     networks:

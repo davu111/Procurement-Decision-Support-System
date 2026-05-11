@@ -16,18 +16,10 @@ public class EmployeeResponse {
 
     String id;
     String keycloakUserId;
-    String idCard;
     String firstName;
     String lastName;
     String username;
-    String siteId;
-    String roleId;
     String roleName;
-    String positionId;
-    String positionName;
-    String departmentId;
-    String departmentName;
-    Boolean ppeCompliantFlag;
-    Boolean inWarehouseFlag;
+    String initialPassword;
     EmployeeStatus status;
 }

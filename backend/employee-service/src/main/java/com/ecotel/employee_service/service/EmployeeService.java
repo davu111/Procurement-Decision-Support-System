@@ -4,21 +4,14 @@ import com.ecotel.employee_service.dto.request.EmployeeRequest;
 import com.ecotel.employee_service.dto.response.EmployeeResponse;
 import com.ecotel.employee_service.enums.EmployeeStatus;
 import com.ecotel.employee_service.mapper.EmployeeMapper;
-import com.ecotel.employee_service.model.Department;
 import com.ecotel.employee_service.model.Employee;
-import com.ecotel.employee_service.model.Position;
-import com.ecotel.employee_service.model.Role;
-import com.ecotel.employee_service.repository.DepartmentRepository;
 import com.ecotel.employee_service.repository.EmployeeRepository;
-import com.ecotel.employee_service.repository.PositionRepository;
-import com.ecotel.employee_service.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,107 +23,20 @@ import java.util.stream.Collectors;
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
-    private final RoleRepository roleRepository;
-    private final PositionRepository positionRepository;
-    private final DepartmentRepository departmentRepository;
 
     private final EmployeeMapper employeeMapper;
 
     private final KeycloakService keycloakService;
 
-    /**
-     * Lấy tất cả employees từ Keycloak (chưa sync với DB)
-     */
-    public List<EmployeeResponse> getAllEmployeesFromKeycloak() {
-        log.info("Fetching all users from Keycloak");
-
-        List<UserRepresentation> keycloakUsers = keycloakService.getAllUsers();
-
-        return keycloakUsers.stream()
-                .map(this::mapToEmployeeResponse)
-                .collect(Collectors.toList());
-    }
+    // Keycloak-only methods removed. All get/update/create operations return combined DB + Keycloak data.
 
     /**
-     * Lấy employee theo ID từ Keycloak
-     */
-    public EmployeeResponse getEmployeeFromKeycloak(String userId) {
-        log.info("Fetching user {} from Keycloak", userId);
-
-        UserRepresentation keycloakUser = keycloakService.getUserById(userId);
-        return mapToEmployeeResponse(keycloakUser);
-    }
-
-    /**
-     * Lấy employee theo username từ Keycloak
-     */
-    public EmployeeResponse getEmployeeByUsername(String username) {
-        log.info("Fetching user {} from Keycloak", username);
-
-        UserRepresentation keycloakUser = keycloakService.getUserByUsername(username);
-        return mapToEmployeeResponse(keycloakUser);
-    }
-
-    /**
-     * Đồng bộ một employee từ Keycloak vào database
-     */
-    @Transactional
-    public Employee syncEmployeeFromKeycloak(String userId) {
-        log.info("Syncing employee {} from Keycloak to database", userId);
-
-        UserRepresentation keycloakUser = keycloakService.getUserById(userId);
-
-        Employee employee = employeeRepository.findById(userId)
-                .orElse(new Employee());
-
-        // Map dữ liệu từ Keycloak
-        employee.setId(keycloakUser.getId());
-        employee.setUsername(keycloakUser.getUsername());
-
-        employee.setFirstName(keycloakUser.getFirstName());
-        employee.setLastName(keycloakUser.getLastName());
-
-        // Lấy custom attributes từ Keycloak
-        employee.setSiteId(keycloakService.getUserAttribute(keycloakUser, "site_id"));
-//        employee.setPositionId(keycloakService.getUserAttribute(keycloakUser, "position_id"));
-//        employee.setDepartmentId(keycloakService.getUserAttribute(keycloakUser, "department_id"));
-
-        String ppeFlag = keycloakService.getUserAttribute(keycloakUser, "ppe_compliant_flag");
-        employee.setPpeCompliantFlag(ppeFlag != null ? Boolean.valueOf(ppeFlag) : false);
-
-        String warehouseFlag = keycloakService.getUserAttribute(keycloakUser, "in_warehouse_flag");
-        employee.setInWarehouseFlag(warehouseFlag != null ? Boolean.valueOf(warehouseFlag) : false);
-
-        // Set default status nếu chưa có
-        if (employee.getStatus() == null) {
-            employee.setStatus(keycloakUser.isEnabled() ?
-                    EmployeeStatus.ACTIVE : EmployeeStatus.INACTIVE);
-        }
-
-        return employeeRepository.save(employee);
-    }
-
-    /**
-     * Đồng bộ tất cả employees từ Keycloak vào database
-     */
-    @Transactional
-    public List<Employee> syncAllEmployeesFromKeycloak() {
-        log.info("Syncing all employees from Keycloak to database");
-
-        List<UserRepresentation> keycloakUsers = keycloakService.getAllUsers();
-
-        return keycloakUsers.stream()
-                .map(user -> syncEmployeeFromKeycloak(user.getId()))
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Lấy employee từ database (đã sync)
+     * Lấy employee kết hợp (DB + Keycloak)
      */
     public EmployeeResponse getEmployeeFromDatabase(String userId) {
         Employee employee = employeeRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Employee not found in database: " + userId));
-        return employeeMapper.toResponse(employee);
+        return mapToCombinedEmployeeResponse(employee);
     }
 
     /**
@@ -138,22 +44,43 @@ public class EmployeeService {
      */
     public List<EmployeeResponse> getAllEmployeesFromDatabase() {
         return employeeRepository.findAll().stream()
-                .map(employeeMapper::toResponse)
+                .map(this::mapToCombinedEmployeeResponse)
                 .collect(Collectors.toList());
     }
 
-    // GET EMPLOYEE NAME BY ID
-    public String getUsernameById(String employeeId) {
-        Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found in database: " + employeeId));
-        return employee.getFirstName() + " " + employee.getLastName();
+    /**
+     * Batch create employees
+     */
+    @Transactional
+    public List<EmployeeResponse> createEmployeesBatch(List<EmployeeRequest> requests) {
+        List<EmployeeResponse> created = new java.util.ArrayList<>();
+        for (EmployeeRequest req : requests) {
+            try {
+                created.add(createEmployee(req));
+            } catch (Exception e) {
+                log.warn("Batch create: failed for {}: {}", req.getUsername(), e.getMessage());
+            }
+        }
+        return created;
     }
 
-    // GET EMPLOYEE BY ID CARD
-    public EmployeeResponse getEmployeeByIdCard(String idCard) {
-        Employee employee = employeeRepository.findByIdCard(idCard)
-                .orElseThrow(() -> new RuntimeException("Employee not found with ID Card: " + idCard));
-        return employeeMapper.toResponse(employee);
+    /**
+     * Batch update employees
+     */
+    @Transactional
+    public List<EmployeeResponse> updateEmployeesBatch(List<com.ecotel.employee_service.dto.request.EmployeeUpdateRequest> updates) {
+        List<EmployeeResponse> updated = new java.util.ArrayList<>();
+        for (com.ecotel.employee_service.dto.request.EmployeeUpdateRequest u : updates) {
+            try {
+                EmployeeResponse resp = updateEmployee(u.getId(), new EmployeeRequest(
+                        u.getFirstName(), u.getLastName(), u.getUsername(), u.getRoleName(), u.getStatus()
+                ));
+                updated.add(resp);
+            } catch (Exception e) {
+                log.warn("Batch update: failed for id {}: {}", u.getId(), e.getMessage());
+            }
+        }
+        return updated;
     }
 
     /**
@@ -163,41 +90,29 @@ public class EmployeeService {
     public EmployeeResponse createEmployee(EmployeeRequest request) {
         log.info("Creating new employee with username: {}", request.getUsername());
 
-        // 1. Validate: Kiểm tra username đã tồn tại chưa
-        if (employeeRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists: " + request.getUsername());
-        }
-
-        // 2. Validate: Kiểm tra role, position, department có tồn tại không
-        Role role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new RuntimeException("Role not found: " + request.getRoleId()));
-
-        Position position = positionRepository.findById(request.getPositionId())
-                .orElseThrow(() -> new RuntimeException("Position not found: " + request.getPositionId()));
-
-        Department department = departmentRepository.findById(request.getDepartmentId())
-                .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentId()));
-
         String keycloakUserId = null;
+        String initialPassword = null;
 
         try {
-            // 3. Tạo user trong Keycloak
-            keycloakUserId = createUserInKeycloak(request, role.getRoleName());
-            System.out.println(keycloakUserId);
+                // 3. Tạo user trong Keycloak (generate password)
+                initialPassword = java.util.UUID.randomUUID().toString().replaceAll("-", "").substring(0, 12);
+                keycloakUserId = createUserInKeycloak(request, request.getRoleName(), initialPassword);
 
-            // 4. Tạo employee entity với Keycloak ID
-            Employee employee = employeeMapper.toEntity(request, role, position, department);
-            employee.setKeycloakUserId(keycloakUserId); // Sử dụng Keycloak User ID
-            employee.setPasswordHash(request.getUsername()); // default password = username
+                // 4. Tạo employee entity với Keycloak ID
+                Employee employee = employeeMapper.toEntity(request);
+                employee.setKeycloakUserId(keycloakUserId); // Sử dụng Keycloak User ID
+                employee.setRoleName(request.getRoleName());
 
-            // 5. Lưu vào database
-            Employee savedEmployee = employeeRepository.save(employee);
+                // 5. Lưu vào database
+                Employee savedEmployee = employeeRepository.save(employee);
 
-            log.info("Successfully created employee {} with Keycloak ID: {}",
+                log.info("Successfully created employee {} with Keycloak ID: {}",
                     request.getUsername(), keycloakUserId);
 
-            // 6. Return response
-            return employeeMapper.toResponse(savedEmployee);
+                // 6. Return response (include initial password so UI can show it once)
+                EmployeeResponse resp = mapToCombinedEmployeeResponse(savedEmployee);
+                resp.setInitialPassword(initialPassword);
+                return resp;
 
         } catch (Exception e) {
             // Rollback: Xóa user khỏi Keycloak nếu có lỗi khi lưu vào database
@@ -218,7 +133,7 @@ public class EmployeeService {
     /**
      * Tạo user trong Keycloak với đầy đủ thông tin
      */
-    private String createUserInKeycloak(EmployeeRequest request, String roleName) {
+    private String createUserInKeycloak(EmployeeRequest request, String roleName, String password) {
         // Parse full name to first name and last name
         String firstName = request.getFirstName();
         String lastName = request.getLastName();
@@ -227,10 +142,11 @@ public class EmployeeService {
         boolean enabled = request.getStatus() == EmployeeStatus.ACTIVE;
         String userId = keycloakService.createUser(
                 request.getUsername(),
-                request.getUsername(), // default password = username
+                password,
                 firstName,
                 lastName,
-                enabled
+                enabled,
+                true
         );
 
         // Gán role
@@ -244,13 +160,6 @@ public class EmployeeService {
 
         // Set custom attributes
         Map<String, List<String>> attributes = new HashMap<>();
-        attributes.put("site_id", Collections.singletonList(request.getSiteId()));
-        attributes.put("position_id", Collections.singletonList(request.getPositionId()));
-        attributes.put("department_id", Collections.singletonList(request.getDepartmentId()));
-        attributes.put("ppe_compliant_flag", Collections.singletonList(
-                String.valueOf(request.getPpeCompliantFlag())));
-        attributes.put("in_warehouse_flag", Collections.singletonList(
-                String.valueOf(request.getInWarehouseFlag())));
 
         keycloakService.setUserAttributes(userId, attributes);
 
@@ -268,27 +177,20 @@ public class EmployeeService {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
 
-        // 2. Validate references
-        Role role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new RuntimeException("Role not found: " + request.getRoleId()));
+        // 2. Update employee fields (roleName is stored on Employee)
+        employeeMapper.updateEntityFromRequest(request, employee);
+        if (request.getRoleName() != null) {
+            employee.setRoleName(request.getRoleName());
+        }
 
-        Position position = positionRepository.findById(request.getPositionId())
-                .orElseThrow(() -> new RuntimeException("Position not found: " + request.getPositionId()));
+        // 3. Update Keycloak (username, names, roles)
+        updateUserInKeycloak(employee.getKeycloakUserId(), request, employee.getRoleName());
 
-        Department department = departmentRepository.findById(request.getDepartmentId())
-                .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentId()));
-
-        // 3. Update employee
-        employeeMapper.updateEntityFromRequest(request, employee, role, position, department);
-
-        // 4. Update Keycloak
-        updateUserInKeycloak(employee.getKeycloakUserId(), request, role.getRoleName());
-
-        // 5. Save
+        // 4. Save
         Employee updatedEmployee = employeeRepository.save(employee);
 
         log.info("Successfully updated employee: {}", employeeId);
-        return employeeMapper.toResponse(updatedEmployee);
+        return mapToCombinedEmployeeResponse(updatedEmployee);
     }
 
     /**
@@ -297,17 +199,10 @@ public class EmployeeService {
     private void updateUserInKeycloak(String keycloakUserId, EmployeeRequest request, String roleName) {
         try {
             // Update role
-            keycloakService.assignRoleToUser(keycloakUserId, roleName);
+            if (roleName != null) keycloakService.assignRoleToUser(keycloakUserId, roleName);
 
             // Update custom attributes
             Map<String, List<String>> attributes = new HashMap<>();
-            attributes.put("site_id", Collections.singletonList(request.getSiteId()));
-            attributes.put("position_id", Collections.singletonList(request.getPositionId()));
-            attributes.put("department_id", Collections.singletonList(request.getDepartmentId()));
-            attributes.put("ppe_compliant_flag", Collections.singletonList(
-                    String.valueOf(request.getPpeCompliantFlag())));
-            attributes.put("in_warehouse_flag", Collections.singletonList(
-                    String.valueOf(request.getInWarehouseFlag())));
 
             keycloakService.setUserAttributes(keycloakUserId, attributes);
 
@@ -318,6 +213,28 @@ public class EmployeeService {
             log.error("Failed to update user in Keycloak: {}", e.getMessage());
             throw new RuntimeException("Failed to update user in Keycloak", e);
         }
+    }
+
+    /**
+     * DeActive employee
+     */
+    public Boolean deActive(String id){
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Can not find employeeId to de active" + id));
+        employee.setStatus(EmployeeStatus.INACTIVE);
+        employeeRepository.save(employee);
+        return true;
+    }
+
+    /**
+     * Active employee
+     */
+    public Boolean active(String id){
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Can not find employeeId to de active" + id));
+        employee.setStatus(EmployeeStatus.ACTIVE);
+        employeeRepository.save(employee);
+        return true;
     }
 
     /**
@@ -347,26 +264,26 @@ public class EmployeeService {
     }
 
     /**
-     * Map UserRepresentation từ Keycloak sang EmployeeResponse
+     * Map combined Employee entity + Keycloak user into EmployeeResponse
      */
-    private EmployeeResponse mapToEmployeeResponse(UserRepresentation keycloakUser) {
-        List<String> roles = keycloakService.getUserRoles(keycloakUser.getId());
+    private EmployeeResponse mapToCombinedEmployeeResponse(Employee employee) {
+        EmployeeResponse.EmployeeResponseBuilder builder = EmployeeResponse.builder()
+                .id(employee.getId())
+                .keycloakUserId(employee.getKeycloakUserId())
+                .roleName(employee.getRoleName())
+                .status(employee.getStatus());
 
-        return EmployeeResponse.builder()
-                .id(keycloakUser.getId())
-                .username(keycloakUser.getUsername())
-                .firstName(keycloakUser.getFirstName())
-                .lastName(keycloakUser.getLastName())
-                .siteId(keycloakService.getUserAttribute(keycloakUser, "site_id"))
-                .positionId(keycloakService.getUserAttribute(keycloakUser, "position_id"))
-                .departmentId(keycloakService.getUserAttribute(keycloakUser, "department_id"))
-                .ppeCompliantFlag(getBooleanAttribute(keycloakUser, "ppe_compliant_flag"))
-                .inWarehouseFlag(getBooleanAttribute(keycloakUser, "in_warehouse_flag"))
-                .build();
-    }
+        try {
+            if (employee.getKeycloakUserId() != null) {
+                UserRepresentation u = keycloakService.getUserById(employee.getKeycloakUserId());
+                builder.username(u.getUsername())
+                        .firstName(u.getFirstName())
+                        .lastName(u.getLastName());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch Keycloak user for employee {}: {}", employee.getId(), e.getMessage());
+        }
 
-    private Boolean getBooleanAttribute(UserRepresentation user, String attributeName) {
-        String value = keycloakService.getUserAttribute(user, attributeName);
-        return value != null ? Boolean.valueOf(value) : null;
+        return builder.build();
     }
 }

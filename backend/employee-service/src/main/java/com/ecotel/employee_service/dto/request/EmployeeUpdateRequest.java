@@ -8,7 +8,8 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class EmployeeRequest {
+public class EmployeeUpdateRequest {
+    String id;
     String firstName;
     String lastName;
     String username;

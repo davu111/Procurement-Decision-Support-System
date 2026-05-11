@@ -2,9 +2,9 @@ package com.ecotel.employee_service.controller;
 
 import com.ecotel.employee_service.dto.request.RoleRequest;
 import com.ecotel.employee_service.dto.request.RoleUpdateRequest;
-import com.ecotel.employee_service.dto.response.ApiResponse;
 import com.ecotel.employee_service.dto.response.RoleResponse;
 import com.ecotel.employee_service.service.RoleService;
+import com.ecotel.shared_library.dto.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

@@ -7,7 +7,7 @@ services:
       MYSQL_ROOT_PASSWORD: mysql
       MYSQL_DATABASE: keycloak
       MYSQL_USER: keycloak
-      MYSQL_PASSWORD: root
+      MYSQL_PASSWORD: mysql
     volumes:
       - keycloak_mysql_data:/var/lib/mysql
     networks:

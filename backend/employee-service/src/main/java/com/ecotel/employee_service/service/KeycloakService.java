@@ -13,6 +13,7 @@ import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -122,7 +123,8 @@ public class KeycloakService {
      * Tạo user mới trong Keycloak
      */
     public String createUser(String username, String password,
-                             String firstName, String lastName, boolean enabled) {
+                             String firstName, String lastName,
+                             boolean enabled, boolean temporaryPassword) {
         try {
             RealmResource realmResource = keycloak.realm(realm);
             UsersResource usersResource = realmResource.users();
@@ -151,8 +153,26 @@ public class KeycloakService {
 
             response.close();
 
-            // Set password
-            setUserPassword(userId, password, false);
+            // ✅ Set password với temporary flag
+            setUserPassword(userId, password, temporaryPassword);
+
+            // ✅ Force update password nếu là password tạm
+            if (temporaryPassword) {
+                UserResource userResource = usersResource.get(userId);
+                UserRepresentation userRep = userResource.toRepresentation();
+
+                List<String> requiredActions = userRep.getRequiredActions();
+                if (requiredActions == null) {
+                    requiredActions = new ArrayList<>();
+                }
+
+                if (!requiredActions.contains("UPDATE_PASSWORD")) {
+                    requiredActions.add("UPDATE_PASSWORD");
+                }
+
+                userRep.setRequiredActions(requiredActions);
+                userResource.update(userRep);
+            }
 
             log.info("Successfully created user {} in Keycloak with ID: {}", username, userId);
             return userId;

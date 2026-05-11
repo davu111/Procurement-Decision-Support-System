@@ -31,7 +31,7 @@ server:
 # Keycloak Configuration
 keycloak:
   server-url: http://localhost:8180
-  realm: viet-bac-warehouse
+  realm: optimization
   client-id: admin-cli
   username: admin
   password: admin

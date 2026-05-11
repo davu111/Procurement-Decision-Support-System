@@ -11,9 +11,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "employee", indexes = {
-        @Index(name = "idx_username", columnList = "username"),
-        @Index(name = "idx_role_id", columnList = "role_id"),
-        @Index(name = "idx_department", columnList = "department"),
+        @Index(name = "idx_role_name", columnList = "role_name"),
         @Index(name = "idx_status", columnList = "status")
 })
 @Data
@@ -30,50 +28,8 @@ public class Employee {
     @Column(unique = true, nullable = false)
     String keycloakUserId;  // lưu Keycloak ID riêng
 
-    @Column(unique = true, nullable = false, length = 25)
-    String idCard;
-
-
-    @Column(nullable = false, length = 100)
-    String firstName;
-
-    @Column(nullable = false, length = 100)
-    String lastName;
-
-    @Column(nullable = false, unique = true, length = 50)
-    String username;
-
-    @Column(nullable = false, length = 50)
-    String siteId;
-
-    @Column(nullable = false, length = 255)
-    String passwordHash;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_employee_role"))
-    @ToString.Exclude
-    Role role;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "position_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_employee_role"))
-    @ToString.Exclude
-    Position position;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_employee_role"))
-    @ToString.Exclude
-    Department department;
-
-    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
-    @Builder.Default
-    Boolean ppeCompliantFlag = false;
-
-    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
-    @Builder.Default
-    Boolean inWarehouseFlag = true;
+    @Column(name = "role_name", nullable = false)
+    String roleName;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

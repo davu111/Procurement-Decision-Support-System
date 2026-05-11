@@ -3,9 +3,6 @@ package com.ecotel.employee_service.service;
 import com.ecotel.employee_service.dto.request.RoleRequest;
 import com.ecotel.employee_service.dto.request.RoleUpdateRequest;
 import com.ecotel.employee_service.dto.response.RoleResponse;
-import com.ecotel.employee_service.mapper.RoleMapper;
-import com.ecotel.employee_service.model.Role;
-import com.ecotel.employee_service.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
@@ -25,8 +22,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RoleService {
 
-    private final RoleRepository roleRepository;
-    private final RoleMapper roleMapper;
     private final Keycloak keycloak;
 
     @Value("${keycloak.realm}")
@@ -37,9 +32,15 @@ public class RoleService {
      */
     public List<RoleResponse> getAllRoles() {
         log.info("Fetching all roles");
-        return roleRepository.findAll().stream()
-                .map(roleMapper::toResponse)
-                .toList();
+        try {
+            RealmResource realmResource = keycloak.realm(realm);
+            return realmResource.roles().list().stream()
+                    .map(r -> new RoleResponse(r.getId(), r.getName(), r.getDescription()))
+                    .toList();
+        } catch (Exception e) {
+            log.error("Error fetching roles from Keycloak: {}", e.getMessage());
+            throw new RuntimeException("Failed to fetch roles from Keycloak", e);
+        }
     }
 
     /**
@@ -47,8 +48,11 @@ public class RoleService {
      */
     public Page<RoleResponse> getRolesPaginated(Pageable pageable) {
         log.info("Fetching roles with pagination: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
-        return roleRepository.findAll(pageable)
-                .map(roleMapper::toResponse);
+        List<RoleResponse> all = getAllRoles();
+        int start = Math.toIntExact(pageable.getOffset());
+        int end = Math.min(start + pageable.getPageSize(), all.size());
+        List<RoleResponse> content = start <= end ? all.subList(start, end) : List.of();
+        return new org.springframework.data.domain.PageImpl<>(content, pageable, all.size());
     }
 
     /**
@@ -56,29 +60,29 @@ public class RoleService {
      */
     public RoleResponse getRoleById(String id) {
         log.info("Fetching role with id: {}", id);
-        Role role = roleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Role not found with id: " + id));
-        return roleMapper.toResponse(role);
+        try {
+            RealmResource realmResource = keycloak.realm(realm);
+            RoleRepresentation r = realmResource.roles().get(id).toRepresentation();
+            return new RoleResponse(r.getId(), r.getName(), r.getDescription());
+        } catch (Exception e) {
+            log.error("Error fetching role from Keycloak: {}", e.getMessage());
+            throw new RuntimeException("Role not found: " + id, e);
+        }
     }
 
     /**
      * Tạo role mới
-     * Đồng thời tạo role trong Keycloak
      */
     @Transactional
     public RoleResponse createRole(RoleRequest roleRequest) {
         log.info("Creating new role: {}", roleRequest.getRoleName());
 
         try {
-            Role role = roleMapper.toEntity(roleRequest);
-            Role savedRole = roleRepository.save(role);
-            log.info("Role saved to database with id: {}", savedRole.getId());
-
-            // Tạo role trong Keycloak
+            // Create role in Keycloak only
             createRoleInKeycloak(roleRequest.getRoleName(), roleRequest.getDescription());
-            log.info("Role created in Keycloak: {}", roleRequest.getRoleName());
-
-            return roleMapper.toResponse(savedRole);
+            RealmResource realmResource = keycloak.realm(realm);
+            RoleRepresentation r = realmResource.roles().get(roleRequest.getRoleName()).toRepresentation();
+            return new RoleResponse(r.getId(), r.getName(), r.getDescription());
         } catch (Exception e) {
             log.error("Error creating role: {}", e.getMessage());
             throw new RuntimeException("Failed to create role", e);
@@ -87,34 +91,29 @@ public class RoleService {
 
     /**
      * Cập nhật role
-     * Cập nhật cả trong database và Keycloak
      */
     @Transactional
     public RoleResponse updateRole(String id, RoleRequest roleRequest) {
         log.info("Updating role with id: {}", id);
 
         try {
-            Role role = roleRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Role not found with id: " + id));
-            
-            String oldRoleName = role.getRoleName();
-            
-            roleMapper.updateEntityFromRequest(roleRequest, role);
+            RealmResource realmResource = keycloak.realm(realm);
+            // Fetch current role representation
+            RoleRepresentation current = realmResource.roles().get(id).toRepresentation();
+            String oldName = current.getName();
 
-            Role updatedRole = roleRepository.save(role);
-            log.info("Role updated in database: {}", id);
-
-            // Cập nhật role trong Keycloak
-            if (!oldRoleName.equals(roleRequest.getRoleName())) {
-                deleteRoleInKeycloak(oldRoleName);
+            if (!oldName.equals(roleRequest.getRoleName())) {
+                // delete and recreate with new name
+                deleteRoleInKeycloak(oldName);
                 createRoleInKeycloak(roleRequest.getRoleName(), roleRequest.getDescription());
-                log.info("Role updated in Keycloak: {} -> {}", oldRoleName, roleRequest.getRoleName());
+                RealmResource rr = keycloak.realm(realm);
+                RoleRepresentation r = rr.roles().get(roleRequest.getRoleName()).toRepresentation();
+                return new RoleResponse(r.getId(), r.getName(), r.getDescription());
             } else {
                 updateRoleInKeycloak(roleRequest.getRoleName(), roleRequest.getDescription());
-                log.info("Role description updated in Keycloak: {}", roleRequest.getRoleName());
+                RoleRepresentation r = realmResource.roles().get(roleRequest.getRoleName()).toRepresentation();
+                return new RoleResponse(r.getId(), r.getName(), r.getDescription());
             }
-
-            return roleMapper.toResponse(updatedRole);
         } catch (Exception e) {
             log.error("Error updating role: {}", e.getMessage());
             throw new RuntimeException("Failed to update role", e);
@@ -123,22 +122,15 @@ public class RoleService {
 
     /**
      * Xóa role
-     * Xóa role khỏi database và Keycloak
      */
     @Transactional
     public void deleteRole(String id) {
         log.info("Deleting role with id: {}", id);
 
         try {
-            Role role = roleRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Role not found with id: " + id));
-
-            roleRepository.deleteById(id);
-            log.info("Role deleted from database: {}", id);
-
-            // Xóa role khỏi Keycloak
-            deleteRoleInKeycloak(role.getRoleName());
-            log.info("Role deleted from Keycloak: {}", role.getRoleName());
+            // Treat id as role name (Keycloak role name)
+            deleteRoleInKeycloak(id);
+            log.info("Role deleted from Keycloak: {}", id);
         } catch (Exception e) {
             log.error("Error deleting role: {}", e.getMessage());
             throw new RuntimeException("Failed to delete role", e);
@@ -158,14 +150,12 @@ public class RoleService {
 
             for (RoleRequest roleRequest : roles) {
                 try {
-                    // Lưu vào database
-                    Role role = roleMapper.toEntity(roleRequest);
-                    Role savedRole = roleRepository.save(role);
-                    savedRoles.add(roleMapper.toResponse(savedRole));
-
                     // Tạo trong Keycloak
                     createRoleInKeycloak(roleRequest.getRoleName(), roleRequest.getDescription());
-                    log.info("Batch: Role created - {} (DB and Keycloak)", roleRequest.getRoleName());
+                    RealmResource rr = keycloak.realm(realm);
+                    RoleRepresentation r = rr.roles().get(roleRequest.getRoleName()).toRepresentation();
+                    savedRoles.add(new RoleResponse(r.getId(), r.getName(), r.getDescription()));
+                    log.info("Batch: Role created - {} (Keycloak)", roleRequest.getRoleName());
                 } catch (Exception e) {
                     log.warn("Batch: Failed to create role {}: {}", roleRequest.getRoleName(), e.getMessage());
                     // Tiếp tục với role tiếp theo
@@ -192,25 +182,26 @@ public class RoleService {
 
             for (RoleUpdateRequest roleRequest : roles) {
                 try {
-                    Role role = roleRepository.findById(roleRequest.getId())
-                            .orElseThrow(() -> new RuntimeException("Role not found with id: " + roleRequest.getId()));
-                    
-                    String oldRoleName = role.getRoleName();
-                    
-                    roleMapper.updateEntityFromUpdateRequest(roleRequest, role);
+                    // Update in Keycloak only
+                    RealmResource rr = keycloak.realm(realm);
+                    try {
+                        RoleRepresentation current = rr.roles().get(roleRequest.getId()).toRepresentation();
+                        String oldName = current.getName();
+                        if (!oldName.equals(roleRequest.getRoleName())) {
+                            deleteRoleInKeycloak(oldName);
+                            createRoleInKeycloak(roleRequest.getRoleName(), roleRequest.getDescription());
+                            RoleRepresentation r = rr.roles().get(roleRequest.getRoleName()).toRepresentation();
+                            updatedRoles.add(new RoleResponse(r.getId(), r.getName(), r.getDescription()));
+                        } else {
+                            updateRoleInKeycloak(roleRequest.getRoleName(), roleRequest.getDescription());
+                            RoleRepresentation r = rr.roles().get(roleRequest.getRoleName()).toRepresentation();
+                            updatedRoles.add(new RoleResponse(r.getId(), r.getName(), r.getDescription()));
+                        }
 
-                    Role updatedRole = roleRepository.save(role);
-                    updatedRoles.add(roleMapper.toResponse(updatedRole));
-
-                    // Cập nhật trong Keycloak
-                    if (!oldRoleName.equals(roleRequest.getRoleName())) {
-                        deleteRoleInKeycloak(oldRoleName);
-                        createRoleInKeycloak(roleRequest.getRoleName(), roleRequest.getDescription());
-                    } else {
-                        updateRoleInKeycloak(roleRequest.getRoleName(), roleRequest.getDescription());
+                        log.info("Batch: Role updated - {}", roleRequest.getRoleName());
+                    } catch (Exception ex) {
+                        log.warn("Batch: Failed to update role {}: {}", roleRequest.getId(), ex.getMessage());
                     }
-
-                    log.info("Batch: Role updated - {}", roleRequest.getRoleName());
                 } catch (Exception e) {
                     log.warn("Batch: Failed to update role {}: {}", roleRequest.getId(), e.getMessage());
                     // Tiếp tục với role tiếp theo
@@ -235,14 +226,9 @@ public class RoleService {
         try {
             for (String id : ids) {
                 try {
-                    Role role = roleRepository.findById(id)
-                            .orElseThrow(() -> new RuntimeException("Role not found with id: " + id));
-
-                    roleRepository.deleteById(id);
-
-                    // Xóa từ Keycloak
-                    deleteRoleInKeycloak(role.getRoleName());
-                    log.info("Batch: Role deleted - {}", role.getRoleName());
+                    // Treat id as role name
+                    deleteRoleInKeycloak(id);
+                    log.info("Batch: Role deleted - {}", id);
                 } catch (Exception e) {
                     log.warn("Batch: Failed to delete role {}: {}", id, e.getMessage());
                     // Tiếp tục với role tiếp theo
