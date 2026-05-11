@@ -1,9 +1,0 @@
-.git
-.gitignore
-node_modules
-target
-docker/mysql
-**/*.sock
-**/*.pid
-**/data
-**/logs
