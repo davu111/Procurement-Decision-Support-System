@@ -6,23 +6,17 @@ spring:
   http:
     codec:
       max-in-memory-size: 20MB
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/optimization
+          jwk-set-uri: http://localhost:8180/realms/optimization/protocol/openid-connect/certs
   cloud:
     gateway:
       server:
         webflux:
           routes:
-            # Vehicle Service
-            - id: vehicle-service
-              uri: ${VEHICLE_SERVICE_URL}
-              predicates:
-                - Path=/api/vehicles/**,/api/drivers/**
-
-            # Plan Service
-            - id: plan-service
-              uri: ${PLAN_SERVICE_URL}
-              predicates:
-                - Path=/api/plans/**
-
             # Warehouse Service
             - id: warehouse-service
               uri: ${WAREHOUSE_SERVICE_URL}
@@ -68,26 +62,13 @@ spring:
                   /api/inventory-results/**
 
             # Swagger UI routes
-            - id: vehicle-service-docs
-              uri: ${VEHICLE_SERVICE_URL}
-              predicates:
-                - Path=/vehicle-service/v3/api-docs
-              filters:
-                - RewritePath=/vehicle-service/(?<segment>.*), /$\{segment}
-
-            - id: plan-service-docs
-              uri: ${PLAN_SERVICE_URL}
-              predicates:
-                - Path=/plan-service/v3/api-docs
-              filters:
-                - RewritePath=/plan-service/(?<segment>.*), /$\{segment}
-
             - id: warehouse-service-docs
               uri: ${WAREHOUSE_SERVICE_URL}
               predicates:
                 - Path=/warehouse-service/v3/api-docs
               filters:
                 - RewritePath=/warehouse-service/(?<segment>.*), /$\{segment}
+                - RemoveRequestHeader=Authorization
 
             - id: employee-service-docs
               uri: ${EMPLOYEE_SERVICE_URL}
@@ -95,6 +76,7 @@ spring:
                 - Path=/employee-service/v3/api-docs
               filters:
                 - RewritePath=/employee-service/(?<segment>.*), /$\{segment}
+                - RemoveRequestHeader=Authorization
 
             - id: product-service-docs
               uri: ${PRODUCT_SERVICE_URL}
@@ -102,6 +84,7 @@ spring:
                 - Path=/product-service/v3/api-docs
               filters:
                 - RewritePath=/product-service/(?<segment>.*), /$\{segment}
+                - RemoveRequestHeader=Authorization
 
             - id: transaction-service-docs
               uri: ${TRANSACTION_SERVICE_URL}
@@ -109,6 +92,7 @@ spring:
                 - Path=/transaction-service/v3/api-docs
               filters:
                 - RewritePath=/transaction-service/(?<segment>.*), /$\{segment}
+                - RemoveRequestHeader=Authorization
 
             - id: inventory-optimization-service-docs
               uri: ${INVENTORY_OPTIMIZATION_SERVICE_URL}
@@ -116,6 +100,7 @@ spring:
                 - Path=/inventory-optimization-service/v3/api-docs
               filters:
                 - RewritePath=/inventory-optimization-service/(?<segment>.*), /$\{segment}
+                - RemoveRequestHeader=Authorization
 
 server:
   port: 9000
@@ -139,6 +124,15 @@ frontend:
 springdoc:
   swagger-ui:
     path: /index.html
+    urls:
+      - name: employee-service
+        url: /employee-service/v3/api-docs
+      - name: supplier-service
+        url: /supplier-service/v3/api-docs
+      - name: warehouse-service
+        url: /warehouse-service/v3/api-docs
+      - name: product-service
+        url: /product-service/v3/api-docs
 
 management:
   endpoints:

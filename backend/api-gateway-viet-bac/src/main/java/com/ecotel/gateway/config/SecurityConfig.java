@@ -6,10 +6,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @Configuration
@@ -68,42 +75,38 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(PUBLIC_ENDPOINTS).permitAll()
-//                        .anyExchange().authenticated()
-                                .anyExchange().permitAll() // CHO PHÉP TEST API
+                        .anyExchange().authenticated()
+//                      .anyExchange().permitAll() // CHO PHÉP TEST API
                 )
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 // Nếu dùng OAuth2 Resource Server (JWT)
-                // .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(
+                                new ReactiveJwtAuthenticationConverterAdapter(jwtAuthenticationConverter())
+                        ))
+                )
                 .build();
     }
 
-//    @Bean
-//    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-//        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-//
-//        // Lấy roles từ realm_access.roles
-//        grantedAuthoritiesConverter.setAuthoritiesClaimName("realm_access.roles");
-//        grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
-//
-//        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-//        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
-//
-//        return jwtAuthenticationConverter;
-//    }
-//    // Trong API Gateway hoặc Product Service
-//    @Component
-//    public class LoggingFilter implements Filter {
-//        @Override
-//        public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-//                throws IOException, ServletException {
-//            HttpServletRequest req = (HttpServletRequest) request;
-//            System.out.println("=== REQUEST ===");
-//            System.out.println("URI: " + req.getRequestURI());
-//            System.out.println("Method: " + req.getMethod());
-//            System.out.println("Authorization: " + req.getHeader("Authorization"));
-//
-//            chain.doFilter(request, response);
-//        }
-//    }
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            Map<String, Object> realmAccess = jwt.getClaim("realm_access");
+
+            if (realmAccess == null || realmAccess.get("roles") == null) {
+                return List.of();
+            }
+
+            List<String> roles = (List<String>) realmAccess.get("roles");
+
+            return roles.stream()
+                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                    .collect(Collectors.toList());
+        });
+
+        return converter;
+    }
 }

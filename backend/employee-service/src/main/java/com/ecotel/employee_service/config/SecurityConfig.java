@@ -1,66 +1,54 @@
 package com.ecotel.employee_service.config;
 
+import com.ecotel.shared_library.config.JwtConverterConfig;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
     private final String[] PUBLIC_ENDPOINT = {
 
     };
 
     private static final String[] SWAGGER_WHITELIST = {
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+            "/employee-service/v3/api-docs",
             "/employee-service/v3/api-docs/**",
             "/employee-service/swagger-ui/**",
+            "/employee-service/swagger-ui.html",
     };
+
+    private final JwtConverterConfig jwtConverterConfig;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-//                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                                 .requestMatchers(SWAGGER_WHITELIST).permitAll()
-
                                 .requestMatchers(PUBLIC_ENDPOINT).permitAll()
-//                        .requestMatchers("/api/categories/**").hasRole("WAREHOUSE")
-//                                .anyRequest().authenticated()
-                                .anyRequest().permitAll() // test
+                                .requestMatchers("/api/employees/*").hasAnyRole("warehouse-manager", "planning-manager", "admin")
+                                .anyRequest().hasRole("admin")
+//                                .anyRequest().permitAll() // test
                 )
-//                .oauth2ResourceServer(oauth2 -> oauth2
-//                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-//                )
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverterConfig.jwtAuthenticationConverter()))
+                )
                 .httpBasic(AbstractHttpConfigurer::disable) // Tat Login Swagger
                 .formLogin(AbstractHttpConfigurer::disable)
                 .build();
     }
-
-
-//    @Bean
-//    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-//        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-//
-//        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-//            Map<String, Object> realmAccess = jwt.getClaim("realm_access");
-//
-//            if (realmAccess == null || realmAccess.get("roles") == null) {
-//                return Collections.emptyList();
-//            }
-//
-//            Collection<String> roles = (Collection<String>) realmAccess.get("roles");
-//
-//            return roles.stream()
-//                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-//                    .collect(Collectors.toList());
-//        });
-//
-//        return converter;
-//    }
 }

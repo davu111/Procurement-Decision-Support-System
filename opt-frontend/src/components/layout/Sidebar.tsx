@@ -16,22 +16,38 @@ import {
   Settings,
   User,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { getAccessibleRoutes } from "@/config/roleAccess";
 
-const navItems = [
-  { to: "/", icon: LayoutDashboard, label: "Bảng điều khiển" },
-  { to: "/products", icon: Package, label: "Mặt hàng" },
-  { to: "/product-categories", icon: Tag, label: "Danh mục sản phẩm" },
-  { to: "/new-plan", icon: PlusCircle, label: "Kỳ kế hoạch mới" },
-  { to: "/consumption", icon: ClipboardList, label: "Nhập tiêu thụ" },
-  { to: "/suppliers", icon: Truck, label: "Nhà cung cấp" },
-  { to: "/employees", icon: User, label: "Nhân viên" },
-  { to: "/warehouses", icon: Boxes, label: "Kho hàng" },
-  { to: "/transactions", icon: History, label: "Lịch sử Nhập/Xuất" },
-];
+const iconMap: Record<string, any> = {
+  "Bảng điều khiển": LayoutDashboard,
+  "Mặt hàng": Package,
+  "Danh mục sản phẩm": Tag,
+  "Kỳ kế hoạch mới": PlusCircle,
+  "Nhập tiêu thụ": ClipboardList,
+  "Nhà cung cấp": Truck,
+  "Nhân viên": User,
+  "Kho hàng": Boxes,
+  "Lịch sử Nhập/Xuất": History,
+};
 
 export default function Sidebar() {
   const [expanded, setExpanded] = useState(false);
   const location = useLocation();
+  const { roles } = useAuth();
+
+  // Get accessible routes based on user role
+  const userRole = roles?.[0] || null;
+  const accessibleRoutes = getAccessibleRoutes(userRole);
+
+  // Filter out routes with parameters (like /products/:id, /suppliers/:id)
+  const navItems = accessibleRoutes
+    .filter((route) => !route.path.includes(":"))
+    .map((route) => ({
+      to: route.path,
+      icon: iconMap[route.label] || Package,
+      label: route.label,
+    }));
 
   return (
     <aside
