@@ -14,18 +14,18 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
-springdoc:
-  api-docs:
-    path: /warehouse-service/v3/api-docs
-  swagger-ui:
-    path: /warehouse-service/swagger/swagger-ui.html
-    disable-swagger-default-url: true
   security:
     oauth2:
       resourceserver:
         jwt:
           issuer-uri: ${OAUTH2_ISSUER_URI}
           jwk-set-uri: ${OAUTH2_JWK_SET_URI}
+springdoc:
+  api-docs:
+    path: /warehouse-service/v3/api-docs
+  swagger-ui:
+    path: /warehouse-service/swagger/swagger-ui.html
+    disable-swagger-default-url: true
 
 external:
   product-service:

@@ -1,6 +1,7 @@
 package com.ecotel.transaction_service.service.external;
 
 import com.ecotel.shared_library.dto.response.ApiResponse;
+import com.ecotel.shared_library.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -26,10 +27,6 @@ public class OrderScheduleService {
         return webClientBuilder.build().post()
                 .uri(orderScheduleServiceUrl + "/order-schedules/last-order?date=" + LocalDate.now())
                 .bodyValue(productIds)
-//                .headers(headers -> {
-//                    assert tokenValue != null;
-//                    headers.setBearerAuth(tokenValue);
-//                }) // ✅ Gắn Authorization header
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<ApiResponse<Map<String, BigDecimal>>>() {
                 })

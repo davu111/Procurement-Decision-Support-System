@@ -15,6 +15,6 @@ public class ProductClientConfig {
     public ProductService productService(WebClient.Builder builder,
                                          @Value("${external.product-service.url}") String url) {
         WebClient webClient = builder.baseUrl(url).build();
-        return new ProductService(webClient, url);
+        return new ProductService(webClient);
     }
 }

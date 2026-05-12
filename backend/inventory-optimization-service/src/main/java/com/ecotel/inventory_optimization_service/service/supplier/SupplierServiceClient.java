@@ -2,8 +2,10 @@ package com.ecotel.inventory_optimization_service.service.supplier;
 
 import com.ecotel.inventory_optimization_service.dto.request.supplier.SupplierProductData;
 import com.ecotel.inventory_optimization_service.dto.response.ApiResponse;
+import com.ecotel.shared_library.service.TokenService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -31,10 +33,12 @@ import java.util.Optional;
 public class SupplierServiceClient {
 
     private final RestClient restClient;
+    private final TokenService tokenService;
 
     public SupplierServiceClient(
             @Value("${supplier.url}") String supplierServiceUrl,
-            RestClient.Builder builder) {
+            RestClient.Builder builder, TokenService tokenService) {
+        this.tokenService = tokenService;
         this.restClient = builder
                 .baseUrl(supplierServiceUrl)
                 .build();
@@ -42,8 +46,13 @@ public class SupplierServiceClient {
 
     public Optional<SupplierProductData> getByProductId(String productId) {
         try {
+            String tokenValue = tokenService.getToken();
             ApiResponse<SupplierProductData> response = restClient.get()
                     .uri("/api/supplier-products/by-product/{id}", productId)
+                    .headers(headers -> {
+                        assert tokenValue != null;
+                        headers.setBearerAuth(tokenValue);
+                    }) // ✅ Gắn Authorization header
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
 

@@ -1,6 +1,7 @@
 package com.ecotel.warehouse_service.service.external;
 
 import com.ecotel.shared_library.dto.response.ApiResponse;
+import com.ecotel.shared_library.service.TokenService;
 import com.ecotel.warehouse_service.dto.request.WarehouseConfigRequest;
 import com.ecotel.warehouse_service.dto.request.WarehouseConfigUpdateRequest;
 import com.ecotel.warehouse_service.dto.response.WarehouseConfigResponse;
@@ -19,19 +20,21 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WarehouseConfigService {
     private final WebClient.Builder webClientBuilder;
+    private final TokenService tokenService;
 
     @Value("${external.warehouse-config-service.url}")
     private String warehouseConfigServiceUrl;
 
     // CREATE WAREHOUS CONFIG
     public WarehouseConfigResponse create(WarehouseConfigRequest request) {
+        String tokenValue = tokenService.getToken();
         return webClientBuilder.build().post()
                 .uri(warehouseConfigServiceUrl + "/warehouse-config")
                 .bodyValue(request)
-//                .headers(headers -> {
-//                    assert tokenValue != null;
-//                    headers.setBearerAuth(tokenValue);
-//                }) // ✅ Gắn Authorization header
+                .headers(headers -> {
+                    assert tokenValue != null;
+                    headers.setBearerAuth(tokenValue);
+                }) // ✅ Gắn Authorization header
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<ApiResponse<WarehouseConfigResponse>>() {
                 })
@@ -41,14 +44,15 @@ public class WarehouseConfigService {
 
     // UPDATE WAREHOUS CONFIG
     public WarehouseConfigResponse update(WarehouseConfigUpdateRequest request) {
+        String tokenValue = tokenService.getToken();
         System.out.println("Warehouse config update request: " + request);
         return webClientBuilder.build().put()
                 .uri(warehouseConfigServiceUrl + "/warehouse-config")
                 .bodyValue(request)
-//                .headers(headers -> {
-//                    assert tokenValue != null;
-//                    headers.setBearerAuth(tokenValue);
-//                }) // ✅ Gắn Authorization header
+                .headers(headers -> {
+                    assert tokenValue != null;
+                    headers.setBearerAuth(tokenValue);
+                }) // ✅ Gắn Authorization header
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<ApiResponse<WarehouseConfigResponse>>() {
                 })

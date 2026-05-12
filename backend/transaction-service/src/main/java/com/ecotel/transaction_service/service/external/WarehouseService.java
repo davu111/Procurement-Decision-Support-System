@@ -1,6 +1,7 @@
 package com.ecotel.transaction_service.service.external;
 
 import com.ecotel.shared_library.dto.response.ApiResponse;
+import com.ecotel.shared_library.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -19,11 +20,6 @@ public class WarehouseService {
     public String getWarehouseNameById(String warehouseId) {
         return webClientBuilder.build().get()
                 .uri(warehouseServiceUrl + "/warehouses/name/{warehouseId}", warehouseId)
-
-//                .headers(headers -> {
-//                    assert tokenValue != null;
-//                    headers.setBearerAuth(tokenValue);
-//                }) // ✅ Gắn Authorization header
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<ApiResponse<String>>() {
                 })
