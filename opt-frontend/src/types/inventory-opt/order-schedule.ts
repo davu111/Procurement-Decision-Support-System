@@ -1,6 +1,7 @@
 export interface OrderSchedule {
   id: number;
   inventoryResultId: number;
+  parameterId: number;
   productId: string;
   productName: string;
   orderSequence: number;

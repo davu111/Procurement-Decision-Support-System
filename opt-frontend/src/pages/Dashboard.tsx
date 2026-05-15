@@ -4,8 +4,13 @@ import OrderAlertTable from "@/components/common/OrderAlertTable";
 import type { Product } from "@/types/inventory-opt/product";
 import type { OrderSchedule } from "@/types/inventory-opt/order-schedule";
 import api from "@/api/axiosConfig";
-import { getUrgencyInfo } from "@/utils/helpers";
-import { AlertTriangle, Clock, CheckCircle, Package } from "lucide-react";
+import {
+  AlertTriangle,
+  Clock,
+  CheckCircle,
+  Package,
+  LayoutDashboard,
+} from "lucide-react";
 import HeatmapPage from "./HeatmapPage";
 import ForecastPage from "./ForecastPage";
 
@@ -28,11 +33,19 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold font-display text-gray-900">Bảng điều khiển</h1>
-        <p className="text-sm text-gray-400 mt-1">
-          Tổng quan tình trạng đặt hàng hôm nay
-        </p>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <LayoutDashboard className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold font-display text-gray-900">
+            Trang chủ
+          </h1>
+          <p className="text-sm text-gray-400 mt-0.5">
+            Dữ liệu dự báo và lịch đặt hàng
+          </p>
+        </div>
       </div>
 
       <ForecastPage />

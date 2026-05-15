@@ -1,31 +1,30 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import type { OrderSchedule } from "@/types/inventory-opt/order-schedule";
 import api from "@/api/axiosConfig";
-import {
-  groupOrdersByDate,
-  getHeatmapIntensity,
-  formatCurrency,
-  formatNumber,
-} from "@/utils/helpers";
+import { groupOrdersByDate, getHeatmapIntensity } from "@/utils/helpers";
 import { cn } from "@/lib/utils";
-import {
-  ChevronLeft,
-  ChevronRight,
-  CalendarDays,
-  PackageCheck,
-  X,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 const MONTHS = [
-  "Thg 1", "Thg 2", "Thg 3", "Thg 4", "Thg 5", "Thg 6",
-  "Thg 7", "Thg 8", "Thg 9", "Thg 10", "Thg 11", "Thg 12",
+  "Thg 1",
+  "Thg 2",
+  "Thg 3",
+  "Thg 4",
+  "Thg 5",
+  "Thg 6",
+  "Thg 7",
+  "Thg 8",
+  "Thg 9",
+  "Thg 10",
+  "Thg 11",
+  "Thg 12",
 ];
 const DAYS_LABEL = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
-const GAP = 3;          // px — khoảng cách giữa các ô
-const MIN_CELL = 14;    // px — kích thước ô tối thiểu
-const MAX_CELL = 22;    // px — kích thước ô tối đa
+const GAP = 3; // px — khoảng cách giữa các ô
+const MIN_CELL = 14; // px — kích thước ô tối thiểu
+const MAX_CELL = 22; // px — kích thước ô tối đa
 const DAY_LABEL_W = 24; // px — chiều rộng cột nhãn ngày
 
 function getDaysInYear(year: number) {
@@ -42,10 +41,10 @@ function getDaysInYear(year: number) {
 // Màu chủ đạo indigo — khớp với primary (#6366F1) của design guide
 function getCellStyle(intensity: string | number): React.CSSProperties {
   if (intensity === "overdue") return { backgroundColor: "#EF4444" };
-  if (intensity === 3) return { backgroundColor: "#4338CA" };  // indigo-700
-  if (intensity === 2) return { backgroundColor: "#818CF8" };  // indigo-400
-  if (intensity === 1) return { backgroundColor: "#C7D2FE" };  // indigo-200
-  return { backgroundColor: "#EEF2FF" };                       // indigo-50 (empty)
+  if (intensity === 3) return { backgroundColor: "#4338CA" }; // indigo-700
+  if (intensity === 2) return { backgroundColor: "#818CF8" }; // indigo-400
+  if (intensity === 1) return { backgroundColor: "#C7D2FE" }; // indigo-200
+  return { backgroundColor: "#EEF2FF" }; // indigo-50 (empty)
 }
 
 export default function HeatmapPage() {
@@ -95,7 +94,8 @@ export default function HeatmapPage() {
   const cellSize = useMemo(() => {
     if (!containerWidth || weeks.length === 0) return MIN_CELL;
     // Available width = containerWidth - padding(48) - dayLabels - gaps giữa tuần
-    const available = containerWidth - 48 - DAY_LABEL_W - GAP * (weeks.length - 1);
+    const available =
+      containerWidth - 48 - DAY_LABEL_W - GAP * (weeks.length - 1);
     const computed = Math.floor(available / weeks.length);
     return Math.max(MIN_CELL, Math.min(MAX_CELL, computed));
   }, [containerWidth, weeks.length]);
@@ -118,8 +118,6 @@ export default function HeatmapPage() {
     });
     return offsets;
   }, [weeks]);
-
-  const hoveredOrders = hoveredDate ? grouped[hoveredDate] : null;
   const selectedOrders = selectedDate ? grouped[selectedDate] : null;
 
   const yearStats = useMemo(() => {
@@ -127,7 +125,8 @@ export default function HeatmapPage() {
       o.orderDate?.startsWith(String(year)),
     );
     const total = yearSchedules.length;
-    const dates = new Set(yearSchedules.map((o) => o.orderDate?.slice(0, 10))).size;
+    const dates = new Set(yearSchedules.map((o) => o.orderDate?.slice(0, 10)))
+      .size;
     return { total, dates };
   }, [orderSchedules, year]);
 
@@ -223,11 +222,7 @@ export default function HeatmapPage() {
             {/* Weeks */}
             <div className="flex flex-1" style={{ gap: GAP }}>
               {weeks.map((week, wi) => (
-                <div
-                  key={wi}
-                  className="flex flex-col"
-                  style={{ gap: GAP }}
-                >
+                <div key={wi} className="flex flex-col" style={{ gap: GAP }}>
                   {week.map((day, di) => {
                     if (!day)
                       return (
@@ -247,8 +242,11 @@ export default function HeatmapPage() {
                         key={di}
                         className={cn(
                           "rounded-sm cursor-pointer transition-all duration-100",
-                          isSelected && "ring-2 ring-offset-1 ring-primary scale-110 z-10",
-                          isHovered && !isSelected && "scale-110 z-10 brightness-90",
+                          isSelected &&
+                            "ring-2 ring-offset-1 ring-primary scale-110 z-10",
+                          isHovered &&
+                            !isSelected &&
+                            "scale-110 z-10 brightness-90",
                         )}
                         style={{
                           width: cellSize,
@@ -289,51 +287,18 @@ export default function HeatmapPage() {
             <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">
               Nhiều
             </span>
-            <div className="ml-3 flex items-center gap-1.5">
+            {/* <div className="ml-3 flex items-center gap-1.5">
               <div
                 className="rounded-sm"
                 style={{ width: 12, height: 12, ...getCellStyle("overdue") }}
               />
-              <span className="text-[10px] font-medium text-red-500">Quá hạn</span>
-            </div>
+              <span className="text-[10px] font-medium text-red-500">
+                Quá hạn
+              </span>
+            </div> */}
           </div>
         </div>
       </Card>
-
-      {/* ── Hover tooltip ────────────────────────────────────────────────── */}
-      {hoveredOrders && hoveredDate && !selectedDate && (
-        <Card className="p-4 shadow-level-2 border-primary/20">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-            {new Date(hoveredDate + "T00:00:00").toLocaleDateString("vi-VN", {
-              weekday: "long",
-              day: "2-digit",
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
-          <div className="space-y-2">
-            {hoveredOrders.map((o) => (
-              <div
-                key={o.id}
-                className="flex items-start gap-3 text-sm pb-2 border-b border-gray-50 last:border-b-0 last:pb-0"
-              >
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <PackageCheck className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900 leading-tight">
-                    {o.productName}
-                  </p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    Lần #{o.orderSequence} · Giao{" "}
-                    {new Date(o.expectedDeliveryDate + "T00:00:00").toLocaleDateString("vi-VN")}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {/* ── Selected date detail panel ────────────────────────────────────── */}
       {selectedOrders && selectedDate && (
@@ -415,7 +380,9 @@ export default function HeatmapPage() {
                           Ngày đặt
                         </p>
                         <p className="text-xs font-medium text-gray-700">
-                          {new Date(o.orderDate + "T00:00:00").toLocaleDateString("vi-VN")}
+                          {new Date(
+                            o.orderDate + "T00:00:00",
+                          ).toLocaleDateString("vi-VN")}
                         </p>
                       </div>
                       <div>
@@ -423,7 +390,9 @@ export default function HeatmapPage() {
                           Dự kiến giao
                         </p>
                         <p className="text-xs font-medium text-gray-700">
-                          {new Date(o.expectedDeliveryDate + "T00:00:00").toLocaleDateString("vi-VN")}
+                          {new Date(
+                            o.expectedDeliveryDate + "T00:00:00",
+                          ).toLocaleDateString("vi-VN")}
                         </p>
                       </div>
                     </div>

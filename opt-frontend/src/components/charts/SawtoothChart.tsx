@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import type { InventoryResult } from "@/types/inventory-opt/inventory-result";
 import type { OrderSchedule } from "@/types/inventory-opt/order-schedule";
 import {
@@ -14,6 +14,7 @@ import {
   ResponsiveContainer,
   Scatter,
 } from "recharts";
+import api from "@/api/axiosConfig";
 
 // ── Props ──────────────────────────────────────────────────────────────────────
 
@@ -269,6 +270,37 @@ export default function SawtoothChart({
   results,
   schedules,
 }: SawtoothChartProps) {
+  const [initialInventory, setInitialInventory] = useState<number | null>(null);
+  const [scheduleStartDate, setScheduleStartDate] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (schedules.length === 0) return;
+
+    const firstSchedule = [...schedules].sort(
+      (a, b) =>
+        new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime(),
+    )[0];
+
+    const parameterId = (firstSchedule as any).parameterId;
+    if (parameterId == null) return;
+
+    api
+      .get(`/inventory-parameters/${parameterId}`)
+      .then((res: any) => {
+        setInitialInventory(res.data.initialInventory);
+        setScheduleStartDate(res.data.scheduleStartDate);
+      })
+      .catch((e: any) => {
+        const message =
+          e.response?.data?.message || e.message || "Unknown error";
+        console.warn(
+          "Không lấy được initialInventory và scheduleStartDate:",
+          message,
+        );
+      });
+  }, [schedules]);
   const computed = useMemo(() => {
     if (results.length === 0 || schedules.length === 0) return null;
 
@@ -318,9 +350,12 @@ export default function SawtoothChart({
     }
 
     // ── Bước 4: Tìm refDate chung ─────────────────────────────────────────────
-    let refDateStr = schedules[0].orderDate;
-    for (const s of schedules) {
-      if (s.orderDate < refDateStr) refDateStr = s.orderDate;
+    // Nếu scheduleStartDate tồn tại, sử dụng nó; ngược lại fallback sang ngày nhỏ nhất
+    let refDateStr = scheduleStartDate || schedules[0].orderDate;
+    if (!scheduleStartDate) {
+      for (const s of schedules) {
+        if (s.orderDate < refDateStr) refDateStr = s.orderDate;
+      }
     }
 
     // ── Bước 5: Sort theo thời gian và build segment ──────────────────────────
@@ -343,6 +378,31 @@ export default function SawtoothChart({
     }
 
     if (builtSegments.length === 0) return null;
+    if (builtSegments.length > 0) {
+      const firstSeg = builtSegments[0];
+
+      // Thêm điểm scheduleStartDate vào đầu nếu sớm hơn chartStart
+      if (scheduleStartDate) {
+        const startDayIdx = daysBetween(scheduleStartDate, refDateStr);
+        if (startDayIdx < firstSeg.chartStart && firstSeg.points.length > 0) {
+          const extraPoint: ChartPoint = {
+            dayIndex: startDayIdx,
+            date: scheduleStartDate,
+            inventory: initialInventory ?? firstSeg.points[0].inventory,
+            segmentB: firstSeg.result.reorderPointB,
+          };
+          firstSeg.points.unshift(extraPoint);
+        }
+      }
+
+      // Patch inventory điểm đầu tiên
+      if (initialInventory !== null && firstSeg.points.length > 0) {
+        firstSeg.points[0] = {
+          ...firstSeg.points[0],
+          inventory: initialInventory,
+        };
+      }
+    }
 
     // Merge tất cả points — nếu cùng dayIndex, segment sau ghi đè
     const pointMap = new Map<number, ChartPoint>();
@@ -375,7 +435,7 @@ export default function SawtoothChart({
       maxDay,
       refDateStr,
     };
-  }, [results, schedules]);
+  }, [results, schedules, initialInventory, scheduleStartDate]);
 
   if (!computed) {
     return (
@@ -431,7 +491,10 @@ export default function SawtoothChart({
               <linearGradient
                 key={`grad-${i}`}
                 id={`gradInv-${i}`}
-                x1="0" y1="0" x2="0" y2="1"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
               >
                 <stop offset="0%" stopColor={seg.color} stopOpacity={0.2} />
                 <stop offset="100%" stopColor={seg.color} stopOpacity={0} />
@@ -628,11 +691,7 @@ export default function SawtoothChart({
                 strokeWidth={1.5}
                 strokeDasharray="4 4"
                 ifOverflow="visible"
-                label={makeLabel(
-                  `Z=${Z.toFixed(0)}`,
-                  "#F59E0B",
-                  showZLabel,
-                )}
+                label={makeLabel(`Z=${Z.toFixed(0)}`, "#F59E0B", showZLabel)}
               />,
               <ReferenceLine
                 key={`b-${i}`}
@@ -644,11 +703,7 @@ export default function SawtoothChart({
                 strokeWidth={1.5}
                 strokeDasharray="8 4"
                 ifOverflow="visible"
-                label={makeLabel(
-                  `B=${B.toFixed(0)}`,
-                  "#EF4444",
-                  showBLabel,
-                )}
+                label={makeLabel(`B=${B.toFixed(0)}`, "#EF4444", showBLabel)}
               />,
             ];
           })}
@@ -680,7 +735,12 @@ export default function SawtoothChart({
               stroke={seg.color}
               strokeWidth={2.5}
               dot={false}
-              activeDot={{ r: 6, fill: seg.color, strokeWidth: 2, stroke: "#fff" }}
+              activeDot={{
+                r: 6,
+                fill: seg.color,
+                strokeWidth: 2,
+                stroke: "#fff",
+              }}
               connectNulls={false}
             />
           ))}

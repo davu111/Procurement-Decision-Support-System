@@ -59,7 +59,7 @@ const RouteGuard = ({ children }: { children: React.ReactNode }) => {
             onClick={() => (window.location.href = "/dashboard")}
             className="mt-4 px-6 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
           >
-            Về Bảng điều khiển
+            Về Trang chủ
           </button>
         </div>
       </div>

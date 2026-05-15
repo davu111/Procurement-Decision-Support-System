@@ -46,6 +46,15 @@ public class InventoryCalculationService {
 
         BigDecimal sSquared = numerator.divide(denominator, MC).multiply(kFactor, MC);
         BigDecimal optimalS = sqrt(sSquared).setScale(SCALE, RoundingMode.HALF_UP);
+        System.out.println("A: " + A);
+        System.out.println("Q: " + Q);
+        System.out.println("I: " + I);
+        System.out.println("C: " + C);
+        System.out.println("K: " + K);
+        System.out.println("K-Q: " + kMinusQ);
+        System.out.println("K/(K-Q): " + kFactor);
+        System.out.println("S^2: " + sSquared);
+        System.out.println("S*: " + optimalS);
 
         // === Tính n* = Q/S* ===
         BigDecimal optimalN = Q.divide(optimalS, MC).setScale(SCALE, RoundingMode.HALF_UP);
@@ -79,6 +88,10 @@ public class InventoryCalculationService {
 
         // === Thời gian bổ sung một lô Tn = S*/K ===
         BigDecimal replenishmentTime = optimalS.divide(K, MC).setScale(6, RoundingMode.HALF_UP);
+
+        if (maxInventory.compareTo(reorderPoint) < 0){
+            throw new IllegalArgumentException("Mô hình không khả thi: K quá gần Q");
+        }
 
         return InventoryCalculationResult.builder()
                 .optimalOrderQtyS(optimalS)

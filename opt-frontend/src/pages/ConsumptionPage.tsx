@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ConsumptionRecord } from "@/types/forecast";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import ProductSelector from "@/components/product/ProductSelector";
 import FileImporter from "@/components/forecast/FileImporter";
@@ -136,7 +136,20 @@ export default function ConsumptionPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <h1 className="text-2xl font-bold">Nhập tiêu thụ thực tế</h1>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <ClipboardList className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold font-display text-gray-900">
+            Nhập tiêu thụ thực tế
+          </h1>
+          <p className="text-sm text-gray-400 mt-0.5">
+            Nhập tiêu thụ thực tế cho kỳ tiêu thụ
+          </p>
+        </div>
+      </div>
 
       <div className="bg-card border rounded-lg p-5 space-y-4">
         <h2 className="font-semibold text-foreground">

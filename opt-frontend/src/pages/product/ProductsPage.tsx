@@ -8,6 +8,7 @@ import {
   ImageIcon,
   Filter,
   Upload,
+  Package,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -283,13 +284,18 @@ export default function ProductsPage() {
     <div className="space-y-6">
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-bold font-display text-gray-900">
-            Danh sách mặt hàng
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Quản lý và theo dõi tình trạng từng mặt hàng
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Package className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold font-display text-gray-900">
+              Danh sách mặt hàng
+            </h1>
+            <p className="text-sm text-gray-400 mt-1">
+              Quản lý và theo dõi tình trạng từng mặt hàng
+            </p>
+          </div>
         </div>
         <Button onClick={openCreate} className="gap-2">
           <Plus className="h-4 w-4" /> Thêm sản phẩm
@@ -301,11 +307,15 @@ export default function ProductsPage() {
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex items-center gap-1.5 self-end pb-2">
             <Filter className="h-4 w-4 text-gray-400" />
-            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Bộ lọc</span>
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+              Bộ lọc
+            </span>
           </div>
 
           <div className="space-y-1">
-            <Label className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold">Danh mục</Label>
+            <Label className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold">
+              Danh mục
+            </Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger className="w-[200px] rounded-xl border-gray-200">
                 <SelectValue />
@@ -313,15 +323,22 @@ export default function ProductsPage() {
               <SelectContent>
                 <SelectItem value="all">Tất cả danh mục</SelectItem>
                 {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.categoryName}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.categoryName}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1">
-            <Label className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold">Trạng thái</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
+            <Label className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold">
+              Trạng thái
+            </Label>
+            <Select
+              value={status}
+              onValueChange={(v) => setStatus(v as StatusFilter)}
+            >
               <SelectTrigger className="w-[160px] rounded-xl border-gray-200">
                 <SelectValue />
               </SelectTrigger>
@@ -334,8 +351,13 @@ export default function ProductsPage() {
           </div>
 
           <div className="space-y-1">
-            <Label className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold">Sắp xếp</Label>
-            <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
+            <Label className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold">
+              Sắp xếp
+            </Label>
+            <Select
+              value={sort}
+              onValueChange={(v) => setSort(v as SortOption)}
+            >
               <SelectTrigger className="w-[190px] rounded-xl border-gray-200">
                 <SelectValue />
               </SelectTrigger>
@@ -351,7 +373,11 @@ export default function ProductsPage() {
           {totalElements > 0 && (
             <div className="ml-auto self-end pb-2">
               <span className="text-xs text-gray-400">
-                Tổng <span className="font-semibold text-gray-700">{totalElements}</span> sản phẩm
+                Tổng{" "}
+                <span className="font-semibold text-gray-700">
+                  {totalElements}
+                </span>{" "}
+                sản phẩm
               </span>
             </div>
           )}
@@ -362,7 +388,10 @@ export default function ProductsPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-2xl bg-white border border-gray-100 overflow-hidden animate-pulse">
+            <div
+              key={i}
+              className="rounded-2xl bg-white border border-gray-100 overflow-hidden animate-pulse"
+            >
               <div className="aspect-[4/3] bg-gray-100" />
               <div className="p-4 space-y-3">
                 <div className="h-3 bg-gray-100 rounded w-1/3" />
@@ -378,7 +407,9 @@ export default function ProductsPage() {
             <ImageIcon className="h-8 w-8 text-gray-300" />
           </div>
           <p className="text-gray-500 font-medium">Không có sản phẩm</p>
-          <p className="text-sm text-gray-400">Thêm sản phẩm đầu tiên để bắt đầu</p>
+          <p className="text-sm text-gray-400">
+            Thêm sản phẩm đầu tiên để bắt đầu
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -413,16 +444,20 @@ export default function ProductsPage() {
                   )}
                   {/* Status badge overlay */}
                   <div className="absolute top-3 right-3">
-                    <span className={cn(
-                      "inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm",
-                      isActive
-                        ? "bg-emerald-50/90 text-emerald-700 border border-emerald-100"
-                        : "bg-white/90 text-gray-400 border border-gray-200",
-                    )}>
-                      <span className={cn(
-                        "w-1.5 h-1.5 rounded-full",
-                        isActive ? "bg-emerald-500" : "bg-gray-300",
-                      )} />
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm",
+                        isActive
+                          ? "bg-emerald-50/90 text-emerald-700 border border-emerald-100"
+                          : "bg-white/90 text-gray-400 border border-gray-200",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full",
+                          isActive ? "bg-emerald-500" : "bg-gray-300",
+                        )}
+                      />
                       {isActive ? "Hoạt động" : "Ngừng"}
                     </span>
                   </div>
@@ -455,7 +490,9 @@ export default function ProductsPage() {
                           {product.categoryName}
                         </span>
                       )}
-                      <span className="text-[11px] text-gray-400">{product.unit}</span>
+                      <span className="text-[11px] text-gray-400">
+                        {product.unit}
+                      </span>
                     </div>
 
                     {/* Icon-only actions — nhỏ gọn, không chiếm diện tích */}
@@ -477,9 +514,11 @@ export default function ProductsPage() {
                             : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50",
                         )}
                       >
-                        {isActive
-                          ? <PowerOff className="h-3.5 w-3.5" />
-                          : <Power className="h-3.5 w-3.5" />}
+                        {isActive ? (
+                          <PowerOff className="h-3.5 w-3.5" />
+                        ) : (
+                          <Power className="h-3.5 w-3.5" />
+                        )}
                       </button>
                     </div>
                   </div>

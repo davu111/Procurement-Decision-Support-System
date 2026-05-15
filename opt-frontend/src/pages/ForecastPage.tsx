@@ -55,7 +55,7 @@ export default function ForecastPage() {
 
   const handleProductSelect = (id: string) => {
     setSelectedProduct(id);
-    setSelectedYear(null);
+    setSelectedYear(currentYear);
     setForecastResult(null);
     setConsumptionHistory([]);
     setError(null);
@@ -217,7 +217,6 @@ export default function ForecastPage() {
 
   return (
     <div className="space-y-6">
-
       {/* Error Alert */}
       {error && (
         <Alert variant="destructive">

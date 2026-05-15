@@ -12,7 +12,7 @@ export const ROUTE_ACCESS_CONFIG: RouteAccess[] = [
   // Dashboard - all roles
   {
     path: "/",
-    label: "Bảng điều khiển",
+    label: "Trang chủ",
     roles: ["admin", "planning-manager", "warehouse-manager"],
   },
 

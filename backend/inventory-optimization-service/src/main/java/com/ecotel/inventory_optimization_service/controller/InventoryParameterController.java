@@ -2,7 +2,9 @@ package com.ecotel.inventory_optimization_service.controller;
 
 import com.ecotel.inventory_optimization_service.dto.request.BatchUpdateRequest;
 import com.ecotel.inventory_optimization_service.dto.response.ActualDatesResponse;
+import com.ecotel.inventory_optimization_service.dto.response.ApiResponse;
 import com.ecotel.inventory_optimization_service.dto.response.BatchUpdateResponse;
+import com.ecotel.inventory_optimization_service.dto.response.InventoryParameterResponse;
 import com.ecotel.inventory_optimization_service.model.InventoryParameter;
 import com.ecotel.inventory_optimization_service.repository.InventoryParameterRepository;
 import com.ecotel.inventory_optimization_service.service.InventoryParameterService;
@@ -22,7 +24,7 @@ import java.util.List;
 public class InventoryParameterController {
 
     private final InventoryParameterRepository parameterRepository;
-    private final InventoryParameterService actualDatesService;
+    private final InventoryParameterService inventoryParameterService;
 
     /**
      * Cập nhật actual dates cho một parameter cụ thể
@@ -31,7 +33,7 @@ public class InventoryParameterController {
     @PutMapping("/{id}/actual-dates")
     public ResponseEntity<ActualDatesResponse> updateActualDates(@PathVariable Long id) {
         try {
-            actualDatesService.updateActualDates(id);
+            inventoryParameterService.updateActualDates(id);
 
             InventoryParameter param = parameterRepository.findById(id)
                     .orElseThrow(() -> new EntityNotFoundException("Parameter not found"));
@@ -62,7 +64,7 @@ public class InventoryParameterController {
     public ResponseEntity<BatchUpdateResponse> batchUpdateActualDates(
             @RequestBody BatchUpdateRequest request) {
         try {
-            actualDatesService.batchUpdateActualDates(request.getParameterIds());
+            inventoryParameterService.batchUpdateActualDates(request.getParameterIds());
 
             BatchUpdateResponse response = BatchUpdateResponse.builder()
                     .totalProcessed(request.getParameterIds().size())
@@ -92,7 +94,7 @@ public class InventoryParameterController {
                     .map(InventoryParameter::getId)
                     .toList();
 
-            actualDatesService.batchUpdateActualDates(parameterIds);
+            inventoryParameterService.batchUpdateActualDates(parameterIds);
 
             BatchUpdateResponse response = BatchUpdateResponse.builder()
                     .totalProcessed(parameterIds.size())
@@ -105,5 +107,16 @@ public class InventoryParameterController {
             log.error("Error updating actual dates for product {}: {}", productId, e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    // GET INVENTORY PARAMETER BY ID
+    @GetMapping("/{parameterId}")
+    public ApiResponse<InventoryParameterResponse> getParameterById(@PathVariable Long parameterId) {
+        InventoryParameterResponse inventoryParameter = inventoryParameterService.getParameterById(parameterId);
+        return ApiResponse.<InventoryParameterResponse>builder()
+                .success(true)
+                .message("Get inventory parameter by id successful")
+                .data(inventoryParameter)
+                .build();
     }
 }

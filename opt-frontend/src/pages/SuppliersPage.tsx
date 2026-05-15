@@ -155,7 +155,7 @@ export default function SuppliersPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Building2 className="h-5 w-5 text-primary" />
+            <Truck className="h-5 w-5 text-primary" />
           </div>
           <div>
             <h1 className="text-3xl font-bold font-display text-gray-900">
@@ -205,13 +205,27 @@ export default function SuppliersPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50/80">
-              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">Mã NCC</TableHead>
-              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">Tên nhà cung cấp</TableHead>
-              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">Người liên hệ</TableHead>
-              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">SĐT</TableHead>
-              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">Email</TableHead>
-              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">Trạng thái</TableHead>
-              <TableHead className="text-right text-[11px] uppercase tracking-wide text-gray-400 font-semibold">Thao tác</TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                Mã NCC
+              </TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                Tên nhà cung cấp
+              </TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                Người liên hệ
+              </TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                SĐT
+              </TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                Email
+              </TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                Trạng thái
+              </TableHead>
+              <TableHead className="text-right text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
+                Thao tác
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -230,7 +244,9 @@ export default function SuppliersPage() {
                 <TableCell colSpan={7} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <Building2 className="h-8 w-8 text-gray-200" />
-                    <p className="text-gray-400 text-sm">Không có nhà cung cấp nào</p>
+                    <p className="text-gray-400 text-sm">
+                      Không có nhà cung cấp nào
+                    </p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -251,20 +267,30 @@ export default function SuppliersPage() {
                   <TableCell className="font-semibold text-gray-900">
                     {s.supplierName}
                   </TableCell>
-                  <TableCell className="text-gray-600">{s.contactPerson}</TableCell>
-                  <TableCell className="text-gray-600 font-mono text-sm">{s.phone}</TableCell>
-                  <TableCell className="text-gray-500 text-sm">{s.email}</TableCell>
+                  <TableCell className="text-gray-600">
+                    {s.contactPerson}
+                  </TableCell>
+                  <TableCell className="text-gray-600 font-mono text-sm">
+                    {s.phone}
+                  </TableCell>
+                  <TableCell className="text-gray-500 text-sm">
+                    {s.email}
+                  </TableCell>
                   <TableCell>
-                    <span className={cn(
-                      "inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full",
-                      s.isActive
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                        : "bg-gray-100 text-gray-400 border border-gray-200",
-                    )}>
-                      <span className={cn(
-                        "w-1.5 h-1.5 rounded-full",
-                        s.isActive ? "bg-emerald-500" : "bg-gray-300",
-                      )} />
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full",
+                        s.isActive
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                          : "bg-gray-100 text-gray-400 border border-gray-200",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full",
+                          s.isActive ? "bg-emerald-500" : "bg-gray-300",
+                        )}
+                      />
                       {s.isActive ? "Hoạt động" : "Vô hiệu"}
                     </span>
                   </TableCell>
@@ -278,7 +304,11 @@ export default function SuppliersPage() {
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={() => s.isActive ? deactivateMut.mutate(s.id) : activateMut.mutate(s.id)}
+                        onClick={() =>
+                          s.isActive
+                            ? deactivateMut.mutate(s.id)
+                            : activateMut.mutate(s.id)
+                        }
                         title={s.isActive ? "Vô hiệu hóa" : "Kích hoạt lại"}
                         className={cn(
                           "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
@@ -287,9 +317,11 @@ export default function SuppliersPage() {
                             : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50",
                         )}
                       >
-                        {s.isActive
-                          ? <PowerOff className="h-3.5 w-3.5" />
-                          : <Power className="h-3.5 w-3.5" />}
+                        {s.isActive ? (
+                          <PowerOff className="h-3.5 w-3.5" />
+                        ) : (
+                          <Power className="h-3.5 w-3.5" />
+                        )}
                       </button>
                       <button
                         onClick={() => navigate(`/suppliers/${s.id}`)}
@@ -308,7 +340,12 @@ export default function SuppliersPage() {
       </Card>
 
       {/* ── Dialog: Create / Edit ────────────────────────────────────────────── */}
-      <Dialog open={dialogOpen} onOpenChange={(v) => { if (!v) closeDialog(); }}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(v) => {
+          if (!v) closeDialog();
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2.5">
@@ -349,7 +386,9 @@ export default function SuppliersPage() {
 
             {/* Address */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Địa chỉ</Label>
+              <Label className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
+                Địa chỉ
+              </Label>
               <Input
                 value={form.address}
                 onChange={(e) => setField("address", e.target.value)}
@@ -361,7 +400,9 @@ export default function SuppliersPage() {
             {/* Row 3: contact + phone */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Người liên hệ</Label>
+                <Label className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
+                  Người liên hệ
+                </Label>
                 <Input
                   value={form.contactPerson}
                   onChange={(e) => setField("contactPerson", e.target.value)}
@@ -369,7 +410,9 @@ export default function SuppliersPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Số điện thoại</Label>
+                <Label className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
+                  Số điện thoại
+                </Label>
                 <Input
                   value={form.phone}
                   onChange={(e) => setField("phone", e.target.value)}
@@ -380,7 +423,9 @@ export default function SuppliersPage() {
 
             {/* Email */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Email</Label>
+              <Label className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
+                Email
+              </Label>
               <Input
                 type="email"
                 value={form.email}
@@ -391,7 +436,11 @@ export default function SuppliersPage() {
           </div>
 
           <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={closeDialog} className="rounded-xl">
+            <Button
+              variant="outline"
+              onClick={closeDialog}
+              className="rounded-xl"
+            >
               Hủy
             </Button>
             <Button

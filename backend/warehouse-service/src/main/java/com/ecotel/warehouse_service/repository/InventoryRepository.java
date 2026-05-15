@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,4 +24,10 @@ public interface InventoryRepository extends JpaRepository<Inventory, String>, J
                 WHERE i.productId = :productId
             """)
     Optional<Long> findConfigIdByProductId(@Param("productId") String productId);
+
+    Optional<Inventory> findByProductId(String productId);
+
+    // Tổng số lượng hàng hiện tại trong kho (dùng cho kiểm tra 4)
+    @Query("SELECT COALESCE(SUM(i.quantity), 0) FROM Inventory i WHERE i.warehouse.id = :warehouseId")
+    BigDecimal getTotalQuantityByWarehouse(@Param("warehouseId") String warehouseId);
 }

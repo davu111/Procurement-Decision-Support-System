@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -29,13 +30,13 @@ import java.util.*;
 @RequiredArgsConstructor
 public class InventoryPlanningService {
 
-    private final InventoryParameterRepository  parameterRepository;
-    private final InventoryResultRepository     resultRepository;
-    private final OrderScheduleRepository       scheduleRepository;
-    private final WarehouseConfigRepository     warehouseConfigRepository;
-    private final InventoryCalculationService   calculationService;
-    private final ForecastOrchestrator          forecastOrchestrator;
-    private final SupplierServiceClient         supplierServiceClient;
+    private final InventoryParameterRepository parameterRepository;
+    private final InventoryResultRepository resultRepository;
+    private final OrderScheduleRepository scheduleRepository;
+    private final WarehouseConfigRepository warehouseConfigRepository;
+    private final InventoryCalculationService calculationService;
+    private final ForecastOrchestrator forecastOrchestrator;
+    private final SupplierServiceClient supplierServiceClient;
     private final InventoryPlanningMapper inventoryPlanningMapper;
     private final InventoryParameterService inventoryParameterService;
     private final ProductService productService;
@@ -50,8 +51,8 @@ public class InventoryPlanningService {
         PeriodResolver.validate(request, today, null);
         PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(request, today, null);
 
-        LocalDate planStartDate     = resolved.planStartDate();
-        LocalDate planEndDate       = resolved.planEndDate();
+        LocalDate planStartDate = resolved.planStartDate();
+        LocalDate planEndDate = resolved.planEndDate();
         LocalDate scheduleStartDate = resolved.scheduleStartDate();
 
         // Kiểm tra overlap — nếu có thì SUPERSEDE (không xóa)
@@ -61,9 +62,9 @@ public class InventoryPlanningService {
 //            throw new IllegalStateException(buildOverlapMessage(overlapping));
 //        }
 
-        ProductResponse product  = findProduct(request.getProductId());
-        WarehouseConfig config   = resolveWarehouseConfig(request);
-        SnapshotData    snapshot = resolveSnapshot(request);
+        ProductResponse product = findProduct(request.getProductId());
+        WarehouseConfig config = resolveWarehouseConfig(request);
+        SnapshotData snapshot = resolveSnapshot(request);
 
         // Q người dùng nhập = tổng cả kỳ → chia đều về tháng
         int totalMonths = request.getEndMonth() - request.getStartMonth() + 1;
@@ -72,9 +73,9 @@ public class InventoryPlanningService {
 
         // Auto-detect tồn kho và lô đang bay cho kế hoạch liền kề
         // Ưu tiên: request > auto-detect từ kỳ trước
-        BigDecimal  effectiveInitialInventory  = request.getInitialInventory();
-        BigDecimal  effectiveReceiptQty        = request.getScheduledReceiptQty();
-        LocalDate   effectiveReceiptDate       = request.getScheduledReceiptDate();
+        BigDecimal effectiveInitialInventory = request.getInitialInventory();
+        BigDecimal effectiveReceiptQty = request.getScheduledReceiptQty();
+        LocalDate effectiveReceiptDate = request.getScheduledReceiptDate();
 
         if (effectiveInitialInventory == null) {
             // Kiểm tra có kế hoạch ACTIVE liền kề ngay trước planStartDate không
@@ -104,7 +105,7 @@ public class InventoryPlanningService {
                     // Chỉ lấy lô đầu tiên (giao sớm nhất) vì đó là lô ảnh hưởng nhất
                     PredictedInventoryResponse.PendingReceipt firstReceipt =
                             predicted.getPendingReceipts().get(0);
-                    effectiveReceiptQty  = firstReceipt.getQuantity();
+                    effectiveReceiptQty = firstReceipt.getQuantity();
                     effectiveReceiptDate = firstReceipt.getExpectedDeliveryDate();
                     log.info("Auto scheduledReceipt qty={} date={}",
                             effectiveReceiptQty, effectiveReceiptDate);
@@ -159,7 +160,7 @@ public class InventoryPlanningService {
         PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(request, today, null);
 
         LocalDate planStartDate = resolved.planStartDate();
-        LocalDate planEndDate   = resolved.planEndDate();
+        LocalDate planEndDate = resolved.planEndDate();
 
         // Supersede kế hoạch cũ trong khoảng thời gian này
         InventoryParameter previousParam = parameterRepository.findActiveToSupersede(
@@ -198,7 +199,7 @@ public class InventoryPlanningService {
     /**
      * Tính tồn kho dự đoán tại một ngày cụ thể từ kế hoạch ACTIVE gần nhất.
      * Frontend gọi để pre-fill trường initialInventory khi người dùng chọn ngày replan.
-     *
+     * <p>
      * Công thức: mô phỏng theo mô hình bổ sung dần từ ngày bắt đầu kế hoạch active
      * đến targetDate, dựa trên Q/ngày và lịch đặt hàng hiện có.
      */
@@ -268,8 +269,8 @@ public class InventoryPlanningService {
     // -------------------------------------------------------
 
     private List<OrderSchedule> generateOrderSchedule(InventoryParameter param,
-                                       InventoryCalculationResult result,
-                                       InventoryParameter previousParam) {
+                                                      InventoryCalculationResult result,
+                                                      InventoryParameter previousParam) {
         InventoryResult savedResult = resultRepository
                 .findByInventoryParameterId(param.getId()).orElseThrow();
 
@@ -279,7 +280,7 @@ public class InventoryPlanningService {
                 .multiply(java.math.BigDecimal.valueOf(30))
                 .setScale(0, java.math.RoundingMode.HALF_UP)
                 .longValue();
-        long leadDays  = Math.round(param.getSnapshotLeadTimeL().doubleValue() * 30);
+        long leadDays = Math.round(param.getSnapshotLeadTimeL().doubleValue() * 30);
 
         if (cycleDays <= 0) {
             log.error("cycleDays <= 0 cho parameterId={}", param.getId());
@@ -290,13 +291,13 @@ public class InventoryPlanningService {
         LocalDate firstOrderDate = calcFirstOrderDate(param, result, leadDays, previousParam);
 
         List<OrderSchedule> schedules = new ArrayList<>();
-        int       sequence  = 1;
+        int sequence = 1;
         LocalDate orderDate = firstOrderDate;
-        LocalDate planEnd   = param.getPlanEndDate();
+        LocalDate planEnd = param.getPlanEndDate();
 
         while (!orderDate.isAfter(planEnd)) {
             LocalDate deliveryDate = orderDate.plusDays(leadDays);
-            boolean   isWarning    = deliveryDate.isAfter(planEnd);
+            boolean isWarning = deliveryDate.isAfter(planEnd);
 
             BigDecimal estimatedCost = param.getSnapshotFixedOrderCostA()
                     .add(param.getSnapshotUnitPriceC().multiply(result.getOptimalOrderQtyS()));
@@ -321,44 +322,40 @@ public class InventoryPlanningService {
 
     /**
      * Tính ngày đặt hàng đầu tiên dựa trên initialInventory.
-     *
+     * <p>
      * Nếu initialInventory == null (kế hoạch đầu tiên):
-     *   → Bắt đầu từ scheduleStartDate
-     *
+     * → Bắt đầu từ scheduleStartDate
+     * <p>
      * Nếu initialInventory != null (replan):
-     *   → Mô phỏng tồn kho từng ngày từ scheduleStartDate,
-     *     tính đúng cả giai đoạn đang nhận lô hàng cũ (tồn kho tăng)
-     *     và giai đoạn chỉ tiêu thụ (tồn kho giảm).
-     *   → Ngày đầu tiên tồn kho chạm B_new = ngày đặt hàng đầu tiên.
-     *
+     * → Mô phỏng tồn kho từng ngày từ scheduleStartDate,
+     * tính đúng cả giai đoạn đang nhận lô hàng cũ (tồn kho tăng)
+     * và giai đoạn chỉ tiêu thụ (tồn kho giảm).
+     * → Ngày đầu tiên tồn kho chạm B_new = ngày đặt hàng đầu tiên.
+     * <p>
      * Lý do không dùng công thức tuyến tính (iEff - B) / (Q/30):
-     *   Công thức đó giả định tồn kho luôn giảm đều, bỏ qua giai đoạn
-     *   đang nhận lô hàng cũ khiến tồn kho tăng — dẫn đến tính sai ngày.
+     * Công thức đó giả định tồn kho luôn giảm đều, bỏ qua giai đoạn
+     * đang nhận lô hàng cũ khiến tồn kho tăng — dẫn đến tính sai ngày.
      */
     private LocalDate calcFirstOrderDate(InventoryParameter param,
                                          InventoryCalculationResult result,
                                          long leadDays,
                                          InventoryParameter previousParam) {
-        if (previousParam == null) {
-            log.info("Kế hoạch đầu tiên, bắt đầu sinh lịch từ scheduleStartDate={}",
-                    param.getScheduleStartDate());
-            return param.getScheduleStartDate();
-        }
+        if (previousParam != null) {
 
-        BigDecimal B        = result.getReorderPointB();
-        BigDecimal Q        = param.getDemandQ();        // Q/tháng
-        BigDecimal previousQ = previousParam.getDemandQ(); // Dùng Q cũ nếu có để tính giai đoạn đang nhận
-        BigDecimal K        = param.getSnapshotSupplyRateK(); // K/tháng
-        LocalDate  start    = param.getScheduleStartDate();
-        LocalDate  planEnd  = param.getPlanEndDate();
+            BigDecimal B = result.getReorderPointB();
+            BigDecimal Q = param.getDemandQ();        // Q/tháng
+            BigDecimal previousQ = previousParam.getDemandQ(); // Dùng Q cũ nếu có để tính giai đoạn đang nhận
+            BigDecimal K = param.getSnapshotSupplyRateK(); // K/tháng
+            LocalDate start = param.getScheduleStartDate();
+            LocalDate planEnd = param.getPlanEndDate();
 
 //        double inv         = param.getInitialInventory().doubleValue();
-        BigDecimal dailyConsume = previousQ.divide(BigDecimal.valueOf(30), 4, RoundingMode.HALF_UP); // Dùng Q cũ để tính tiêu thụ hàng ngày
-        double dailyRise    = (K.doubleValue() - Q.doubleValue()) / 30.0;
+            BigDecimal dailyConsume = previousQ.divide(BigDecimal.valueOf(30), 4, RoundingMode.HALF_UP); // Dùng Q cũ để tính tiêu thụ hàng ngày
+            double dailyRise = (K.doubleValue() - Q.doubleValue()) / 30.0;
 
-        // Xác định giai đoạn đang nhận lô hàng cũ (nếu có)
-        LocalDate recvStart = null;
-        LocalDate recvEnd   = null;
+            // Xác định giai đoạn đang nhận lô hàng cũ (nếu có)
+            LocalDate recvStart = null;
+            LocalDate recvEnd = null;
             long tnDays = previousParam.getInventoryResult().getReplenishmentTimeTn()
                     .multiply(java.math.BigDecimal.valueOf(30))
                     .setScale(0, java.math.RoundingMode.HALF_UP)
@@ -374,26 +371,102 @@ public class InventoryPlanningService {
 //            System.out.println(previousParam.getId());
 //        System.out.println(latestOrder.getInventoryResult());
             recvStart = latestOrder != null ? latestOrder.getExpectedDeliveryDate() : null;
-            recvEnd     = recvStart != null? recvStart.plusDays(tnDays): null;
+            recvEnd = recvStart != null ? recvStart.plusDays(tnDays) : null;
             log.info("Lô đang bay trước ngày {}: giao {}, Tn={} ngày, kết thúc nhận {}",
                     planStartDate, recvStart, tnDays, recvEnd);
 
 
-        // Tìm ngày chạm B
-        BigDecimal inv = previousParam.getInventoryResult().getMaxInventoryLevel();
+            // Tìm ngày chạm B
+            BigDecimal inv = previousParam.getInventoryResult().getMaxInventoryLevel();
 
-        if (inv.compareTo(B) >= 0) {
-            long plusDay = inv.subtract(B)
+            if (inv.compareTo(B) >= 0) {
+                long plusDay = inv.subtract(B)
+                        .divide(dailyConsume, 0, RoundingMode.CEILING)
+                        .longValue();
+
+                System.out.println("Ngày đặt hàng đầu tiên: " + recvEnd.plusDays(plusDay));
+                return recvEnd.plusDays(plusDay);
+            }
+            // Nếu tồn kho không bao giờ chạm B trong kỳ → lùi lịch
+            BigDecimal l_new = param.getSnapshotLeadTimeL() != null ? param.getSnapshotLeadTimeL() : param.getSnapshotLeadTimeL();
+            l_new = l_new.multiply(BigDecimal.valueOf(30)).setScale(0, RoundingMode.CEILING);
+            BigDecimal consumptionDays = inv.divide(dailyConsume, 0, RoundingMode.DOWN);
+            assert l_new != null;
+            System.out.println("l_new: " + l_new);
+            System.out.println("consumptionDays: " + consumptionDays);
+            BigDecimal days = l_new.subtract(consumptionDays);
+
+            assert recvEnd != null;
+            LocalDate orderDate = recvEnd.minusDays(days.longValue());
+            if (orderDate.isBefore(LocalDate.now())) {
+                log.warn("Tồn kho: {} không chạm B: {} trong kỳ, nhưng nếu lùi lịch sẽ vượt ngày hiện tại không thể tạo lịch (productId={})",
+                        inv, B, param.getProductId());
+            }
+            log.warn("Tồn kho: {} không chạm B: {} trong kỳ, sinh lịch (productId={}) vào ngày {}",
+                    inv, B, param.getProductId(), orderDate);
+            return orderDate;
+        }
+        // -------------------------------------------------------
+        // TRƯỜNG HỢP: LẦN ĐẦU TIÊN LẬP KỊCH
+        // -------------------------------------------------------
+        BigDecimal initialInventory = param.getInitialInventory();
+        LocalDate scheduleStart = param.getScheduleStartDate();
+        BigDecimal B = result.getReorderPointB();
+        BigDecimal Q = param.getDemandQ();          // Q/tháng
+        BigDecimal dailyConsume = Q.divide(BigDecimal.valueOf(30), 4, RoundingMode.HALF_UP);
+        BigDecimal lNewDays = param.getSnapshotLeadTimeL()
+                .multiply(BigDecimal.valueOf(30))
+                .setScale(0, RoundingMode.CEILING);
+
+        // Nhánh 1: Không có initialInventory → bắt đầu từ scheduleStartDate như cũ
+        if (initialInventory == null) {
+            log.info("Lần đầu lập kế hoạch, không có initialInventory " +
+                    "→ bắt đầu sinh lịch từ scheduleStartDate={}", scheduleStart);
+            return scheduleStart;
+        }
+
+        // Nhánh 2: initialInventory >= B → tồn kho đủ cao, chờ giảm xuống B rồi đặt
+        if (initialInventory.compareTo(B) >= 0) {
+            // Số ngày từ scheduleStart đến khi tồn kho chạm B
+            long daysUntilB = initialInventory.subtract(B)
                     .divide(dailyConsume, 0, RoundingMode.CEILING)
                     .longValue();
-
-            System.out.println("Ngày đặt hàng đầu tiên: " + recvEnd.plusDays(plusDay));
-            return recvEnd.plusDays(plusDay);
+            LocalDate firstOrderDate = scheduleStart.plusDays(daysUntilB);
+            log.info("initialInventory={} >= B={}, đặt hàng đầu tiên vào ngày {} " +
+                            "(sau {} ngày kể từ {})",
+                    initialInventory, B, firstOrderDate, daysUntilB, scheduleStart);
+            return firstOrderDate;
         }
-        // Nếu tồn kho không bao giờ chạm B trong kỳ → không cần đặt
-        log.warn("Tồn kho không chạm B trong kỳ, không sinh lịch (productId={})",
+
+        // Nhánh 3: initialInventory < B → phải đặt hàng ngay
+        // Kiểm tra tồn kho có đủ duy trì trong Lead Time không
+        BigDecimal inventoryDurability = initialInventory.divide(dailyConsume, 4, RoundingMode.DOWN);
+        // Số ngày tồn kho còn duy trì được
+        long daysCanSustain = inventoryDurability.setScale(0, RoundingMode.DOWN).longValue();
+
+        if (initialInventory.compareTo(Q.multiply(param.getSnapshotLeadTimeL())) >= 0) {
+            // Tồn kho đủ chịu đựng Lead Time → đặt ngay hôm nay, hàng về kịp
+            log.info("initialInventory={} < B={} nhưng đủ duy trì qua Lead Time " +
+                            "→ đặt hàng ngay tại scheduleStartDate={}",
+                    initialInventory, B, scheduleStart);
+            return scheduleStart;
+        }
+
+        // Tồn kho KHÔNG đủ duy trì qua Lead Time → sẽ stockout
+        long stockoutDays = lNewDays.longValue() - daysCanSustain;
+        log.warn("STOCKOUT DỰ KIẾN: initialInventory={} < Q*L={}, " +
+                        "tồn kho hết sau {} ngày, hàng về sau {} ngày → thiếu hàng {} ngày. " +
+                        "Khuyến nghị: tăng initialInventory hoặc giảm Lead Time L. (productId={})",
+                initialInventory,
+                Q.multiply(param.getSnapshotLeadTimeL()).setScale(2, RoundingMode.HALF_UP),
+                daysCanSustain,
+                lNewDays.longValue(),
+                stockoutDays,
                 param.getProductId());
-        return planEnd.plusDays(1);
+
+        // Vẫn sinh lịch từ scheduleStartDate nhưng đã log cảnh báo
+        // (hệ thống không chặn, để người dùng quyết định điều chỉnh)
+        return scheduleStart;
     }
 
     // -------------------------------------------------------
@@ -415,12 +488,12 @@ public class InventoryPlanningService {
         }
 
         long totalDays = ChronoUnit.DAYS.between(simStart, targetDate);
-        long leadDays  = Math.round(param.getSnapshotLeadTimeL().doubleValue() * 30);
-        long tnDays    = Math.round(result.getReplenishmentTimeTn().doubleValue() * 30);
+        long leadDays = Math.round(param.getSnapshotLeadTimeL().doubleValue() * 30);
+        long tnDays = Math.round(result.getReplenishmentTimeTn().doubleValue() * 30);
         long cycleDays = Math.round(result.getOptimalCycleTimeTau().doubleValue() * 30);
 
         double dailyConsume = param.getDemandQ().doubleValue() / 30.0;
-        double dailyRise    = result.getMaxInventoryLevel().doubleValue() / (tnDays > 0 ? tnDays : 1);
+        double dailyRise = result.getMaxInventoryLevel().doubleValue() / (tnDays > 0 ? tnDays : 1);
 
         // Xây dựng danh sách ngày nhận hàng từ lịch đặt hàng đã sinh
         List<OrderSchedule> schedules = scheduleRepository
@@ -436,7 +509,7 @@ public class InventoryPlanningService {
             LocalDate current = simStart.plusDays(day);
             boolean isReceiving = schedules.stream().anyMatch(s -> {
                 LocalDate recvStart = s.getExpectedDeliveryDate();
-                LocalDate recvEnd   = recvStart.plusDays(tnDays - 1);
+                LocalDate recvEnd = recvStart.plusDays(tnDays - 1);
                 return !current.isBefore(recvStart) && !current.isAfter(recvEnd);
             });
 
@@ -455,7 +528,7 @@ public class InventoryPlanningService {
     // -------------------------------------------------------
 
     public List<InventoryParameter> findOverlapping(InventoryParameterRequest request) {
-        LocalDate today   = LocalDate.now();
+        LocalDate today = LocalDate.now();
         PeriodResolver.validate(request, today, null);
         PeriodResolver.ResolvedPeriod resolved = PeriodResolver.resolve(request, today, null);
         return parameterRepository.findOverlapping(
@@ -463,7 +536,7 @@ public class InventoryPlanningService {
     }
 
     public ForecastSuggestionResponse getSuggestion(String productId) {
-        ForecastResult demandForecast   = forecastOrchestrator.forecastDemand(productId);
+        ForecastResult demandForecast = forecastOrchestrator.forecastDemand(productId);
         ForecastResult leadTimeForecast = forecastOrchestrator.forecastLeadTime(productId);
 
         Optional<SupplierProductData> supplierData = supplierServiceClient.getByProductId(productId);
@@ -607,13 +680,14 @@ public class InventoryPlanningService {
         return inventoryPlanningMapper.toInventoryParameterResponse(params);
     }
 
-    @lombok.Builder @lombok.Data
+    @lombok.Builder
+    @lombok.Data
     private static class SnapshotData {
         UUID supplierProductId;
         BigDecimal supplyRateK;
         BigDecimal fixedOrderCostA;
         BigDecimal unitPriceC;
         BigDecimal leadTimeL;
-        String     source;
+        String source;
     }
 }

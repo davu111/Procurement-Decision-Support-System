@@ -30,15 +30,15 @@ import {
   Package,
   Truck,
   Lightbulb,
+  PlusCircle,
+  XCircle,
 } from "lucide-react";
 import ProductSelector from "@/components/product/ProductSelector";
 import { formatCurrency, formatNumber, formatDate } from "@/utils/helpers";
 import inventoryApi from "@/api/axiosConfig";
-import type {
-  ForecastSuggestion,
-  InventoryResult,
-  OrderSchedule,
-} from "@/types";
+import type { ForecastSuggestion, InventoryResult } from "@/types";
+import type { OrderSchedule } from "@/types/inventory-opt/order-schedule";
+import { toast } from "sonner";
 
 // ── constants ──────────────────────────────────────────────────────────────────
 const TODAY = new Date();
@@ -153,9 +153,12 @@ export default function NewPlanPage() {
   const [calcResult, setCalcResult] = useState<InventoryResult | null>(null);
   const [orderSchedules, setOrderSchedules] = useState<OrderSchedule[]>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // ── Products from API ──────────────────────────────────────────────────────
   const [products, setProducts] = useState<any[]>([]);
+  const [currentInventory, setCurrentInventory] = useState<number | null>(null);
+  const [loadingInventory, setLoadingInventory] = useState(false);
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const selectedProduct = productId
@@ -193,6 +196,21 @@ export default function NewPlanPage() {
         setWarehouseConfigId(null);
       })
       .finally(() => setLoadingWarehouseConfig(false));
+  }, [productId]);
+
+  useEffect(() => {
+    if (!productId) {
+      setCurrentInventory(null);
+      return;
+    }
+    setLoadingInventory(true);
+    inventoryApi
+      .get(`/inventories/quantity/${productId}`)
+      .then((res: any) => {
+        setCurrentInventory(res.data?.data ?? res.data ?? null);
+      })
+      .catch(() => setCurrentInventory(null))
+      .finally(() => setLoadingInventory(false));
   }, [productId]);
 
   const yearOptions = useMemo(() => getYearOptions(), []);
@@ -409,6 +427,8 @@ export default function NewPlanPage() {
       await fetchSchedules(result.id);
     } catch (e) {
       console.error("Replan error:", e);
+      const errorMsg = (e as Error)?.message || "Lỗi không xác định";
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -416,6 +436,11 @@ export default function NewPlanPage() {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   function buildPayload() {
+    const inventory =
+      initialInventory !== ""
+        ? parseFloat(initialInventory)
+        : (currentInventory ?? 0);
+
     return {
       productId: Number(productId),
       warehouseConfigId,
@@ -424,6 +449,7 @@ export default function NewPlanPage() {
       year: targetYear,
       demandQ: parseFloat(demandQ),
       storageCostCoefficientI: parseFloat(storageI),
+      initialInventory: inventory,
     };
   }
 
@@ -440,6 +466,8 @@ export default function NewPlanPage() {
       await fetchSchedules(result.id);
     } catch (e) {
       console.error("Calculate error:", e);
+      const errorMsg = (e as Error)?.message || "Lỗi không xác định";
+      setErrorMessage(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -462,17 +490,23 @@ export default function NewPlanPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          {flowMode === "replan"
-            ? "Điều chỉnh kế hoạch (Replan)"
-            : "Tạo kỳ kế hoạch mới"}
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          {flowMode === "replan"
-            ? "Thay thế kế hoạch cũ — kế hoạch gốc được giữ lại làm lịch sử"
-            : "Tính toán lượng đặt hàng tối ưu cho kỳ kế hoạch"}
-        </p>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <PlusCircle className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold font-display text-gray-900">
+            {flowMode === "replan"
+              ? "Điều chỉnh kế hoạch (Replan)"
+              : "Tạo kỳ kế hoạch mới"}
+          </h1>
+          <p className="text-sm text-gray-400 mt-0.5">
+            {flowMode === "replan"
+              ? "Thay thế kế hoạch cũ — kế hoạch gốc được giữ lại làm lịch sử"
+              : "Tính toán lượng đặt hàng tối ưu cho kỳ kế hoạch"}
+          </p>
+        </div>
       </div>
 
       {/* Mode banner */}
@@ -520,6 +554,29 @@ export default function NewPlanPage() {
                 setSuggestion(null);
               }}
             />
+            {productId && (
+              <div className="md:col-span-2 flex items-center gap-2 text-sm text-muted-foreground bg-muted rounded-md px-3 py-2">
+                <Package className="h-4 w-4 shrink-0 text-primary" />
+                {loadingInventory ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Đang tải tồn kho hiện tại...
+                  </>
+                ) : currentInventory != null ? (
+                  <>
+                    Tồn kho hiện tại:{" "}
+                    <span className="font-mono font-semibold text-foreground ml-1">
+                      {formatNumber(currentInventory)}{" "}
+                      {selectedProduct?.unit ?? ""}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Info className="h-3.5 w-3.5" /> Không có dữ liệu tồn kho
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Năm */}
@@ -714,7 +771,7 @@ export default function NewPlanPage() {
       )}
 
       {/* ── Replan: panel tồn kho dự đoán ────────────────────────────────────── */}
-      {flowMode === "replan" && resolvedPeriod && (
+      {/* {flowMode === "replan" && resolvedPeriod && (
         <div className="bg-card border rounded-lg p-5 space-y-4">
           <h2 className="font-semibold text-foreground flex items-center gap-2">
             <Package className="h-4 w-4" />
@@ -730,7 +787,7 @@ export default function NewPlanPage() {
 
           {!predictingInventory && predictedData && (
             <div className="bg-muted rounded-md p-4 space-y-3 text-sm">
-              {/* Tồn kho dự đoán */}
+              // Tồn kho dự đoán 
               {predictedData.predictedInventory != null ? (
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-primary shrink-0" />
@@ -753,7 +810,7 @@ export default function NewPlanPage() {
                 </div>
               )}
 
-              {/* Lô hàng đang về */}
+              // Lô hàng đang về
               {predictedData.pendingReceipts.length > 0 && (
                 <div className="flex items-start gap-2">
                   <Truck className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
@@ -774,7 +831,7 @@ export default function NewPlanPage() {
                 </div>
               )}
 
-              {/* Đề xuất ngày bắt đầu */}
+              // Đề xuất ngày bắt đầu  
               {predictedData.suggestedStartDate && (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Lightbulb className="h-4 w-4 text-amber-500 shrink-0" />
@@ -784,7 +841,7 @@ export default function NewPlanPage() {
             </div>
           )}
 
-          {/* Input tồn kho thực tế — luôn hiển thị, có thể sửa */}
+          // Input tồn kho thực tế — luôn hiển thị, có thể sửa
           <div className="space-y-2">
             <Label>
               Tồn kho thực tế tại ngày bắt đầu{" "}
@@ -800,7 +857,7 @@ export default function NewPlanPage() {
             />
           </div>
         </div>
-      )}
+      )} */}
 
       {/* ── Bước 2: Tham số & tính toán ──────────────────────────────────────── */}
       <div className="bg-card border rounded-lg p-5 space-y-4">
@@ -938,7 +995,7 @@ export default function NewPlanPage() {
                     ["Ngày giao dự kiến", "text-left"],
                     ["Số lượng", "text-right"],
                     ["Chi phí ước tính", "text-right"],
-                    ["Trạng thái", "text-center"],
+                    // ["Trạng thái", "text-center"],
                   ].map(([h, align]) => (
                     <th
                       key={h}
@@ -963,7 +1020,7 @@ export default function NewPlanPage() {
                     <td className="px-4 py-3 text-right font-mono">
                       {formatCurrency(o.estimatedCost)}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    {/* <td className="px-4 py-3 text-center">
                       {o.actualOrderDate ? (
                         <Badge className="bg-status-success text-destructive-foreground">
                           Đã đặt
@@ -975,7 +1032,7 @@ export default function NewPlanPage() {
                       ) : (
                         <Badge variant="secondary">Chờ</Badge>
                       )}
-                    </td>
+                    </td> */}
                   </tr>
                 ))}
               </tbody>

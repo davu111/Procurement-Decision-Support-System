@@ -20,21 +20,26 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WarehouseConfigService {
     private final WebClient.Builder webClientBuilder;
-    private final TokenService tokenService;
 
     @Value("${external.warehouse-config-service.url}")
     private String warehouseConfigServiceUrl;
 
+    // GET WAREHOUS CONFIG
+    public WarehouseConfigResponse get(Long warehouseConfigId) {
+        return webClientBuilder.build().get()
+                .uri(warehouseConfigServiceUrl + "/{warehouseConfigId}", warehouseConfigId)
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<ApiResponse<WarehouseConfigResponse>>() {
+                })
+                .map(ApiResponse::getData)  // ⚡ Lấy data từ wrapper
+                .block();
+    }
+
     // CREATE WAREHOUS CONFIG
     public WarehouseConfigResponse create(WarehouseConfigRequest request) {
-        String tokenValue = tokenService.getToken();
         return webClientBuilder.build().post()
                 .uri(warehouseConfigServiceUrl + "/warehouse-config")
                 .bodyValue(request)
-                .headers(headers -> {
-                    assert tokenValue != null;
-                    headers.setBearerAuth(tokenValue);
-                }) // ✅ Gắn Authorization header
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<ApiResponse<WarehouseConfigResponse>>() {
                 })
@@ -44,15 +49,10 @@ public class WarehouseConfigService {
 
     // UPDATE WAREHOUS CONFIG
     public WarehouseConfigResponse update(WarehouseConfigUpdateRequest request) {
-        String tokenValue = tokenService.getToken();
         System.out.println("Warehouse config update request: " + request);
         return webClientBuilder.build().put()
                 .uri(warehouseConfigServiceUrl + "/warehouse-config")
                 .bodyValue(request)
-                .headers(headers -> {
-                    assert tokenValue != null;
-                    headers.setBearerAuth(tokenValue);
-                }) // ✅ Gắn Authorization header
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<ApiResponse<WarehouseConfigResponse>>() {
                 })

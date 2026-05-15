@@ -1,5 +1,7 @@
 package com.ecotel.inventory_optimization_service.service;
 
+import com.ecotel.inventory_optimization_service.dto.response.InventoryParameterResponse;
+import com.ecotel.inventory_optimization_service.mapper.InventoryParameterMapper;
 import com.ecotel.inventory_optimization_service.model.InventoryParameter;
 import com.ecotel.inventory_optimization_service.model.InventoryResult;
 import com.ecotel.inventory_optimization_service.model.OrderSchedule;
@@ -25,6 +27,7 @@ public class InventoryParameterService {
     private final InventoryParameterRepository parameterRepository;
     private final OrderScheduleRepository scheduleRepository;
     private final InventoryResultRepository resultRepository;
+    private final InventoryParameterMapper inventoryParameterMapper;
 
     /**
      * Cập nhật actualFirstOrderDate và actualEndDate từ danh sách OrderSchedules
@@ -158,5 +161,12 @@ public class InventoryParameterService {
                         parameterId, e.getMessage());
             }
         }
+    }
+
+    // GET INVENTORY PARAMETER BY ID
+    public InventoryParameterResponse getParameterById(Long id) {
+        InventoryParameter inventoryParameter = parameterRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("InventoryParameter not found: " + id));
+        return inventoryParameterMapper.toResponse(inventoryParameter);
     }
 }

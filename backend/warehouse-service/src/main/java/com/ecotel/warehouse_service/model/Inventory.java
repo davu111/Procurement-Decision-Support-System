@@ -1,5 +1,7 @@
 package com.ecotel.warehouse_service.model;
 
+import com.ecotel.warehouse_service.exception.AppException;
+import com.ecotel.warehouse_service.exception.ErrorCode;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
@@ -8,6 +10,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
 @Table(name = "inventory",
@@ -74,13 +77,13 @@ public class Inventory {
      */
     public void decreaseQuantity(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than 0");
+            throw new AppException(ErrorCode.INVALID_QUANTITY);
         }
         if (this.quantity.compareTo(amount) < 0) {
-            throw new IllegalStateException(
-                    String.format("Insufficient inventory. Current: %s, Requested: %s",
-                            this.quantity, amount)
-            );
+            throw new AppException(ErrorCode.INSUFFICIENT_INVENTORY, Map.of(
+                    "current", this.quantity.toString(),
+                    "requested", amount.toString()
+            ));
         }
         this.quantity = this.quantity.subtract(amount);
     }

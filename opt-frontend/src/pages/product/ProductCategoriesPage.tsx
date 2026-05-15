@@ -194,15 +194,19 @@ export default function ProductCategoriesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-            <Tag className="h-6 w-6 text-primary" />
-            Danh mục sản phẩm
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Quản lý các danh mục dùng để phân loại mặt hàng trong kho
-          </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Tag className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold font-display text-gray-900">
+              Danh sách sản phẩm
+            </h1>
+            <p className="text-sm text-gray-400 mt-1">
+              Quản lý các danh mục của sản phẩm
+            </p>
+          </div>
         </div>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4" />

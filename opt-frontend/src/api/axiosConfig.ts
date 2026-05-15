@@ -29,7 +29,7 @@ api.interceptors.response.use(
   },
   (error) => {
     const message = error.response?.data?.message || "Lỗi kết nối server";
-    return Promise.reject(error); // ✅ giữ nguyên axios error
+    return Promise.reject(new Error(message));
   },
 );
 

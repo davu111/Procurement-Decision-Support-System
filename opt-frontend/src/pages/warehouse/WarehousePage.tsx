@@ -15,6 +15,7 @@ import {
   Trash2,
   Download,
   FileText,
+  Boxes,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -445,14 +446,20 @@ export default function WarehousesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-bold font-display text-gray-900">
-            Quản lý Kho hàng
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Thêm/sửa kho, theo dõi tồn kho và thực hiện nhập/xuất hàng
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Boxes className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold font-display text-gray-900">
+              Quản lý Kho hàng
+            </h1>
+            <p className="text-sm text-gray-400 mt-0.5">
+              Thêm/sửa kho, theo dõi tồn kho và thực hiện nhập/xuất hàng
+            </p>
+          </div>
         </div>
         <Button onClick={openCreate} className="gap-2">
           <Plus className="h-4 w-4" /> Thêm kho mới

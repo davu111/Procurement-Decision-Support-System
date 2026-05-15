@@ -7,6 +7,7 @@ import com.ecotel.warehouse_service.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -23,6 +24,15 @@ public class InventoryController {
         return ApiResponse.<List<InventoryResponse>>builder()
                 .message("Inventory by products retrieved successfully")
                 .data(response)
+                .build();
+    }
+
+    @GetMapping("/quantity/{productId}")
+    public ApiResponse<BigDecimal> getTotalQuantityByProductId(@PathVariable String productId) {
+        BigDecimal totalQuantity = inventoryService.getQuantityByProductId(productId);
+        return ApiResponse.<BigDecimal>builder()
+                .message("Total quantity retrieved successfully")
+                .data(totalQuantity)
                 .build();
     }
 

@@ -16,7 +16,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WarehouseServiceClient {
 
     private final WebClient.Builder webClientBuilder;
-    private final TokenService tokenService;
 
     @Value("${external.warehouse-service.url}")
     private String warehouseServiceUrl;
@@ -43,6 +42,7 @@ public class WarehouseServiceClient {
         try {
             log.info("Fetching configId by productId: {}", productId);
             return webClientBuilder.build().get()
+                    .uri(warehouseServiceUrl + "/warehouses/config-product-id/{productId}", productId)
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<com.ecotel.shared_library.dto.response.ApiResponse<Long>>() {
                     })

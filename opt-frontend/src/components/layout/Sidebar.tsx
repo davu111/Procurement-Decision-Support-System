@@ -20,7 +20,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getAccessibleRoutes } from "@/config/roleAccess";
 
 const iconMap: Record<string, any> = {
-  "Bảng điều khiển": LayoutDashboard,
+  "Trang chủ": LayoutDashboard,
   "Mặt hàng": Package,
   "Danh mục sản phẩm": Tag,
   "Kỳ kế hoạch mới": PlusCircle,
@@ -128,11 +128,13 @@ export default function Sidebar() {
           )}
         >
           {expanded ? (
-            <ChevronLeft className="w-5 h-5 shrink-0" />
+            <ChevronLeft className="text-gray-700 w-5 h-5 shrink-0" />
           ) : (
-            <ChevronRight className="w-5 h-5 shrink-0" />
+            <ChevronRight className="text-gray-700 w-5 h-5 shrink-0" />
           )}
-          {expanded && <span className="font-medium text-sm">Thu gọn</span>}
+          {expanded && (
+            <span className="text-gray-700 font-medium text-sm">Thu gọn</span>
+          )}
           {!expanded && (
             <span className="absolute left-full ml-3 px-2 py-1 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
               Mở rộng

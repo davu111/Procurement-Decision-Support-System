@@ -9,22 +9,6 @@ export interface Product {
   updatedAt: string;
 }
 
-export interface OrderSchedule {
-  id: number;
-  productId?: number;
-  productCode?: string;
-  productName?: string;
-  orderSequence: number;
-  orderDate: string;
-  expectedDeliveryDate: string;
-  orderQuantity: number;
-  estimatedCost: number;
-  isReorderWarning: boolean;
-  actualOrderDate: string | null;
-  actualDeliveryDate: string | null;
-  actualQuantity: number | null;
-}
-
 export interface InventoryResult {
   id: number;
   InventoryParameterId: number;
@@ -98,12 +82,4 @@ export interface ConsumptionHistory {
   actualSupplyRate: number | null;
   notes: string;
 }
-
-export type PlanningUnit = "MONTH" | "QUARTER" | "YEAR";
 export type UrgencyLevel = "red" | "yellow" | "green";
-
-export interface UrgencyInfo {
-  level: UrgencyLevel;
-  daysLeft: number | null;
-  nextOrder: OrderSchedule | null;
-}
