@@ -1,0 +1,111 @@
+@startuml
+!theme plain
+
+actor "Quản trị viên" as Admin
+boundary "Browser\n(Trang Nhân viên)" as Browser
+boundary "EmployeesDialog\nComponent" as EmployeesDialog
+control "EmployeeController\n(employee-service)" as EmployeeController
+control "EmployeeService" as EmployeeService
+control "EmployeeRepository" as EmployeeRepository
+entity "Employee" as EmployeeEntity
+database "Database\n(Employee)" as EmployeeDatabase
+boundary "SuccessDialog\n(Hiển thị thông tin)" as SuccessDialog
+
+Admin -> Browser: Nhấn nút \n"Thêm nhân viên"
+activate Browser
+
+Browser -> EmployeesDialog: Mở modal form
+activate EmployeesDialog
+
+EmployeesDialog -> Admin: Hiển thị form nhập\n(firstName, lastName, username,\nroleName, status)
+
+Admin -> EmployeesDialog: Nhập đầy đủ thông tin\nvà nhấn "Xác nhận"
+activate EmployeesDialog
+
+EmployeesDialog -> EmployeeController: POST /api/employees/create\n\n(body: EmployeeRequest)
+activate EmployeeController
+
+alt Dữ liệu không hợp lệ
+  EmployeeController --> EmployeesDialog: HTTP 400 Bad Request\n(Validation Error)
+  deactivate EmployeeController
+  
+  note over EmployeesDialog
+    Hiển thị thông báo lỗi
+    (thiếu thông tin, sai định dạng,\ntrùng username)
+  end note
+  
+  EmployeesDialog -> Admin: Hiển thị lỗi
+  Admin -> EmployeesDialog: Chỉnh sửa thông tin\nvà nhấn "Xác nhận" lại
+  EmployeesDialog -> EmployeeController: POST /api/employees/create\n(retry)
+  activate EmployeeController
+end
+
+EmployeeController -> EmployeeService: createEmployee\n(request)
+activate EmployeeService
+
+EmployeeService -> EmployeeEntity: Tạo Employee entity\n(firstName, lastName, username,\nroleName, status, createdAt)
+activate EmployeeEntity
+EmployeeEntity --> EmployeeService: EmployeeEntity
+deactivate EmployeeEntity
+
+EmployeeService -> EmployeeRepository: save(employee)
+activate EmployeeRepository
+
+EmployeeRepository -> EmployeeDatabase: INSERT tài khoản nhân viên
+activate EmployeeDatabase
+EmployeeDatabase -> EmployeeDatabase: Tạo tài khoản mới\nwith auto-generated ID\nvà initialPassword
+EmployeeDatabase --> EmployeeRepository: Persisted Employee\n(with userId, initialPassword)
+deactivate EmployeeDatabase
+
+EmployeeRepository --> EmployeeService: Saved Employee
+deactivate EmployeeRepository
+
+EmployeeService --> EmployeeController: EmployeeResponse\n(including initialPassword)
+deactivate EmployeeService
+
+EmployeeController --> EmployeesDialog: HTTP 201 Created\n(EmployeeResponse)
+deactivate EmployeeController
+
+note over EmployeesDialog
+  Lưu thông tin tài khoản mới
+  (username, initialPassword)
+end note
+
+EmployeesDialog -> EmployeesDialog: Lưu newEmployeeInfo
+
+EmployeesDialog -> EmployeesDialog: Đóng modal tạo tài khoản\nsetDialogOpen(false)
+deactivate EmployeesDialog
+
+EmployeesDialog -> SuccessDialog: Mở dialog hiển thị\nthông tin tài khoản
+activate SuccessDialog
+
+SuccessDialog -> Admin: Hiển thị username\nvà mật khẩu tạm thời
+note over SuccessDialog
+  Cho phép copy username\nvà password
+  Hiển thị cảnh báo bảo mật
+end note
+
+Admin -> SuccessDialog: Nhấn "Xong"
+deactivate SuccessDialog
+
+EmployeesDialog -> Browser: Gọi invalidateQueries\n(GET /api/employees)
+activate Browser
+
+Browser -> Browser: Cập nhật danh sách nhân viên\nthêm tài khoản mới
+
+Browser -> Admin: Hiển thị danh sách\nnhân viên cập nhật
+deactivate Browser
+
+alt Quản trị viên hủy thao tác
+  Admin -> EmployeesDialog: Nhấn nút "Hủy"
+  activate EmployeesDialog
+  EmployeesDialog -> EmployeesDialog: Đóng modal\nsetDialogOpen(false)
+  deactivate EmployeesDialog
+  
+  note over Browser
+    Quay lại trang "Người dùng"
+    Không lưu dữ liệu
+  end note
+end
+
+@enduml

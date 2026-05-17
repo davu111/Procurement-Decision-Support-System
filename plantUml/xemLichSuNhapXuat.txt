@@ -1,0 +1,80 @@
+@startuml
+!theme plain
+
+actor "Quản lý kho" as Manager
+boundary "Browser\n(Trang Lịch sử)" as Browser
+boundary "FilterPanel\nComponent" as Filter
+control "TransactionController" as Controller
+database "Database\n(Transaction)" as Database
+
+Manager -> Browser: Truy cập trang\n"Lịch sử nhập/xuất"
+activate Browser
+
+Browser -> Controller: GET /api/transactions?\npage=0&size=10
+activate Controller
+
+Controller -> Database: Truy vấn giao dịch\n(mặc định không lọc)
+activate Database
+Database --> Controller: PageResponse\n<InOutTransaction>
+deactivate Database
+
+Controller --> Browser: HTTP 200 OK\n(Danh sách giao dịch)
+deactivate Controller
+
+alt Có dữ liệu lịch sử
+  Browser -> Manager: Hiển thị danh sách\nlịch sử nhập/xuất\n(tổng số giao dịch,\npagination)
+  
+  opt Quản lý kho thực hiện lọc
+    Manager -> Filter: Nhập bộ lọc\n(kho, ngày bắt đầu,\nngày kết thúc)
+    
+    Filter -> Manager: Hiển thị bộ lọc
+    
+    Manager -> Browser: Nhấn lọc\nhoặc thay đổi\nthông số
+    
+    Browser -> Controller: GET /api/transactions?\nwarehouseId=...&\nstartDate=...&\nendDate=...&\npage=0&size=10
+    activate Controller
+    
+    Controller -> Database: Truy vấn giao dịch\ntheo bộ lọc
+    activate Database
+    Database --> Controller: PageResponse\n<InOutTransaction>\n(dữ liệu lọc)
+    deactivate Database
+    
+    Controller --> Browser: HTTP 200 OK\n(Danh sách đã lọc)
+    deactivate Controller
+    
+    alt Có dữ liệu phù hợp
+      Browser -> Manager: Cập nhật danh sách\nlịch sử theo bộ lọc
+    else Không có dữ liệu phù hợp
+      Browser -> Manager: Hiển thị thông báo\n"Không có lịch sử nhập/xuất\nnào được ghi nhận"
+    end
+  end
+  
+  opt Quản lý kho xem chi tiết
+    Manager -> Browser: Nhấn nút "Chi tiết"\ntại giao dịch
+    
+    Browser -> Manager: Hiển thị chi tiết\nđầy đủ sản phẩm\ntrong giao dịch\n(mã, tên, số lượng)
+  end
+  
+  opt Quản lý kho phân trang
+    Manager -> Browser: Nhấn nút "Trang tiếp theo"\nhoặc "Trang trước"
+    
+    Browser -> Controller: GET /api/transactions?\npage=...&size=10
+    activate Controller
+    
+    Controller -> Database: Truy vấn trang tiếp theo
+    activate Database
+    Database --> Controller: PageResponse\n<InOutTransaction>
+    deactivate Database
+    
+    Controller --> Browser: HTTP 200 OK
+    deactivate Controller
+    
+    Browser -> Manager: Hiển thị trang\ngiao dịch mới
+  end
+else Không có dữ liệu lịch sử
+  Browser -> Manager: Hiển thị thông báo\n"Không có lịch sử nhập/xuất\nhàng nào được ghi nhận"
+end
+
+deactivate Browser
+
+@enduml

@@ -1,0 +1,84 @@
+@startuml
+!theme plain
+
+actor "Quản lý kho" as Manager
+boundary "Browser\n(Trang Sản phẩm)" as Browser
+boundary "ProductForm\nComponent" as Form
+control "ProductController" as Controller
+database "Database\n(Product)" as Database
+
+Manager -> Browser: Truy cập trang\n"Sản phẩm"
+activate Browser
+
+Browser -> Manager: Hiển thị danh sách\nsản phẩm
+
+Manager -> Browser: Nhấn nút "Thêm"
+
+Browser -> Form: Mở form tạo\nsản phẩm mới
+activate Form
+
+Form -> Manager: Hiển thị form nhập\nthông tin sản phẩm
+
+Manager -> Form: Nhập đầy đủ\nthông tin sản phẩm
+
+Manager -> Form: (Tùy chọn) Tải ảnh\nsản phẩm
+
+alt Quản lý kho hủy thao tác
+  Manager -> Form: Nhấn "Hủy"
+  Form -> Form: Đóng form
+  deactivate Form
+  
+  note over Browser
+    Không lưu dữ liệu
+    Quay lại trang "Sản phẩm"
+  end note
+else Quản lý kho xác nhận tạo
+  Manager -> Form: Nhấn "Xác nhận"
+  activate Form
+  
+  alt Dữ liệu không hợp lệ
+    Form -> Form: Kiểm tra validation\n(tên/đơn vị trống,...)
+    Form -> Manager: Hiển thị thông báo lỗi
+    
+    Manager -> Form: Chỉnh sửa thông tin\nvà xác nhận lại
+  else Dữ liệu hợp lệ
+    Form -> Controller: POST /api/products
+    activate Controller
+    
+    Controller -> Database: Tạo sản phẩm mới
+    activate Database
+    Database -> Database: Lưu thông tin\nsản phẩm
+    Database --> Controller: ProductResponse
+    deactivate Database
+    
+    Controller --> Form: HTTP 201 Created\n(ProductResponse)
+    deactivate Controller
+    
+    opt Nếu có ảnh được tải
+      Form -> Controller: POST /api/products/{id}/\nupload-image
+      activate Controller
+      
+      Controller -> Database: Lưu ảnh sản phẩm
+      activate Database
+      Database -> Database: Lưu file ảnh
+      Database --> Controller: HTTP 200 OK
+      deactivate Database
+      
+      Controller --> Form: HTTP 200 OK
+      deactivate Controller
+    end
+    
+    Form -> Form: Đóng form
+    
+    Form -> Browser: Refresh\ndanh sách
+    activate Browser
+    
+    Browser -> Browser: Cập nhật\ndanh sách
+    Browser -> Manager: Hiển thị danh sách\nsản phẩm mới
+    deactivate Browser
+  end
+end
+
+deactivate Form
+
+@enduml

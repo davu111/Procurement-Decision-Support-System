@@ -1,0 +1,59 @@
+@startuml
+!theme plain
+
+actor "Quản lý kho" as Manager
+boundary "Browser\n(Trang Sản phẩm)" as Browser
+boundary "ConfirmDialog\nComponent" as Dialog
+control "ProductController" as Controller
+database "Database\n(Product)" as Database
+
+Manager -> Browser: Truy cập trang\n"Sản phẩm"
+activate Browser
+
+Browser -> Manager: Hiển thị danh sách\nsản phẩm
+
+Manager -> Browser: Nhấn nút "Ẩn"\ntại sản phẩm muốn ẩn
+
+Browser -> Dialog: Mở hộp thoại\nxác nhận
+activate Dialog
+
+Dialog -> Manager: Hiển thị thông báo\n"Bạn có chắc chắn\nmuốn ẩn sản phẩm này?"
+
+alt Quản lý kho hủy thao tác
+  Manager -> Dialog: Nhấn "Hủy"
+  Dialog -> Dialog: Đóng hộp thoại
+  deactivate Dialog
+  
+  note over Browser
+    Sản phẩm không bị ẩn
+    Quay lại danh sách
+  end note
+else Quản lý kho xác nhận ẩn
+  Manager -> Dialog: Nhấn "Xác nhận"
+  activate Dialog
+  
+  Dialog -> Controller: PATCH /api/products/\ndeactivate/{id}
+  activate Controller
+  
+  Controller -> Database: Cập nhật\ntrạng thái
+  activate Database
+  Database -> Database: Thay đổi status\nthành INACTIVE
+  Database --> Controller: Product\nResponse
+  deactivate Database
+  
+  Controller --> Dialog: HTTP 200 OK
+  deactivate Controller
+  
+  Dialog -> Dialog: Đóng hộp thoại
+  
+  Dialog -> Browser: Refresh\ndanh sách
+  activate Browser
+  
+  Browser -> Browser: Cập nhật\ndanh sách
+  Browser -> Manager: Hiển thị danh sách\nsản phẩm
+  deactivate Browser
+end
+
+deactivate Dialog
+
+@enduml

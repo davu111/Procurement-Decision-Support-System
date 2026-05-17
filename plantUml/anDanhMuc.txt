@@ -1,0 +1,59 @@
+@startuml
+!theme plain
+
+actor "Quản lý kho" as Manager
+boundary "Browser\n(Trang Danh mục)" as Browser
+boundary "ConfirmDialog\nComponent" as Dialog
+control "ProductCategoryController" as Controller
+database "Database\n(ProductCategory)" as Database
+
+Manager -> Browser: Truy cập trang\n"Danh mục"
+activate Browser
+
+Browser -> Manager: Hiển thị danh sách\ndanh mục
+
+Manager -> Browser: Nhấn nút "Ẩn"\ntại danh mục muốn ẩn
+
+Browser -> Dialog: Mở hộp thoại\nxác nhận
+activate Dialog
+
+Dialog -> Manager: Hiển thị thông báo\n"Bạn có chắc chắn\nmuốn ẩn danh mục này?"
+
+alt Quản lý kho hủy thao tác
+  Manager -> Dialog: Nhấn "Hủy"
+  Dialog -> Dialog: Đóng hộp thoại
+  deactivate Dialog
+  
+  note over Browser
+    Danh mục không bị ẩn
+    Quay lại danh sách
+  end note
+else Quản lý kho xác nhận ẩn
+  Manager -> Dialog: Nhấn "Xác nhận"
+  activate Dialog
+  
+  Dialog -> Controller: PATCH /api/product-categories/\ndeactivate/{id}
+  activate Controller
+  
+  Controller -> Database: Cập nhật trạng thái\ndanh mục thành ẩn
+  activate Database
+  Database -> Database: Thay đổi isActive\nthành false
+  Database --> Controller: ProductCategoryResponse
+  deactivate Database
+  
+  Controller --> Dialog: HTTP 200 OK
+  deactivate Controller
+  
+  Dialog -> Dialog: Đóng hộp thoại
+  
+  Dialog -> Browser: Refresh\ndanh sách
+  activate Browser
+  
+  Browser -> Browser: Cập nhật\ndanh sách
+  Browser -> Manager: Hiển thị danh sách\ndanh mục
+  deactivate Browser
+end
+
+deactivate Dialog
+
+@enduml

@@ -1,0 +1,97 @@
+@startuml
+!theme plain
+
+actor "Quản lý kho" as Manager
+boundary "Browser\n(Trang Nhập tiêu thụ)" as Browser
+boundary "ConsumptionForm\nComponent" as Form
+control "ConsumptionHistoryController" as Controller
+database "Database\n(ConsumptionHistory)" as Database
+
+Manager -> Browser: Truy cập trang\n"Nhập tiêu thụ"
+activate Browser
+
+Browser -> Manager: Hiển thị form nhập/import dữ liệu
+
+alt Luồng nhập dữ liệu thủ công
+  Manager -> Form: Chọn sản phẩm\nvà khoảng thời gian
+  activate Form
+  
+  Form -> Controller: GET /api/\nconsumption-history/{productId}
+  activate Controller
+  Controller -> Database: Lấy dữ liệu dự kiến\nhoặc kế hoạch hiện có
+  activate Database
+  Database --> Controller: Dữ liệu dự kiến
+  deactivate Database
+  Controller --> Form: ConsumptionHistoryResponse
+  deactivate Controller
+  
+  Form -> Manager: Tự động điền dữ liệu\ntiêu thụ dự kiến
+  
+  Manager -> Form: Chỉnh sửa dữ liệu\nthực tế (tuỳ chọn)
+else Luồng import từ file .xlsx
+  Manager -> Form: Chọn tải lên file .xlsx
+  activate Form
+  
+  Form -> Form: Chọn file từ máy tính
+  
+  alt File không hợp lệ
+    Form -> Manager: Thông báo lỗi\n"File không đúng định dạng"
+    Manager -> Form: Tải lại file hợp lệ
+  else File hợp lệ
+    Form -> Browser: Hiển thị dữ liệu\nđược đọc từ file
+  end
+end
+
+alt Manager hủy thao tác
+  Manager -> Form: Nhấn "Hủy"
+  Form -> Form: Đóng form
+  deactivate Form
+  
+  note over Browser
+    Không lưu dữ liệu
+    Quay lại màn hình trước
+  end note
+else Manager xác nhận lưu
+  Manager -> Form: Nhấn "Lưu dữ liệu"
+  activate Form
+  
+  alt Dữ liệu không hợp lệ
+    Form -> Form: Kiểm tra validation
+    Form -> Manager: Hiển thị thông báo lỗi\n(thiếu giá trị, sai định dạng,\nsố âm, v.v...)
+    
+    Manager -> Form: Chỉnh sửa dữ liệu\nvà lưu lại
+  else Dữ liệu hợp lệ
+    Form -> Controller: POST /api/\nconsumption-history\n(ConsumptionHistoryRequest)
+    activate Controller
+    
+    alt Nhập từ file
+      Controller -> Controller: POST /api/\nconsumption-history/import\n(File)
+      activate Controller
+      Controller -> Database: Import dữ liệu hàng loạt\nINSERT/SKIP trùng lặp
+      activate Database
+      Database -> Database: Lưu dữ liệu tiêu thụ\nthành công/lỗi/trùng
+      Database --> Controller: ImportResultResponse
+      deactivate Database
+      Controller --> Form: Success: X thành công,\nY trùng, Z lỗi
+      deactivate Controller
+    else Nhập thủ công
+      Controller -> Database: Lưu dữ liệu tiêu thụ\nINSERT ConsumptionHistory
+      activate Database
+      Database -> Database: Lưu 1 bản ghi tiêu thụ
+      Database --> Controller: ConsumptionHistoryResponse
+      deactivate Database
+      Controller --> Form: HTTP 200 OK
+      deactivate Controller
+    end
+    
+    Form -> Browser: Cập nhật danh sách\nhoặc hiển thị kết quả import
+    activate Browser
+    
+    Browser -> Manager: Hiển thị thông báo\n"Đã lưu dữ liệu thành công.\nDữ liệu đã sẵn sàng\ncho dự báo."
+    deactivate Browser
+  end
+end
+
+deactivate Form
+
+@enduml

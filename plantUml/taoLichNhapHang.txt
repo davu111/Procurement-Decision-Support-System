@@ -1,0 +1,108 @@
+@startuml
+!theme plain
+
+actor "Quản lý kế hoạch" as Manager
+boundary "Browser\n(Trang Kỳ kế hoạch mới)" as Browser
+boundary "PlanForm\nComponent" as Form
+boundary "ConfirmDialog\nComponent" as Dialog
+control "InventoryPlanningController" as Controller
+database "Database" as Database
+
+Manager -> Browser: Truy cập trang\n"Kỳ kế hoạch mới"
+activate Browser
+
+Browser -> Manager: Hiển thị form nhập thông tin
+
+Manager -> Form: Chọn sản phẩm\nvà khoảng thời gian
+activate Form
+
+Form -> Controller: GET /api/inventory\n/suggest/{productId}
+activate Controller
+Controller -> Database: Truy vấn dữ liệu lịch sử
+activate Database
+Database --> Controller: Dữ liệu lịch sử
+deactivate Database
+Controller --> Form: ForecastSuggestionResponse\n(nhu cầu dự kiến)
+deactivate Controller
+
+Form -> Manager: Hiển thị nhu cầu\ndự kiến đề xuất
+
+Manager -> Form: Nhập/chỉnh sửa\nnhu cầu dự kiến\n(tuỳ chọn)
+
+Manager -> Form: Nhấn\n"Tạo mới kế hoạch"
+activate Form
+
+Form -> Controller: POST /api/inventory\n/check-overlap
+activate Controller
+
+Controller -> Database: Kiểm tra trùng lặp\ntheo khoảng thời gian
+activate Database
+Database --> Controller: Danh sách kế hoạch trùng\n(nếu có)
+deactivate Database
+
+alt Không có kế hoạch trùng
+  Controller --> Form: hasOverlap = false
+  deactivate Controller
+  
+  Form -> Controller: POST /api/inventory\n/calculate
+  activate Controller
+  
+  Controller -> Database: Tạo kế hoạch mới
+  activate Database
+  Database -> Database: Tính toán và tạo\nlịch đặt hàng
+  Database --> Controller: InventoryCalculationResult
+  deactivate Database
+  
+  Controller --> Form: Kế hoạch mới với\nlịch đặt hàng đề xuất
+  deactivate Controller
+  
+  Form -> Browser: Hiển thị lịch đặt hàng\nvà số lượng đề xuất
+  activate Browser
+  Browser -> Manager: Hiển thị kế hoạch
+  deactivate Browser
+else Có kế hoạch trùng
+  Controller --> Form: hasOverlap = true\noverlapping details
+  deactivate Controller
+  
+  Form -> Dialog: Mở hộp thoại xác nhận
+  activate Dialog
+  
+  Dialog -> Manager: Hiển thị thông báo\n"Kế hoạch thời gian này\nđã tồn tại.\nBạn muốn ghi đè?"
+  
+  alt Manager hủy
+    Manager -> Dialog: Nhấn "Hủy"
+    Dialog -> Dialog: Đóng dialog
+    deactivate Dialog
+    
+    note over Browser
+      Quay lại trang
+      "Kỳ kế hoạch mới"
+      Không tạo kế hoạch
+    end note
+  else Manager xác nhận ghi đè
+    Manager -> Dialog: Nhấn "Xác nhận"
+    
+    Dialog -> Controller: POST /api/inventory\n/replan
+    activate Controller
+    
+    Controller -> Database: Ghi đè\nmột phần kế hoạch cũ
+    activate Database
+    Database -> Database: Tạo lịch đặt hàng mới\nthay thế kế hoạch cũ
+    Database --> Controller: InventoryCalculationResult
+    deactivate Database
+    
+    Controller --> Dialog: Kế hoạch mới với\nlịch đặt hàng đề xuất
+    deactivate Controller
+    
+    Dialog -> Dialog: Đóng dialog
+    
+    Form -> Browser: Hiển thị lịch đặt hàng\nmới và số lượng đề xuất
+    activate Browser
+    Browser -> Manager: Hiển thị kế hoạch\ncập nhật
+    deactivate Browser
+  end
+end
+
+deactivate Form
+
+@enduml

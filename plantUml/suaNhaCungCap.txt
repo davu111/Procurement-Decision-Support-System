@@ -1,0 +1,69 @@
+@startuml
+!theme plain
+
+actor "Quản lý kho" as Manager
+boundary "Browser\n(Trang Nhà cung cấp)" as Browser
+boundary "SupplierForm\nComponent" as Form
+control "SupplierController" as Controller
+database "Database\n(Supplier)" as Database
+
+Manager -> Browser: Truy cập trang\n"Nhà cung cấp"
+activate Browser
+
+Browser -> Manager: Hiển thị danh sách\nnhà cung cấp
+
+Manager -> Browser: Chọn nhà cung cấp\nmuốn sửa
+
+Manager -> Browser: Nhấn nút "Sửa"
+
+Browser -> Form: Mở form sửa\nnhà cung cấp
+activate Form
+
+Form -> Manager: Hiển thị form với\nthông tin nhà cung cấp
+Manager -> Form: Chỉnh sửa thông tin\nnhà cung cấp
+
+alt Quản lý kho hủy thao tác
+  Manager -> Form: Nhấn "Hủy"
+  Form -> Form: Đóng form
+  deactivate Form
+  
+  note over Browser
+    Không lưu thay đổi
+    Quay lại trang "Nhà cung cấp"
+  end note
+else Quản lý kho xác nhận cập nhật
+  Manager -> Form: Nhấn "Xác nhận"
+  activate Form
+  
+  alt Dữ liệu không hợp lệ
+    Form -> Form: Kiểm tra validation\n(mã/tên trống, email sai\nđịnh dạng,...)
+    Form -> Manager: Hiển thị thông báo lỗi
+    
+    Manager -> Form: Chỉnh sửa thông tin\nvà xác nhận lại
+  else Dữ liệu hợp lệ
+    Form -> Controller: PUT /api/\nsuppliers/{id}
+    activate Controller
+    
+    Controller -> Database: Cập nhật thông tin\nnhà cung cấp
+    activate Database
+    Database -> Database: Lưu\nthay đổi
+    Database --> Controller: SupplierResponse
+    deactivate Database
+    
+    Controller --> Form: HTTP 200 OK\n(SupplierResponse)
+    deactivate Controller
+    
+    Form -> Form: Đóng form
+    
+    Form -> Browser: Refresh\ndanh sách
+    activate Browser
+    
+    Browser -> Browser: Cập nhật\ndanh sách
+    Browser -> Manager: Hiển thị danh sách\nnhà cung cấp
+    deactivate Browser
+  end
+end
+
+deactivate Form
+
+@enduml

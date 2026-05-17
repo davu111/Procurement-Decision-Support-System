@@ -1,0 +1,77 @@
+@startuml
+!theme plain
+
+actor "Quản trị viên" as Admin
+boundary "Browser\n(Trang Nhân viên)" as Browser
+boundary "UpdateDialog\nComponent" as Dialog
+control "EmployeeController\n(employee-service)" as Controller
+database "Database\n(Employee)" as Database
+
+Admin -> Browser: Truy cập trang\n"Nhân viên"
+activate Browser
+
+Browser -> Admin: Hiển thị danh sách\nnhân viên
+
+Admin -> Browser: Chọn người dùng\nđể chỉnh sửa quyền
+activate Browser
+
+Browser -> Dialog: Mở modal chỉnh sửa
+activate Dialog
+
+Dialog -> Admin: Hiển thị vai trò\nquyền hiện tại
+
+Admin -> Dialog: Thay đổi vai trò/quyền
+
+alt Quản trị viên hủy
+  Admin -> Dialog: Nhấn "Hủy"
+  Dialog -> Dialog: Đóng modal
+  deactivate Dialog
+  
+  note over Browser
+    Quay lại trang "Nhân viên"
+    Không lưu thay đổi
+  end note
+else Quản trị viên xác nhận
+  Admin -> Dialog: Nhấn "Xác nhận"
+  
+  Dialog -> Controller: PUT /api/employees/update/{userId}\n(roleName, status)
+  activate Controller
+  
+  alt Lỗi hệ thống
+    Controller -> Database: UPDATE employee
+    activate Database
+    Database -> Database: Lỗi kết nối/Server Error
+    Database --> Controller: Exception
+    deactivate Database
+    
+    Controller --> Dialog: HTTP 500\n(Error message)
+    deactivate Controller
+    
+    Dialog -> Admin: Hiển thị thông báo thất bại
+    
+    note over Dialog
+      Không thay đổi dữ liệu
+      Cho phép thử lại
+    end note
+  else Cập nhật thành công
+    Controller -> Database: UPDATE employee\nSET roleName = ?, status = ?
+    activate Database
+    Database -> Database: Cập nhật vai trò/quyền\nmới có hiệu lực
+    Database --> Controller: Success
+    deactivate Database
+    
+    Controller --> Dialog: HTTP 200 OK\n(EmployeeResponse)
+    deactivate Controller
+    
+    Dialog -> Dialog: Đóng modal
+    
+    Dialog -> Browser: Refresh danh sách\n(GET /api/employees)
+    activate Browser
+    
+    Browser -> Browser: Cập nhật danh sách
+    Browser -> Admin: Hiển thị danh sách\nmới
+    deactivate Browser
+  end
+end
+
+@enduml

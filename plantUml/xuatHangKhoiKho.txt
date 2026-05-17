@@ -1,0 +1,108 @@
+@startuml
+!theme plain
+
+actor "Quản lý kho" as Manager
+boundary "Browser\n(Trang Kho hàng)" as Browser
+boundary "TransferDialog\nComponent" as Dialog
+control "WarehouseController\n& InventoryController" as Controller
+database "Database\n(Warehouse, Inventory)" as Database
+
+Manager -> Browser: Truy cập trang\n"Kho hàng"
+activate Browser
+
+Browser -> Manager: Hiển thị danh sách\nkho hàng
+
+Manager -> Browser: Chọn kho hàng\nmuốn xuất hàng
+
+Manager -> Browser: Nhấn nút\n"Xuất hàng"
+
+Browser -> Dialog: Mở dialog xuất hàng
+activate Dialog
+
+Dialog -> Manager: Hiển thị form xuất\nthông tin sản phẩm
+
+Manager -> Dialog: Chọn hàng hóa và\nnhập số lượng\nmuốn xuất
+
+Manager -> Dialog: Có thể thêm\nhoặc bỏ dòng
+
+alt Quản lý kho hủy thao tác
+  Manager -> Dialog: Nhấn "Hủy"
+  Dialog -> Dialog: Đóng dialog
+  deactivate Dialog
+  
+  note over Browser
+    Không lưu thay đổi
+    Quay lại trang "Kho hàng"
+  end note
+else Quản lý kho xác nhận xuất hàng
+  Manager -> Dialog: Nhấn "Xác nhận"
+  activate Dialog
+  
+  alt Dữ liệu không hợp lệ
+    Dialog -> Dialog: Kiểm tra validation
+    Dialog -> Manager: Hiển thị thông báo lỗi\n(sản phẩm trống,\nsố lượng <= 0,\nsố lượng > tồn kho,...)
+    
+    Manager -> Dialog: Chỉnh sửa thông tin\nvà xác nhận lại
+  else Dữ liệu hợp lệ
+    Dialog -> Controller: POST /api/inventory-\ntransfer/transfer
+    activate Controller
+    
+    Controller -> Database: Cập nhật số lượng\nhàng hóa trong kho
+    activate Database
+    Database -> Database: Giảm tồn kho\ntheo sản phẩm
+    Database --> Controller: Transfer successful
+    deactivate Database
+    
+    Dialog -> Controller: POST /api/\ntransactions
+    activate Controller
+    
+    Controller -> Database: Tạo ghi chép\ngiao dịch xuất hàng
+    activate Database
+    Database -> Database: Lưu chi tiết\ngiao dịch xuất
+    Database --> Controller: TransactionResponse
+    deactivate Database
+    
+    Controller --> Dialog: HTTP 201 Created
+    deactivate Controller
+    
+    Dialog -> Controller: POST /api/\ntransactions/{id}/\ngenerate-report
+    activate Controller
+    
+    Controller -> Database: Tạo phiếu xuất hàng
+    activate Database
+    Database -> Database: Sinh file report
+    Database --> Controller: FileId
+    deactivate Database
+    
+    Controller --> Dialog: HTTP 200 OK\n(FileId)
+    deactivate Controller
+    
+    Dialog -> Controller: GET /api/files/\n{fileId}/view-url
+    activate Controller
+    Controller --> Dialog: View URL
+    deactivate Controller
+    
+    Dialog -> Controller: GET /api/files/\n{fileId}/download-url
+    activate Controller
+    Controller --> Dialog: Download URL
+    deactivate Controller
+    
+    Dialog -> Manager: Hiển thị phiếu xuất hàng\n(file preview + nút tải)
+    
+    Manager -> Dialog: Xem hoặc\ntải về phiếu
+    
+    Dialog -> Dialog: Đóng dialog
+    deactivate Dialog
+    
+    Dialog -> Browser: Refresh danh sách kho
+    activate Browser
+    
+    Browser -> Browser: Cập nhật số lượng tồn
+    Browser -> Manager: Hiển thị danh sách kho\ncập nhật
+    deactivate Browser
+  end
+end
+
+deactivate Dialog
+
+@enduml

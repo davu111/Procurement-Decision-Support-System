@@ -1,0 +1,68 @@
+@startuml
+!theme plain
+
+actor "Quản lý kho" as Manager
+boundary "Browser\n(Trang Kho hàng)" as Browser
+boundary "WarehouseForm\nComponent" as Form
+control "WarehouseController" as Controller
+database "Database\n(Warehouse)" as Database
+
+Manager -> Browser: Truy cập trang\n"Kho hàng"
+activate Browser
+
+Browser -> Manager: Hiển thị danh sách\nkho hàng
+
+Manager -> Browser: Nhấn nút "Thêm"
+
+Browser -> Form: Mở form tạo\nkho hàng mới
+activate Form
+
+Form -> Manager: Hiển thị form nhập\nthông tin kho hàng
+
+Manager -> Form: Nhập đầy đủ\nthông tin kho hàng
+
+alt Quản lý kho hủy thao tác
+  Manager -> Form: Nhấn "Hủy"
+  Form -> Form: Đóng form
+  deactivate Form
+  
+  note over Browser
+    Quay lại trang "Kho hàng"
+    Không lưu dữ liệu
+  end note
+else Quản lý kho xác nhận tạo
+  Manager -> Form: Nhấn "Xác nhận"
+  activate Form
+  
+  alt Dữ liệu không hợp lệ
+    Form -> Form: Kiểm tra validation
+    Form -> Manager: Hiển thị thông báo lỗi\n(thiếu thông tin,\nsai định dạng)
+    
+    Manager -> Form: Chỉnh sửa thông tin\nvà xác nhận lại
+  else Dữ liệu hợp lệ
+    Form -> Controller: POST /api/\nwarehouses
+    activate Controller
+    
+    Controller -> Database: Tạo kho hàng mới
+    activate Database
+    Database -> Database: Lưu thông tin\nkho hàng
+    Database --> Controller: WarehouseResponse
+    deactivate Database
+    
+    Controller --> Form: HTTP 201 Created
+    deactivate Controller
+    
+    Form -> Form: Đóng form
+    
+    Form -> Browser: Refresh danh sách
+    activate Browser
+    
+    Browser -> Browser: Cập nhật danh sách
+    Browser -> Manager: Hiển thị danh sách\nkho hàng mới
+    deactivate Browser
+  end
+end
+
+deactivate Form
+
+@enduml

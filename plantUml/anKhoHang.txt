@@ -1,0 +1,59 @@
+@startuml
+!theme plain
+
+actor "Quản lý kho" as Manager
+boundary "Browser\n(Trang Kho hàng)" as Browser
+boundary "ConfirmDialog\nComponent" as Dialog
+control "WarehouseController" as Controller
+database "Database\n(Warehouse)" as Database
+
+Manager -> Browser: Truy cập trang\n"Kho hàng"
+activate Browser
+
+Browser -> Manager: Hiển thị danh sách\nkho hàng
+
+Manager -> Browser: Nhấn nút "Ẩn"\ntại kho hàng muốn ẩn
+
+Browser -> Dialog: Mở hộp thoại\nxác nhận ẩn kho hàng
+activate Dialog
+
+Dialog -> Manager: Hiển thị thông báo\n"Bạn có chắc chắn\nmuốn ẩn kho hàng này?"
+
+alt Quản lý kho hủy thao tác
+  Manager -> Dialog: Nhấn "Hủy"
+  Dialog -> Dialog: Đóng hộp thoại
+  deactivate Dialog
+  
+  note over Browser
+    Kho hàng không bị ẩn
+    Quay lại danh sách
+  end note
+else Quản lý kho xác nhận ẩn
+  Manager -> Dialog: Nhấn "Xác nhận"
+  activate Dialog
+  
+  Dialog -> Controller: PATCH /api/warehouses/\ndeactivate/{id}
+  activate Controller
+  
+  Controller -> Database: Cập nhật trạng thái\nkho hàng thành ẩn
+  activate Database
+  Database -> Database: Thay đổi isActive\nthành false
+  Database --> Controller: WarehouseResponse
+  deactivate Database
+  
+  Controller --> Dialog: HTTP 200 OK
+  deactivate Controller
+  
+  Dialog -> Dialog: Đóng hộp thoại
+  
+  Dialog -> Browser: Refresh danh sách
+  activate Browser
+  
+  Browser -> Browser: Cập nhật danh sách
+  Browser -> Manager: Hiển thị danh sách\nkho hàng (kho vừa ẩn\nchuyển sang trạng thái ẩn)
+  deactivate Browser
+end
+
+deactivate Dialog
+
+@enduml

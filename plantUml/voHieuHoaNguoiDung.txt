@@ -1,0 +1,56 @@
+@startuml
+!theme plain
+
+actor "Quản trị viên" as Admin
+boundary "Browser\n(Trang Nhân viên)" as Browser
+boundary "ConfirmDialog\nComponent" as Dialog
+control "EmployeeController\n(employee-service)" as Controller
+database "Database\n(Employee)" as Database
+
+Admin -> Browser: Truy cập trang\n"Nhân viên"
+activate Browser
+
+Browser -> Admin: Hiển thị danh sách\nnhân viên hoạt động
+
+Admin -> Browser: Nhấn nút "Vô hiệu hóa"\ntại người dùng
+
+Browser -> Dialog: Mở hộp thoại\nxác nhận
+activate Dialog
+
+Dialog -> Admin: Hiển thị thông báo\n"Bạn có chắc chắn\nvô hiệu hóa người dùng này?"
+
+alt Quản trị viên hủy
+  Admin -> Dialog: Nhấn "Hủy"
+  Dialog -> Dialog: Đóng hộp thoại
+  deactivate Dialog
+  
+  note over Browser
+    Không vô hiệu hóa người dùng
+    Giữ nguyên trạng thái
+  end note
+else Quản trị viên xác nhận
+  Admin -> Dialog: Nhấn "Xác nhận"
+  
+  Dialog -> Controller: PATCH /api\n/employees/de-active/{userId}
+  activate Controller
+  
+  Controller -> Database: UPDATE employee\nSET status = 'INACTIVE'
+  activate Database
+  Database -> Database: Vô \nhiệu hóa
+  Database --> Controller: Success
+  deactivate Database
+  
+  Controller --> Dialog: HTTP 200 OK\n(Boolean)
+  deactivate Controller
+  
+  Dialog -> Dialog: Đóng hộp thoại
+  
+  Dialog -> Browser: Refresh danh sách\n(GET /api/employees)
+  activate Browser
+  
+  Browser -> Browser: Cập nhật danh sách
+  Browser -> Admin: Hiển thị danh sách\nmới (người dùng đã vô hiệu)
+  deactivate Browser
+end
+
+@enduml
