@@ -1,0 +1,339 @@
+@startuml Transaction Service - Layered Architecture
+top to bottom direction
+
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 50
+
+skinparam package {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    BorderThickness 2
+    FontSize 14
+    FontStyle bold
+}
+
+skinparam class {
+    BackgroundColor<<entity>>     #E1F5FE
+    BackgroundColor<<dto>>        #F3E5F5
+    BackgroundColor<<service>>    #E8F5E9
+    BackgroundColor<<repository>> #FFF3E0
+    BackgroundColor<<controller>> #FCE4EC
+    BackgroundColor<<mapper>>     #F1F8E9
+    BackgroundColor<<enum>>       #FFF9C4
+    BorderColor #666666
+    ArrowColor  #555555
+    FontSize 11
+}
+
+' ==================== LAYER 1: CONTROLLER ====================
+' Chỉ 2 controller xếp ngang — đây là hàng rộng nhất, chấp nhận được
+package "Controller Layer" <<controller>> {
+
+    class InOutTransactionController <<controller>> {
+        +getAllTransactions()
+        +getTransactionsByWarehouseId()
+        +getTransactionById()
+        +createTransaction()
+        +updateTransaction()
+        +confirmTransaction()
+        +cancelTransaction()
+        +generateReport()
+    }
+
+    class FileManagementController <<controller>> {
+        +getViewUrl()
+        +getDownloadUrl()
+        +uploadFile()
+        +getFileInfo()
+        +deleteFile()
+    }
+
+    InOutTransactionController -[hidden]right- FileManagementController
+}
+
+' ==================== LAYER 2: TRANSACTION SERVICES ====================
+' Transaction domain — xếp ngang tối đa 3, chấp nhận được
+package "Transaction Services" <<service>> {
+
+    class InOutTransactionService <<service>> {
+        +getTransactionById()
+        +getAllTransactions()
+        +getTransactionsByWarehouseId()
+        +createTransaction()
+        +updateTransaction()
+        +confirmTransaction()
+        +cancelTransaction()
+        +mapToResponseWithDetails()
+    }
+
+    class InOutDetailService <<service>> {
+        +getDetailsByTransactionId()
+        +createDetails()
+        +updateDetails()
+        +deleteDetails()
+        +calculateTotalQuantity()
+    }
+
+    class ReportService <<service>> {
+        +generateTransactionReport()
+        +generateWarehouseReport()
+        +exportToExcel()
+        +exportToPdf()
+    }
+
+    InOutTransactionService -[hidden]right- InOutDetailService
+    InOutDetailService      -[hidden]right- ReportService
+}
+
+' ==================== LAYER 3: FILE & INFRA SERVICES ====================
+' Tách thành package RIÊNG bên DƯỚI Transaction Services thay vì bên phải
+' → giảm bề ngang, tăng chiều dọc
+package "File & Infra Services" <<service>> {
+
+    ' Hàng trên: 2 service chính
+    class FileManagementService <<service>> {
+        +uploadAndSave()
+        +getViewUrl()
+        +getDownloadUrl()
+        +getFileInfo()
+        +deleteFile()
+    }
+
+    class MinioService <<service>> {
+        +uploadPdfFile()
+        +downloadFile()
+        +getFileInfo()
+        +deleteFile()
+        +generateViewUrl()
+        +generateDownloadUrl()
+    }
+
+    ' Hàng dưới: 2 service convert
+    class WordService <<service>> {
+        +generateWord()
+        +fillTemplate()
+    }
+
+    class LibreOfficeService <<service>> {
+        +convertToExcel()
+        +convertToPdf()
+    }
+
+    ' 2x2 grid layout
+    FileManagementService -[hidden]right- MinioService
+    WordService           -[hidden]right- LibreOfficeService
+    FileManagementService -[hidden]down-  WordService
+    MinioService          -[hidden]down-  LibreOfficeService
+}
+
+' ==================== LAYER 4: MAPPER ====================
+' 3 mapper xếp ngang — ngắn gọn, không cần tách
+package "Mapper Layer" <<mapper>> {
+
+    interface InOutTransactionMapper <<mapper>> {
+        +toInOutTransaction()
+        +toInOutTransactionResponse()
+        +toTransactionReport()
+        +updateInOutTransactionFromRequest()
+        +updateInOutTransactionFromUpdateRequest()
+    }
+
+    interface InOutDetailMapper <<mapper>> {
+        +toInOutDetail()
+        +toInOutDetailResponse()
+        +updateInOutDetailFromRequest()
+    }
+
+    interface PageMapper <<mapper>> {
+        +toPageResponse()
+    }
+
+    InOutTransactionMapper -[hidden]right- InOutDetailMapper
+    InOutDetailMapper      -[hidden]right- PageMapper
+}
+
+' ==================== LAYER 5: REPOSITORY ====================
+' 3 repository xếp ngang — đồng nhất với mapper
+package "Repository Layer" <<repository>> {
+
+    interface InOutTransactionRepository <<repository>> {
+        +findById()
+        +findAll()
+        +findByWarehouseId()
+        +findByStatus()
+        +save()
+        +delete()
+    }
+
+    interface InOutDetailRepository <<repository>> {
+        +findById()
+        +findByTransactionId()
+        +save()
+        +delete()
+    }
+
+    interface TransactionFileRepository <<repository>> {
+        +findById()
+        +findByTransactionId()
+        +save()
+        +delete()
+    }
+
+    InOutTransactionRepository -[hidden]right- InOutDetailRepository
+    InOutDetailRepository      -[hidden]right- TransactionFileRepository
+}
+
+' ==================== LAYER 6: ENTITY ====================
+' 3 entity xếp ngang — đồng nhất với repository
+package "Entity Layer" <<entity>> {
+
+    class InOutTransaction <<entity>> {
+        -id: String (UUID)
+        -warehouseId: String
+        -workType: WorkType
+        -status: TransactionStatus
+        -createdAt: LocalDateTime
+        -confirmedAt: LocalDateTime
+        -updatedAt: LocalDateTime
+        -inOutDetails: Set<InOutDetail>
+        -transactionFile: TransactionFile
+    }
+
+    class InOutDetail <<entity>> {
+        -id: String (UUID)
+        -transaction: InOutTransaction
+        -productId: String
+        -quantity: BigDecimal
+        -createdAt: LocalDateTime
+        -updatedAt: LocalDateTime
+    }
+
+    class TransactionFile <<entity>> {
+        -id: Long (AUTO)
+        -fileName: String
+        -objectName: String
+        -contentType: String
+        -fileSize: Long
+        -uploadedAt: LocalDateTime
+        -transaction: InOutTransaction
+    }
+
+    InOutTransaction -[hidden]right- InOutDetail
+    InOutDetail      -[hidden]right- TransactionFile
+
+    InOutTransaction "1" *-down- "*"    InOutDetail
+    InOutTransaction "1" *-down- "0..1" TransactionFile
+}
+
+' ==================== LAYER 7: DTO ====================
+' Chia làm 2 hàng, mỗi hàng tối đa 2 class → bề ngang hẹp hơn nhiều
+package "DTO Layer" <<dto>> {
+
+    ' Hàng 1: Request types (2 class)
+    class InOutTransactionRequest <<dto>> {
+        +warehouseId: String
+        +workType: WorkType
+        +inOutDetails: List<InOutDetailRequest>
+    }
+
+    class InOutTransactionUpdateRequest <<dto>> {
+        +warehouseId: String
+        +workType: WorkType
+        +inOutDetails: List<InOutDetailRequest>
+    }
+
+    ' Hàng 2: Detail request + response (2 class)
+    class InOutDetailRequest <<dto>> {
+        +productId: String
+        +quantity: BigDecimal
+    }
+
+    class InOutDetailResponse <<dto>> {
+        +id: String
+        +productId: String
+        +productName: String
+        +quantity: BigDecimal
+    }
+
+    ' Hàng 3: Transaction response + Report (2 class)
+    class InOutTransactionResponse <<dto>> {
+        +id: String
+        +warehouseId: String
+        +workType: WorkType
+        +status: TransactionStatus
+        +createdAt: LocalDateTime
+        +confirmedAt: LocalDateTime
+        +updatedAt: LocalDateTime
+        +inOutDetails: List<InOutDetailResponse>
+    }
+
+    class TransactionReport <<dto>> {
+        +id: String
+        +warehouseId: String
+        +workType: WorkType
+        +status: TransactionStatus
+        +reportDetails: List<ReportDetail>
+    }
+
+    ' Hàng 4: các DTO phụ (2 class)
+
+    ' Layout: 2 cột, 4 hàng
+    InOutTransactionRequest    -[hidden]right- InOutTransactionUpdateRequest
+    InOutDetailRequest         -[hidden]right- InOutDetailResponse
+    InOutTransactionResponse   -[hidden]right- TransactionReport
+
+    InOutTransactionRequest    -[hidden]down-  InOutDetailRequest
+    InOutTransactionUpdateRequest -[hidden]down- InOutDetailResponse
+    InOutDetailRequest         -[hidden]down-  InOutTransactionResponse
+    InOutDetailResponse        -[hidden]down-  TransactionReport
+}
+
+
+
+' ==================== RELATIONSHIPS ====================
+
+' --- Controller -> Service ---
+InOutTransactionController -down-> InOutTransactionService
+InOutTransactionController -down-> ReportService
+FileManagementController   -down-> FileManagementService
+
+' --- Service -> Service ---
+' Transaction Services (nội bộ)
+InOutTransactionService -down-> InOutDetailService
+' File & Infra Services (nội bộ)
+FileManagementService   -down-> MinioService
+' ReportService dùng File & Infra (cross-package, đi xuống)
+ReportService           -down-> WordService
+ReportService           -down-> LibreOfficeService
+ReportService           -down-> MinioService
+
+' --- Service -> Mapper ---
+InOutTransactionService -down-> InOutTransactionMapper
+InOutDetailService      -down-> InOutDetailMapper
+InOutTransactionService -down-> PageMapper
+
+' --- Service -> Repository ---
+InOutTransactionService -down-> InOutTransactionRepository
+InOutDetailService      -down-> InOutDetailRepository
+FileManagementService   -down-> TransactionFileRepository
+
+' --- Repository -> Entity (dotted, thẳng cột) ---
+InOutTransactionRepository ..> InOutTransaction
+InOutDetailRepository      ..> InOutDetail
+TransactionFileRepository  ..> TransactionFile
+
+' --- Mapper -> DTO (dotted) ---
+InOutTransactionMapper ..> InOutTransactionRequest
+InOutTransactionMapper ..> InOutTransactionUpdateRequest
+InOutTransactionMapper ..> InOutTransactionResponse
+InOutTransactionMapper ..> TransactionReport
+InOutDetailMapper      ..> InOutDetailRequest
+InOutDetailMapper      ..> InOutDetailResponse
+
+
+
+' --- DTO -> Enum (dotted) ---
+ReportService -[hidden]down-TransactionFileRepository
+@enduml

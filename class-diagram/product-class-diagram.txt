@@ -1,0 +1,274 @@
+@startuml Product Service - Layered Architecture
+top to bottom direction
+
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+
+skinparam package {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    BorderThickness 2
+    FontSize 14
+    FontStyle bold
+}
+
+skinparam class {
+    BackgroundColor<<entity>>     #E1F5FE
+    BackgroundColor<<dto>>        #F3E5F5
+    BackgroundColor<<service>>    #E8F5E9
+    BackgroundColor<<repository>> #FFF3E0
+    BackgroundColor<<controller>> #FCE4EC
+    BackgroundColor<<mapper>>     #F1F8E9
+    BorderColor #666666
+    ArrowColor  #555555
+    FontSize 11
+}
+
+' ==================== LAYER 1: CONTROLLER ====================
+package "Controller Layer" <<controller>> {
+
+    class ProductController <<controller>> {
+        +getProducts()
+        +getProductsPage()
+        +getProduct()
+        +getGroupedInventory()
+        +getProductMapByIds()
+        +getActive()
+        +getProductNameById()
+    }
+
+    class ProductCategoryController <<controller>> {
+        +getProductCategory()
+        +getAllProductCategories()
+        +create()
+        +update()
+        +deactivate()
+        +active()
+    }
+
+    class ProductImageController <<controller>> {
+        +getProductImages()
+        +getProductImagesBatch()
+        +uploadProductImage()
+    }
+
+    ProductController        -[hidden]right- ProductCategoryController
+    ProductCategoryController -[hidden]right- ProductImageController
+}
+
+' ==================== LAYER 2: SERVICE ====================
+package "Service Layer" <<service>> {
+
+    class ProductService <<service>> {
+        +getProducts()
+        +getProductsPage()
+        +getProductById()
+        +getGroupedInventory()
+        +getProductMapByIds()
+        +getIsActiveTrue()
+        +getProductNameById()
+        +create()
+        +update()
+        +deactivate()
+        +active()
+    }
+
+    class ProductCategoryService <<service>> {
+        +getProductCategoryById()
+        +getAllProductCategories()
+        +createProductCategory()
+        +update()
+        +deactivate()
+        +active()
+    }
+
+    class ProductImageService <<service>> {
+        +getByProductId()
+        +getByProductIds()
+        +getAll()
+    }
+
+    ProductService         -[hidden]right- ProductCategoryService
+    ProductCategoryService -[hidden]right- ProductImageService
+}
+
+' ==================== LAYER 3: REPOSITORY (LEFT) ====================
+package "Repository Layer" <<repository>> {
+
+    interface ProductRepository <<repository>> {
+        +findById()
+        +findAll()
+        +findAllById()
+        +findByIsActiveTrue()
+        +save()
+    }
+
+    interface ProductCategoryRepository <<repository>> {
+        +findById()
+        +findAll()
+        +save()
+    }
+
+    interface ProductImageRepository <<repository>> {
+        +findByProductId()
+        +findByProductIdIn()
+        +save()
+    }
+
+    ProductRepository         -[hidden]right- ProductCategoryRepository
+    ProductCategoryRepository -[hidden]right- ProductImageRepository
+}
+
+' ==================== LAYER 4: MAPPER (RIGHT) ====================
+package "Mapper Layer" <<mapper>> {
+
+    interface ProductMapper <<mapper>> {
+        +toProduct()
+        +toProductResponse()
+        +updateProductFromRequest()
+    }
+
+    interface ProductCategoryMapper <<mapper>> {
+        +toProductCategory()
+        +toProductCategoryResponse()
+        +updateProductCategoryFromRequest()
+    }
+
+    interface ProductImageMapper <<mapper>> {
+        +toProductImageResponse()
+    }
+
+    ProductMapper         -[hidden]right- ProductCategoryMapper
+    ProductCategoryMapper -[hidden]right- ProductImageMapper
+}
+
+' ==================== LAYER 5: ENTITY (RIGHT, below Mapper) ====================
+package "Entity Layer" <<entity>> {
+
+    class Product <<entity>> {
+        -id: String (UUID)
+        -productName: String
+        -code: String
+        -category: ProductCategory
+        -unit: String
+        -description: String
+        -status: ProductStatus
+        -createdAt: LocalDateTime
+        -updatedAt: LocalDateTime
+    }
+
+    class ProductCategory <<entity>> {
+        -id: String (UUID)
+        -categoryName: String
+        -description: String
+        -isActive: Boolean
+        -products: Set<Product>
+        -createdAt: LocalDateTime
+        -updatedAt: LocalDateTime
+    }
+
+    class ProductImage <<entity>> {
+        -id: Long (AUTO)
+        -productId: String
+        -bucketName: String
+        -objectName: String
+        -contentType: String
+        -createdAt: LocalDateTime
+        -updatedAt: LocalDateTime
+    }
+
+    Product         -[hidden]right- ProductCategory
+    ProductCategory -[hidden]right- ProductImage
+
+    ProductCategory "1" *-down- "*" Product
+}
+
+' ==================== LAYER 6: DTO ====================
+package "DTO Layer" <<dto>> {
+
+    class ProductRequest <<dto>> {
+        +productName: String
+        +code: String
+        +categoryId: String
+        +unit: String
+        +description: String
+    }
+
+    class ProductResponse <<dto>> {
+        +id: String
+        +productName: String
+        +code: String
+        +categoryId: String
+        +categoryName: String
+        +unit: String
+        +status: ProductStatus
+        +description: String
+        +createdAt: LocalDateTime
+        +updatedAt: LocalDateTime
+    }
+
+    class ProductCategoryRequest <<dto>> {
+        +categoryName: String
+        +description: String
+    }
+
+    class ProductCategoryResponse <<dto>> {
+        +id: String
+        +categoryName: String
+        +description: String
+        +isActive: Boolean
+        +createdAt: LocalDateTime
+        +updatedAt: LocalDateTime
+    }
+
+    class ProductImageResponse <<dto>> {
+        +id: Long
+        +productId: String
+        +bucketName: String
+        +objectName: String
+        +contentType: String
+    }
+
+    ProductRequest          -[hidden]right- ProductCategoryRequest
+    ProductCategoryRequest  -[hidden]right- ProductImageResponse
+    ProductRequest          -[hidden]down-  ProductResponse
+    ProductCategoryRequest  -[hidden]down-  ProductCategoryResponse
+}
+
+' ==================== RELATIONSHIPS ====================
+
+' --- Controller -> Service ---
+ProductController         -down-> ProductService
+ProductCategoryController -down-> ProductCategoryService
+ProductImageController    -down-> ProductImageService
+
+' --- Service -> Service ---
+
+' --- Service -> Repository (LEFT side) ---
+ProductService         -down-> ProductRepository
+ProductCategoryService -down-> ProductCategoryRepository
+ProductImageService    -down-> ProductImageRepository
+
+' --- ProductService also calls ProductCategoryRepository ---
+ProductService -down-> ProductCategoryRepository
+
+' --- Service -> Mapper (RIGHT side) ---
+ProductService         -down-> ProductMapper
+ProductCategoryService -down-> ProductCategoryMapper
+ProductImageService    -down-> ProductImageMapper
+
+' --- Mapper -> Entity (RIGHT side, dotted) ---
+ProductMapper         ..> Product
+ProductCategoryMapper ..> ProductCategory
+ProductImageMapper    ..> ProductImage
+
+' --- Mapper -> DTO (dotted) ---
+ProductMapper         ..> ProductRequest
+ProductMapper         ..> ProductResponse
+ProductCategoryMapper ..> ProductCategoryRequest
+ProductCategoryMapper ..> ProductCategoryResponse
+ProductImageMapper    ..> ProductImageResponse
+
+@enduml

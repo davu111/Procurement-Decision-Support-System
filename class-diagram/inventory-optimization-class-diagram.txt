@@ -1,0 +1,502 @@
+@startuml Inventory Optimization Service - Layered Architecture
+top to bottom direction
+
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 20
+skinparam ranksep 50
+
+skinparam package {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    BorderThickness 2
+    FontSize 14
+    FontStyle bold
+}
+
+skinparam class {
+    BackgroundColor<<entity>>     #E1F5FE
+    BackgroundColor<<dto>>        #F3E5F5
+    BackgroundColor<<service>>    #E8F5E9
+    BackgroundColor<<repository>> #FFF3E0
+    BackgroundColor<<controller>> #FCE4EC
+    BackgroundColor<<mapper>>     #F1F8E9
+    BackgroundColor<<enum>>       #FFF9C4
+    BorderColor #666666
+    ArrowColor  #555555
+    FontSize 11
+}
+
+' ==================================================
+' LAYER 1: CONTROLLER — Thu hẹp thành 2 cột x 3 hàng
+' ==================================================
+package "Controller Layer" <<controller>> {
+
+    class InventoryPlanningController <<controller>> {
+        +calculate()
+        +replan()
+        +getCurrentPlans()
+        +getDetailedPlan()
+        +generateReport()
+    }
+
+    class InventoryParameterController <<controller>> {
+        +getParameters()
+        +updateActualDates()
+        +batchUpdate()
+        +getParameterDetail()
+    }
+
+    class ConsumptionHistoryController <<controller>> {
+        +record()
+        +getHistory()
+        +importCsv()
+        +deleteHistory()
+    }
+
+    class OrderScheduleController <<controller>> {
+        +getSchedule()
+        +getScheduleByProduct()
+        +updateScheduleStatus()
+        +generatePurchaseOrder()
+    }
+
+    class InventoryResultController <<controller>> {
+        +getLatestResult()
+        +getResultRange()
+        +getResultDetail()
+    }
+
+    class WarehouseConfigController <<controller>> {
+        +getAll()
+        +getById()
+        +create()
+        +update()
+        +delete()
+        +calculateStorageCost()
+    }
+
+    ' Layout: 2 cột x 3 hàng
+    InventoryPlanningController  -[hidden]right- InventoryParameterController
+    ConsumptionHistoryController -[hidden]right- OrderScheduleController
+    InventoryResultController    -[hidden]right- WarehouseConfigController
+
+    InventoryPlanningController  -[hidden]down- ConsumptionHistoryController
+    InventoryParameterController -[hidden]down- OrderScheduleController
+    ConsumptionHistoryController -[hidden]down- InventoryResultController
+    OrderScheduleController      -[hidden]down- WarehouseConfigController
+}
+
+' ==================================================
+' LAYER 2A: CORE SERVICES — Thu hẹp thành 2 cột x 3 hàng
+' ==================================================
+package "Optimization Services" <<service>> {
+
+    class InventoryPlanningService <<service>> {
+        +createAndCalculate()
+        +replan()
+        +getCurrentPlans()
+        +getDetailedPlan()
+    }
+
+    class InventoryParameterService <<service>> {
+        +getParameters()
+        +createParameter()
+        +updateActualDates()
+        +batchUpdate()
+        +findLatestActive()
+    }
+
+    class ConsumptionHistoryService <<service>> {
+        +record()
+        +getHistory()
+        +import()
+        +delete()
+    }
+
+    class OrderScheduleService <<service>> {
+        +getSchedule()
+        +getScheduleByProduct()
+        +updateStatus()
+        +generatePurchaseOrder()
+    }
+
+    class InventoryResultService <<service>> {
+        +getLatestResult()
+        +getResultRange()
+        +getResultDetail()
+        +storeResult()
+    }
+
+    class WarehouseConfigService <<service>> {
+        +getAll()
+        +getById()
+        +create()
+        +update()
+        +delete()
+        +calculateI()
+    }
+
+    ' Layout: 2 cột x 3 hàng
+    InventoryPlanningService  -[hidden]right- InventoryParameterService
+    ConsumptionHistoryService -[hidden]right- OrderScheduleService
+    InventoryResultService    -[hidden]right- WarehouseConfigService
+
+    InventoryPlanningService  -[hidden]down- ConsumptionHistoryService
+    InventoryParameterService -[hidden]down- OrderScheduleService
+    ConsumptionHistoryService -[hidden]down- InventoryResultService
+    OrderScheduleService      -[hidden]down- WarehouseConfigService
+}
+
+
+' ==================================================
+' LAYER 3: MAPPER — Thu hẹp thành 2 cột x 3 hàng
+' ==================================================
+package "Mapper Layer" <<mapper>> {
+
+    interface InventoryParameterMapper <<mapper>> {
+        +toEntity()
+        +toResponse()
+        +updateFromRequest()
+    }
+
+    interface ConsumptionHistoryMapper <<mapper>> {
+        +toEntity()
+        +toResponse()
+        +toResponseList()
+    }
+
+    interface InventoryPlanningMapper <<mapper>> {
+        +toCalculationResult()
+        +toParameterChain()
+    }
+
+    interface InventoryResultMapper <<mapper>> {
+        +toResponse()
+        +toCalculationResult()
+    }
+
+    interface OrderScheduleMapper <<mapper>> {
+        +toEntity()
+        +toResponse()
+        +toResponseList()
+    }
+
+    interface WarehouseConfigMapper <<mapper>> {
+        +toEntity()
+        +toResponse()
+        +updateFromRequest()
+    }
+
+    ' Layout: 2 cột x 3 hàng
+    InventoryParameterMapper -[hidden]right- ConsumptionHistoryMapper
+    InventoryPlanningMapper  -[hidden]right- InventoryResultMapper
+    OrderScheduleMapper      -[hidden]right- WarehouseConfigMapper
+
+    InventoryParameterMapper -[hidden]down- InventoryPlanningMapper
+    ConsumptionHistoryMapper -[hidden]down- InventoryResultMapper
+    InventoryPlanningMapper  -[hidden]down- OrderScheduleMapper
+    InventoryResultMapper    -[hidden]down- WarehouseConfigMapper
+}
+
+' ==================================================
+' LAYER 4: REPOSITORY — Thu hẹp thành 2 cột
+' ==================================================
+package "Repository Layer" <<repository>> {
+
+    interface InventoryParameterRepository <<repository>> {
+        +findById()
+        +findByProductId()
+        +findLatestActive()
+        +save()
+        +delete()
+    }
+
+    interface ConsumptionHistoryRepository <<repository>> {
+        +findById()
+        +findByProductId()
+        +findByPeriodRange()
+        +countByProductId()
+        +save()
+    }
+
+    interface InventoryResultRepository <<repository>> {
+        +findById()
+        +findLatest()
+        +findByDateRange()
+        +save()
+    }
+
+    interface OrderScheduleRepository <<repository>> {
+        +findById()
+        +findByDateRange()
+        +findByProduct()
+        +save()
+    }
+
+    interface WarehouseConfigRepository <<repository>> {
+        +findById()
+        +findAll()
+        +save()
+        +delete()
+    }
+
+    ' Layout: 2 cột
+    InventoryParameterRepository -[hidden]right- ConsumptionHistoryRepository
+    InventoryResultRepository    -[hidden]right- OrderScheduleRepository
+    
+    InventoryParameterRepository -[hidden]down- InventoryResultRepository
+    ConsumptionHistoryRepository -[hidden]down- OrderScheduleRepository
+    InventoryResultRepository    -[hidden]down- WarehouseConfigRepository
+}
+
+' ==================================================
+' LAYER 5: ENTITY — Tối ưu trục dọc cho quan hệ Composition
+' ==================================================
+package "Entity Layer" <<entity>> {
+
+    class InventoryParameter <<entity>> {
+        -id: Long
+        -productId: String
+        -warehouseConfig: WarehouseConfig
+        -supplierProductId: UUID
+        -planStartDate: LocalDate
+        -planEndDate: LocalDate
+        -scheduleStartDate: LocalDate
+        -demandQ: BigDecimal
+        -snapshotSupplyRateK: BigDecimal
+        -snapshotFixedOrderCostA: BigDecimal
+        -snapshotUnitPriceC: BigDecimal
+        -snapshotLeadTimeL: BigDecimal
+        -storageCostCoefficientI: BigDecimal
+    }
+
+    class ConsumptionHistory <<entity>> {
+        -id: Long
+        -productId: String
+        -periodStartDate: LocalDate
+        -periodEndDate: LocalDate
+        -actualConsumption: BigDecimal
+        -plannedConsumption: BigDecimal
+        -actualLeadTimeDays: BigDecimal
+        -actualSupplyRate: BigDecimal
+        -notes: String
+        -createdAt: LocalDateTime
+    }
+
+    class InventoryResult <<entity>> {
+        -id: Long
+        -inventoryParameter: InventoryParameter
+        -optimalOrderQtyS: BigDecimal
+        -optimalOrderCountN: BigDecimal
+        -optimalCycleTimeTau: BigDecimal
+        -maxInventoryLevel: BigDecimal
+        -avgInventoryLevel: BigDecimal
+        -reorderPointB: BigDecimal
+        -minInventoryCost: BigDecimal
+    }
+
+    class WarehouseConfig <<entity>> {
+        -id: Long
+        -interestRate: BigDecimal
+        -warehouseMonthlyCost: BigDecimal
+        -warehouseMaxCapacity: BigDecimal
+        -spoilageRate: BigDecimal
+        -insuranceRate: BigDecimal
+        -storageCostCoefficient: BigDecimal
+        -updatedAt: LocalDateTime
+    }
+
+    class OrderSchedule <<entity>> {
+        -id: Long
+        -inventoryResult: InventoryResult
+        -productId: String
+        -orderSequence: Integer
+        -orderDate: LocalDate
+        -expectedDeliveryDate: LocalDate
+        -orderQuantity: BigDecimal
+        -estimatedCost: BigDecimal
+        -isReorderWarning: Boolean
+    }
+
+    ' Layout: Xếp dọc các class có quan hệ chứa nhau để thu hẹp chiều ngang
+    InventoryParameter -[hidden]right- ConsumptionHistory
+    InventoryResult    -[hidden]right- WarehouseConfig
+    
+    InventoryParameter -[hidden]down- InventoryResult
+    ConsumptionHistory -[hidden]down- WarehouseConfig
+    InventoryResult    -[hidden]down- OrderSchedule
+
+    ' Composition relationships (Đi thẳng trục dọc)
+    InventoryParameter "1" *-down- "*" InventoryResult
+    InventoryResult    "1" *-down- "*" OrderSchedule
+}
+
+' ==================================================
+' LAYER 6: DTO — Giữ cấu trúc chặt chẽ 2 cột
+' ==================================================
+package "DTO Layer" <<dto>> {
+
+    class InventoryParameterRequest <<dto>> {
+        +productId: String
+        +warehouseConfigId: Long
+        +supplierProductId: UUID
+        +planStartDate: LocalDate
+        +planEndDate: LocalDate
+        +demandQ: BigDecimal
+        +forecastModel: ForecastModel
+        +customDemandQ: BigDecimal
+    }
+
+    class InventoryParameterResponse <<dto>> {
+        +id: Long
+        +productId: String
+        +planStartDate: LocalDate
+        +planEndDate: LocalDate
+        +demandQ: BigDecimal
+        +snapshotSupplyRateK: BigDecimal
+        +snapshotFixedOrderCostA: BigDecimal
+        +snapshotUnitPriceC: BigDecimal
+    }
+
+    class ConsumptionHistoryRequest <<dto>> {
+        +productId: String
+        +periodStartDate: LocalDate
+        +actualConsumption: BigDecimal
+        +plannedConsumption: BigDecimal
+        +actualLeadTimeDays: BigDecimal
+        +notes: String
+    }
+
+    class ConsumptionHistoryResponse <<dto>> {
+        +id: Long
+        +productId: String
+        +periodStartDate: LocalDate
+        +actualConsumption: BigDecimal
+        +plannedConsumption: BigDecimal
+        +createdAt: LocalDateTime
+    }
+
+    class WarehouseConfigRequest <<dto>> {
+        +interestRate: BigDecimal
+        +warehouseMonthlyCost: BigDecimal
+        +warehouseMaxCapacity: BigDecimal
+        +spoilageRate: BigDecimal
+        +insuranceRate: BigDecimal
+    }
+
+    class WarehouseConfigResponse <<dto>> {
+        +id: Long
+        +interestRate: BigDecimal
+        +warehouseMonthlyCost: BigDecimal
+        +storageCostCoefficient: BigDecimal
+    }
+
+    class InventoryCalculationResult <<dto>> {
+        +parameterId: Long
+        +productId: String
+        +optimalOrderQtyS: BigDecimal
+        +optimalOrderCountN: BigDecimal
+        +avgInventoryLevel: BigDecimal
+        +reorderPointB: BigDecimal
+        +minInventoryCost: BigDecimal
+        +schedules: List<OrderScheduleResponse>
+    }
+
+    class OrderScheduleResponse <<dto>> {
+        +id: Long
+        +productId: String
+        +orderSequence: Integer
+        +orderDate: LocalDate
+        +expectedDeliveryDate: LocalDate
+        +orderQuantity: BigDecimal
+        +estimatedCost: BigDecimal
+    }
+
+    class ForecastResult <<dto>> {
+        +forecastModel: ForecastModel
+        +predictedDemand: BigDecimal
+        +confidence: BigDecimal
+        +dataPoints: Integer
+    }
+
+    ' Layout: 2 cột nghiêm ngặt
+    InventoryParameterRequest  -[hidden]right- InventoryParameterResponse
+    ConsumptionHistoryRequest  -[hidden]right- ConsumptionHistoryResponse
+    WarehouseConfigRequest     -[hidden]right- WarehouseConfigResponse
+    InventoryCalculationResult -[hidden]right- OrderScheduleResponse
+
+    InventoryParameterRequest  -[hidden]down- ConsumptionHistoryRequest
+    InventoryParameterResponse -[hidden]down- ConsumptionHistoryResponse
+    ConsumptionHistoryRequest  -[hidden]down- WarehouseConfigRequest
+    ConsumptionHistoryResponse -[hidden]down- WarehouseConfigResponse
+    WarehouseConfigRequest     -[hidden]down- InventoryCalculationResult
+    WarehouseConfigResponse    -[hidden]down- OrderScheduleResponse
+    InventoryCalculationResult -[hidden]down- ForecastResult
+}
+
+' ==================================================
+' LAYER 7: ENUM
+' ==================================================
+package "Enum Layer" <<enum>> {
+    enum ForecastModel <<enum>> {
+        MANUAL
+        WMA
+        HOLT_WINTERS
+        SEASONAL_REGRESSION
+    }
+}
+
+' ==================================================
+' RELATIONSHIPS
+' ==================================================
+
+' --- Controller -> Core Service ---
+InventoryPlanningController  -down-> InventoryPlanningService
+InventoryParameterController -down-> InventoryParameterService
+ConsumptionHistoryController -down-> ConsumptionHistoryService
+OrderScheduleController      -down-> OrderScheduleService
+InventoryResultController    -down-> InventoryResultService
+WarehouseConfigController    -down-> WarehouseConfigService
+
+
+' --- Service -> Mapper ---
+InventoryPlanningService  -down-> InventoryPlanningMapper
+InventoryParameterService -down-> InventoryParameterMapper
+ConsumptionHistoryService -down-> ConsumptionHistoryMapper
+InventoryResultService    -down-> InventoryResultMapper
+OrderScheduleService      -down-> OrderScheduleMapper
+WarehouseConfigService    -down-> WarehouseConfigMapper
+
+' --- Service -> Repository ---
+InventoryParameterService -down-> InventoryParameterRepository
+ConsumptionHistoryService -down-> ConsumptionHistoryRepository
+InventoryResultService    -down-> InventoryResultRepository
+OrderScheduleService      -down-> OrderScheduleRepository
+WarehouseConfigService    -down-> WarehouseConfigRepository
+InventoryPlanningService  -down-> InventoryParameterRepository
+
+' --- Mapper -> Entity ---
+InventoryParameterMapper ..> InventoryParameter
+ConsumptionHistoryMapper ..> ConsumptionHistory
+InventoryResultMapper    ..> InventoryResult
+InventoryPlanningMapper  ..> InventoryResult
+OrderScheduleMapper      ..> OrderSchedule
+WarehouseConfigMapper    ..> WarehouseConfig
+
+' --- Mapper -> DTO ---
+InventoryParameterMapper  ..> InventoryParameterRequest
+InventoryParameterMapper  ..> InventoryParameterResponse
+ConsumptionHistoryMapper  ..> ConsumptionHistoryRequest
+ConsumptionHistoryMapper  ..> ConsumptionHistoryResponse
+InventoryPlanningMapper   ..> InventoryCalculationResult
+InventoryResultMapper     ..> InventoryCalculationResult
+OrderScheduleMapper       ..> OrderScheduleResponse
+WarehouseConfigMapper     ..> WarehouseConfigRequest
+WarehouseConfigMapper     ..> WarehouseConfigResponse
+
+' --- DTO -> Enum ---
+InventoryParameterRequest ..> ForecastModel
+ForecastResult            ..> ForecastModel
+
+@enduml

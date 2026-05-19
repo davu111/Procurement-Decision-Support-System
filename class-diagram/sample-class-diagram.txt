@@ -1,0 +1,179 @@
+@startuml Product Service - Layered Architecture
+top to bottom direction
+
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+
+skinparam package {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    BorderThickness 2
+    FontSize 14
+    FontStyle bold
+}
+
+skinparam class {
+    BackgroundColor<<entity>> #E1F5FE
+    BackgroundColor<<dto>> #F3E5F5
+    BackgroundColor<<service>> #E8F5E9
+    BackgroundColor<<repository>> #FFF3E0
+    BackgroundColor<<controller>> #FCE4EC
+    BackgroundColor<<mapper>> #F1F8E9
+    BorderColor #666666
+    ArrowColor #555555
+    FontSize 11
+}
+
+' ==================== LAYER 1: CONTROLLER ====================
+package "Controller Layer" <<controller>> {
+    
+    class ProductController <<controller>> {
+        +createProduct()
+        +getAllProducts()
+        +getProductById()
+        +updateProduct()
+        +deleteProduct()
+        +uploadProductImage()
+    }
+}
+
+' ==================== LAYER 2: SERVICE ====================
+package "Service Layer" <<service>> {
+    class ProductService <<service>> {
+        +createProduct()
+        +getAllProducts()
+        +getProductById()
+        +updateProduct()
+        +deleteProduct()
+    }
+
+    class ProductImageService <<service>> {
+        +getByProductId()
+        +getAll()
+    }
+
+    class MinioService <<service>> {
+        +generatePresignedUrl()
+        +getImageUrl()
+        +uploadProductImage()
+    }
+}
+
+' ==================== LAYER 3: MAPPER ====================
+package "Mapper Layer" <<mapper>> {
+    interface ProductMapper <<mapper>> {
+        +toProduct()
+        +toProductResponse()
+        +updateProductFromRequest()
+    }
+
+    interface ProductImageMapper <<mapper>> {
+        +toProductImageResponse()
+    }
+}
+
+' ==================== LAYER 4: REPOSITORY ====================
+package "Repository Layer" <<repository>> {
+    interface ProductRepository <<repository>> {
+        +findById()
+        +findAll()
+        +findByIdIn()
+        +save()
+    }
+
+    interface ProductImageRepository <<repository>> {
+        +findByProductId()
+        +findAll()
+        +save()
+    }
+}
+
+' ==================== LAYER 5: ENTITY ====================
+package "Entity Layer" <<entity>> {
+    class Product <<entity>> {
+        -id: String
+        -name: String
+        -description: String
+        -price: BigDecimal
+        -deleted: boolean
+        -createdAt: LocalDateTime
+        -updatedAt: LocalDateTime
+    }
+
+    class ProductImage <<entity>> {
+        -id: Long
+        -productId: String
+        -bucketName: String
+        -objectName: String
+        -contentType: String
+        -createdAt: LocalDateTime
+        -updatedAt: LocalDateTime
+    }
+    
+    Product "1" *-- "*" ProductImage
+}
+
+' ==================== LAYER 6: DTO ====================
+package "DTO Layer" <<dto>> {
+    class ProductRequest <<dto>> {
+        +name: String
+        +description: String
+        +price: BigDecimal
+    }
+
+    class ProductResponse <<dto>> {
+        +id: String
+        +name: String
+        +description: String
+        +price: BigDecimal
+        +deleted: boolean
+        +createdAt: LocalDateTime
+        +updatedAt: LocalDateTime
+    }
+
+    class ProductImageResponse <<dto>> {
+        +id: Long
+        +bucketName: String
+        +objectName: String
+        +contentType: String
+    }
+}
+
+' ==================== RELATIONSHIPS ====================
+
+' Controller -> Service
+ProductController -down-> ProductService
+ProductController -down-> ProductImageService
+ProductController -down-> MinioService
+
+' Service -> Mapper
+ProductService -down-> ProductMapper
+ProductImageService -down-> ProductImageMapper
+
+' Service -> Repository
+ProductService -down-> ProductRepository
+ProductImageService -down-> ProductImageRepository
+
+' Service -> Service
+MinioService -down-> ProductImageService
+MinioService -down-> ProductImageRepository
+
+' Mapper -> Entity (dotted)
+ProductMapper ..> Product
+ProductMapper ..> ProductRequest
+ProductMapper ..> ProductResponse
+
+ProductImageMapper ..> ProductImage
+ProductImageMapper ..> ProductImageResponse
+
+' Layout hints for horizontal alignment
+ProductService -[hidden]right- ProductImageService
+ProductImageService -[hidden]right- MinioService
+ProductMapper -[hidden]right- ProductImageMapper
+ProductRepository -[hidden]right- ProductImageRepository
+ProductRequest -[hidden]right- ProductResponse
+ProductResponse -[hidden]right- ProductImageResponse
+Product -[hidden]right- ProductImage
+@enduml

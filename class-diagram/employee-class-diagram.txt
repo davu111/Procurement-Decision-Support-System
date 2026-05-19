@@ -1,0 +1,190 @@
+@startuml Employee Service - Layered Architecture
+top to bottom direction
+
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+
+skinparam package {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    BorderThickness 2
+    FontSize 14
+    FontStyle bold
+}
+
+skinparam class {
+    BackgroundColor<<entity>>     #E1F5FE
+    BackgroundColor<<dto>>        #F3E5F5
+    BackgroundColor<<service>>    #E8F5E9
+    BackgroundColor<<repository>> #FFF3E0
+    BackgroundColor<<controller>> #FCE4EC
+    BackgroundColor<<mapper>>     #F1F8E9
+    BackgroundColor<<enum>>       #FFF9C4
+    BorderColor #666666
+    ArrowColor  #555555
+    FontSize 11
+}
+
+' ==================== LAYER 1: CONTROLLER ====================
+package "Controller Layer" <<controller>> {
+
+    class EmployeeController <<controller>> {
+        +getAllFromDatabase()
+        +getFromDatabase()
+        +createEmployee()
+        +updateEmployee()
+        +deactivateEmployee()
+        +activateEmployee()
+        +deleteEmployee()
+        +getSyncStatus()
+    }
+
+}
+
+' ==================== LAYER 2: SERVICE ====================
+package "Service Layer" <<service>> {
+
+    class EmployeeService <<service>> {
+        +getEmployeeFromDatabase()
+        +getAllEmployeesFromDatabase()
+        +createEmployee()
+        +updateEmployee()
+        +deactivateEmployee()
+        +activateEmployee()
+        +deleteEmployee()
+        +mapToCombinedEmployeeResponse()
+    }
+
+
+    class KeycloakService <<service>> {
+        +createUserInKeycloak()
+        +updateUserInKeycloak()
+        +deleteUserFromKeycloak()
+        +getUserFromKeycloak()
+        +assignRoleToUser()
+        +removeRoleFromUser()
+        +setUserPassword()
+    }
+
+}
+
+' ==================== LAYER 3: REPOSITORY ====================
+package "Repository Layer" <<repository>> {
+
+    interface EmployeeRepository <<repository>> {
+        +findById()
+        +findAll()
+        +findAllById()
+        +save()
+        +delete()
+    }
+
+    EmployeeRepository -[hidden]right- EmployeeRepository
+}
+
+' ==================== LAYER 4: MAPPER ====================
+package "Mapper Layer" <<mapper>> {
+
+    interface EmployeeMapper <<mapper>> {
+        +toEntity()
+        +toResponse()
+        +updateEntityFromRequest()
+    }
+
+    EmployeeMapper -[hidden]right- EmployeeMapper
+}
+
+' ==================== LAYER 5: ENTITY ====================
+package "Entity Layer" <<entity>> {
+
+    class Employee <<entity>> {
+        -id: String (UUID)
+        -keycloakUserId: String
+        -roleName: String
+        -status: EmployeeStatus
+        -createdAt: LocalDateTime
+        -updatedAt: LocalDateTime
+    }
+
+    Employee -[hidden]right- Employee
+}
+
+' ==================== LAYER 6: DTO ====================
+package "DTO Layer" <<dto>> {
+
+    class EmployeeRequest <<dto>> {
+        +firstName: String
+        +lastName: String
+        +username: String
+        +roleName: String
+        +status: EmployeeStatus
+    }
+
+    class EmployeeResponse <<dto>> {
+        +id: String
+        +keycloakUserId: String
+        +firstName: String
+        +lastName: String
+        +username: String
+        +roleName: String
+        +initialPassword: String
+        +status: EmployeeStatus
+    }
+
+    class EmployeeUpdateRequest <<dto>> {
+        +firstName: String
+        +lastName: String
+        +roleName: String
+        +status: EmployeeStatus
+    }
+
+
+    EmployeeRequest          -[hidden]down-  EmployeeResponse
+}
+
+' ==================== LAYER 7: ENUM ====================
+package "Enum Layer" <<enum>> {
+
+    enum EmployeeStatus <<enum>> {
+        ACTIVE
+        INACTIVE
+        SUSPENDED
+    }
+
+    EmployeeStatus -[hidden]right- EmployeeStatus
+}
+
+' ==================== RELATIONSHIPS ====================
+
+' --- Controller -> Service ---
+EmployeeController -down-> EmployeeService
+
+' --- Service -> Service ---
+EmployeeService -right-> KeycloakService
+
+' --- Service -> Repository ---
+EmployeeService -down-> EmployeeRepository
+
+' --- Service -> Mapper ---
+EmployeeService -down-> EmployeeMapper
+
+' --- Mapper -> Entity (dotted) ---
+EmployeeMapper ..> Employee
+
+' --- Mapper -> DTO (dotted) ---
+EmployeeMapper ..> EmployeeRequest
+EmployeeMapper ..> EmployeeResponse
+
+' --- Entity -> Enum (dotted) ---
+Employee -[hidden]left- EmployeeStatus
+EmployeeResponse -[hidden]down- Employee
+Employee ..> EmployeeStatus
+
+' --- DTO -> Enum (dotted) ---
+EmployeeRequest ..> EmployeeStatus
+EmployeeResponse ..> EmployeeStatus
+EmployeeUpdateRequest ..> EmployeeStatus
+
+@enduml

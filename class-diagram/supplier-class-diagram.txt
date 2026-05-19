@@ -1,0 +1,275 @@
+@startuml Supplier Service - Layered Architecture
+top to bottom direction
+
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+
+skinparam package {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    BorderThickness 2
+    FontSize 14
+    FontStyle bold
+}
+
+skinparam class {
+    BackgroundColor<<entity>>     #E1F5FE
+    BackgroundColor<<dto>>        #F3E5F5
+    BackgroundColor<<service>>    #E8F5E9
+    BackgroundColor<<repository>> #FFF3E0
+    BackgroundColor<<controller>> #FCE4EC
+    BackgroundColor<<mapper>>     #F1F8E9
+    BorderColor #666666
+    ArrowColor  #555555
+    FontSize 11
+}
+
+' ==================== LAYER 1: CONTROLLER ====================
+package "Controller Layer" <<controller>> {
+
+    class SupplierController <<controller>> {
+        +getAll()
+        +getById()
+        +create()
+        +update()
+        +deactivate()
+        +reactivate()
+    }
+
+    class SupplierProductController <<controller>> {
+        +getBySupplierId()
+        +create()
+        +getById()
+        +update()
+        +delete()
+        +getSupplierProductsByCondition()
+    }
+
+    SupplierController -[hidden]right- SupplierProductController
+}
+
+' ==================== LAYER 2: SERVICE ====================
+package "Service Layer" <<service>> {
+
+    class SupplierService <<service>> {
+        +getAll()
+        +getById()
+        +create()
+        +update()
+        +deactivate()
+        +reactivate()
+        +checkDuplicateCode()
+    }
+
+    class SupplierProductService <<service>> {
+        +getBySupplierId()
+        +getById()
+        +create()
+        +update()
+        +delete()
+        +getSupplierProductsByCondition()
+        +calculateOptimalOrderQuantity()
+    }
+
+    SupplierService -[hidden]right- SupplierProductService
+}
+
+' ==================== LAYER 3: REPOSITORY ====================
+package "Repository Layer" <<repository>> {
+
+    interface SupplierRepository <<repository>> {
+        +findById()
+        +findAll()
+        +save()
+        +delete()
+        +existsBySupplierCode()
+    }
+
+    interface SupplierProductRepository <<repository>> {
+        +findById()
+        +findBySupplierId()
+        +findByProductId()
+        +save()
+        +delete()
+    }
+
+    SupplierRepository -[hidden]right- SupplierProductRepository
+}
+
+' ==================== LAYER 4: MAPPER ====================
+package "Mapper Layer" <<mapper>> {
+
+    interface SupplierMapper <<mapper>> {
+        +toSupplier()
+        +toSupplierResponse()
+        +updateSupplierFromRequest()
+    }
+
+    interface SupplierProductMapper <<mapper>> {
+        +toSupplierProduct()
+        +toSupplierProductResponse()
+        +updateSupplierProductFromRequest()
+    }
+
+    SupplierMapper -[hidden]right- SupplierProductMapper
+}
+
+' ==================== LAYER 5: ENTITY ====================
+package "Entity Layer" <<entity>> {
+
+    class Supplier <<entity>> {
+        -id: UUID
+        -supplierCode: String
+        -supplierName: String
+        -address: String
+        -contactPerson: String
+        -phone: String
+        -email: String
+        -isActive: Boolean
+        -createdAt: LocalDateTime
+        -updatedAt: LocalDateTime
+        -supplierProducts: List<SupplierProduct>
+    }
+
+    class SupplierProduct <<entity>> {
+        -id: UUID
+        -supplier: Supplier
+        -productId: String
+        -productName: String
+        -maxSupplyPerMonth: BigDecimal (K)
+        -fixedOrderCost: BigDecimal (A)
+        -unitPrice: BigDecimal (C)
+        -committedLeadTimeDays: Integer (L)
+        -effectiveDate: LocalDate
+        -isActive: Boolean
+        -notes: String
+        -createdAt: LocalDateTime
+        -updatedAt: LocalDateTime
+    }
+
+    Supplier -[hidden]right- SupplierProduct
+    Supplier "1" *-down- "*" SupplierProduct
+}
+
+' ==================== LAYER 6: DTO ====================
+package "DTO Layer" <<dto>> {
+
+    class SupplierRequest <<dto>> {
+        +supplierCode: String
+        +supplierName: String
+        +address: String
+        +contactPerson: String
+        +phone: String
+        +email: String
+    }
+
+    class SupplierResponse <<dto>> {
+        +id: String
+        +supplierCode: String
+        +supplierName: String
+        +address: String
+        +contactPerson: String
+        +phone: String
+        +email: String
+        +isActive: Boolean
+        +createdAt: LocalDateTime
+        +updatedAt: LocalDateTime
+    }
+
+    class SupplierUpdateRequest <<dto>> {
+        +id: String
+        +supplierCode: String
+        +supplierName: String
+        +address: String
+        +contactPerson: String
+        +phone: String
+        +email: String
+        +createdAt: LocalDateTime
+        +updatedAt: LocalDateTime
+    }
+
+    class SupplierProductRequest <<dto>> {
+        +productId: String
+        +maxSupplyPerMonth: BigDecimal
+        +fixedOrderCost: BigDecimal
+        +unitPrice: BigDecimal
+        +committedLeadTimeDays: Integer
+        +effectiveDate: LocalDate
+        +notes: String
+    }
+
+    class SupplierProductResponse <<dto>> {
+        +id: String
+        +supplierId: String
+        +supplierCode: String
+        +supplierName: String
+        +productId: String
+        +productName: String
+        +maxSupplyPerMonth: BigDecimal
+        +fixedOrderCost: BigDecimal
+        +unitPrice: BigDecimal
+        +committedLeadTimeDays: Integer
+        +effectiveDate: LocalDate
+        +isActive: Boolean
+        +notes: String
+        +createdAt: LocalDateTime
+        +updatedAt: LocalDateTime
+    }
+
+    class SupplierProductUpdateRequest <<dto>> {
+        +id: String
+        +supplierId: String
+        +supplierCode: String
+        +supplierName: String
+        +productId: String
+        +maxSupplyPerMonth: BigDecimal
+        +fixedOrderCost: BigDecimal
+        +unitPrice: BigDecimal
+        +committedLeadTimeDays: Integer
+        +effectiveDate: LocalDate
+        +isActive: Boolean
+        +notes: String
+        +createdAt: LocalDateTime
+        +updatedAt: LocalDateTime
+    }
+
+    SupplierRequest            -[hidden]right- SupplierUpdateRequest
+    SupplierUpdateRequest      -[hidden]right- SupplierProductRequest
+    SupplierRequest            -[hidden]down-  SupplierResponse
+    SupplierProductRequest     -[hidden]down-  SupplierProductResponse
+    SupplierProductResponse    -[hidden]down-  SupplierProductUpdateRequest
+}
+
+' ==================== RELATIONSHIPS ====================
+
+' --- Controller -> Service ---
+SupplierController         -down-> SupplierService
+SupplierProductController  -down-> SupplierProductService
+
+' --- Service -> Service ---
+SupplierProductService -left-> SupplierService
+
+' --- Service -> Repository ---
+SupplierService         -down-> SupplierRepository
+SupplierProductService  -down-> SupplierProductRepository
+SupplierProductService  -down-> SupplierRepository
+
+' --- Service -> Mapper ---
+SupplierService         -down-> SupplierMapper
+SupplierProductService  -down-> SupplierProductMapper
+
+' --- Mapper -> Entity (dotted) ---
+SupplierMapper         ..> Supplier
+SupplierProductMapper  ..> SupplierProduct
+
+' --- Mapper -> DTO (dotted) ---
+SupplierMapper         ..> SupplierRequest
+SupplierMapper         ..> SupplierResponse
+SupplierMapper         ..> SupplierUpdateRequest
+SupplierProductMapper  ..> SupplierProductRequest
+SupplierProductMapper  ..> SupplierProductResponse
+SupplierProductMapper  ..> SupplierProductUpdateRequest
+
+@enduml

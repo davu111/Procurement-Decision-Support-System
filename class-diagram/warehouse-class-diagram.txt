@@ -1,0 +1,248 @@
+@startuml Warehouse Service - Layered Architecture
+top to bottom direction
+
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+
+skinparam package {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    BorderThickness 2
+    FontSize 14
+    FontStyle bold
+}
+
+skinparam class {
+    BackgroundColor<<entity>>     #E1F5FE
+    BackgroundColor<<dto>>        #F3E5F5
+    BackgroundColor<<service>>    #E8F5E9
+    BackgroundColor<<repository>> #FFF3E0
+    BackgroundColor<<controller>> #FCE4EC
+    BackgroundColor<<mapper>>     #F1F8E9
+    BackgroundColor<<enum>>       #FFF9C4
+    BorderColor #666666
+    ArrowColor  #555555
+    FontSize 11
+}
+
+' ==================== LAYER 1: CONTROLLER ====================
+package "Controller Layer" <<controller>> {
+
+    class WarehouseController <<controller>> {
+        +getWarehouse()
+        +getAllWarehouses()
+        +getWarehouses()
+        +getFullWarehouseInfo()
+        +createWarehouse()
+        +updateWarehouse()
+        +deactivateWarehouse()
+        +activateWarehouse()
+    }
+
+    class InventoryController <<controller>> {
+        +getInventoryByProducts()
+        +getTotalQuantityByProductId()
+        +transferInventory()
+    }
+
+    WarehouseController -[hidden]right- InventoryController
+}
+
+' ==================== LAYER 2: SERVICE ====================
+package "Service Layer" <<service>> {
+
+    class WarehouseService <<service>> {
+        +getWarehouseById()
+        +getWarehousesByIds()
+        +getAllWarehouses()
+        +getFullWarehouseInfo()
+        +createWarehouse()
+        +updateWarehouse()
+        +deactivateWarehouse()
+        +activateWarehouse()
+    }
+
+    class InventoryService <<service>> {
+        +getInventoryByProducts()
+        +getQuantityByProductId()
+        +importExportInventory()
+        +updateInventoryQuantity()
+        +getInventoryGroupedByProduct()
+        +getProductInventory()
+    }
+
+
+    WarehouseService -[hidden]right- InventoryService
+}
+
+' ==================== LAYER 3: REPOSITORY ====================
+package "Repository Layer" <<repository>> {
+
+    interface WarehouseRepository <<repository>> {
+        +findById()
+        +findAll()
+        +findAllById()
+        +save()
+        +delete()
+    }
+
+    interface InventoryRepository <<repository>> {
+        +findById()
+        +findAll()
+        +findByWarehouseId()
+        +findByProductId()
+        +findAll(Specification)
+        +save()
+    }
+
+    WarehouseRepository -[hidden]right- InventoryRepository
+}
+
+' ==================== LAYER 4: MAPPER ====================
+package "Mapper Layer" <<mapper>> {
+
+    interface WarehouseMapper <<mapper>> {
+        +toWarehouse()
+        +toWarehouseResponse()
+        +toFullWarehouseResponse()
+        +updateWarehouseFromRequest()
+    }
+
+    interface InventoryMapper <<mapper>> {
+        +toInventoryResponse()
+        +toInventory()
+        +updateInventoryFromRequest()
+    }
+
+    WarehouseMapper -[hidden]right- InventoryMapper
+}
+
+' ==================== LAYER 5: ENTITY ====================
+package "Entity Layer" <<entity>> {
+
+    class Warehouse <<entity>> {
+        -id: String (UUID)
+        -warehouseName: String
+        -isActive: Boolean
+        -configId: Long
+        -createdAt: LocalDateTime
+        -updatedAt: LocalDateTime
+    }
+
+    class Inventory <<entity>> {
+        -id: String (UUID)
+        -warehouse: Warehouse
+        -productId: String
+        -quantity: BigDecimal
+        -unit: String
+        -lastUpdated: LocalDateTime
+        -createdAt: LocalDateTime
+        -updatedAt: LocalDateTime
+    }
+
+    Warehouse -[hidden]right- Inventory
+    Warehouse "1" *-down- "*" Inventory
+}
+
+' ==================== LAYER 6: DTO ====================
+package "DTO Layer" <<dto>> {
+
+    class WarehouseRequest <<dto>> {
+        +warehouseName: String
+        +warehouseConfigRequest:\nWarehouseConfigRequest
+    }
+
+    class WarehouseResponse <<dto>> {
+        +id: String
+        +warehouseName: String
+        +configId: Long
+        +isActive: Boolean
+    }
+
+    class WarehouseUpdateRequest <<dto>> {
+        +warehouseName: String
+        +isActive: Boolean
+        +warehouseConfigUpdateRequest:\nWarehouseConfigUpdateRequest
+    }
+
+    class FullWarehouseResponse <<dto>> {
+        +id: String
+        +warehouseName: String
+        +configId: Long
+        +isActive: Boolean
+        +config: WarehouseConfigResponse
+        +inventories: List<InventoryResponse>
+    }
+
+    class InventoryResponse <<dto>> {
+        +id: String
+        +warehouseId: String
+        +productId: String
+        +productName: String
+        +quantity: BigDecimal
+        +unit: String
+        +lastUpdated: LocalDateTime
+    }
+
+    class TransactionRequest <<dto>> {
+        +warehouseId: String
+        +workType: WorkType
+        +productQuantities:\nMap<String, BigDecimal>
+    }
+
+
+    WarehouseRequest          -[hidden]right- WarehouseUpdateRequest
+    WarehouseRequest          -[hidden]down-  WarehouseResponse
+    InventoryResponse         -[hidden]down-  TransactionRequest
+}
+
+' ==================== LAYER 7: ENUM ====================
+package "Enum Layer" <<enum>> {
+
+    enum WorkType <<enum>> {
+        IMPORT
+        EXPORT
+    }
+
+    WorkType -[hidden]right- WorkType
+}
+
+WarehouseResponse -[hidden]down- Inventory
+
+' ==================== RELATIONSHIPS ====================
+
+' --- Controller -> Service ---
+WarehouseController -down-> WarehouseService
+InventoryController -down-> InventoryService
+
+' --- Service -> Service ---
+WarehouseService -right-> InventoryService
+
+' --- Service -> Repository ---
+WarehouseService -down-> WarehouseRepository
+InventoryService -down-> InventoryRepository
+
+' --- Service -> Mapper ---
+WarehouseService -down-> WarehouseMapper
+InventoryService -down-> InventoryMapper
+
+' --- Mapper -> Entity (dotted) ---
+WarehouseMapper ..> Warehouse
+InventoryMapper ..> Inventory
+
+' --- Mapper -> DTO (dotted) ---
+WarehouseMapper ..> WarehouseRequest
+WarehouseMapper ..> WarehouseResponse
+WarehouseMapper ..> WarehouseUpdateRequest
+WarehouseMapper ..> FullWarehouseResponse
+InventoryMapper ..> InventoryResponse
+InventoryMapper ..> TransactionRequest
+
+' --- Entity -> Enum (dotted) ---
+
+' --- DTO -> Enum (dotted) ---
+TransactionRequest ..> WorkType
+
+@enduml
