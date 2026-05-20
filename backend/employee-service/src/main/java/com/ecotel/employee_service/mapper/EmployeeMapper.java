@@ -23,5 +23,6 @@ public interface EmployeeMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(source = "roleName", target = "roleName")
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateEntityFromRequest(EmployeeRequest request, @MappingTarget Employee employee);
 }

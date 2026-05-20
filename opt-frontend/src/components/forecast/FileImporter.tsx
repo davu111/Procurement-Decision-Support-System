@@ -11,17 +11,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import api from "@/api/axiosConfig";
 import { generateTemplateFile } from "@/utils/templateGenerator";
 import type { ConsumptionRecord } from "@/types/forecast";
+import * as XLSX from "xlsx";
 
-interface ImportResultResponse {
+interface ParsedFileResult {
   totalRows: number;
-  successCount: number;
-  skipCount: number;
+  validRows: number;
   errorCount: number;
   errors: string[];
-  modelReadiness: string;
+  records: ConsumptionRecord[];
 }
 
 interface FileImporterProps {
@@ -31,9 +30,110 @@ interface FileImporterProps {
 export default function FileImporter({ onImportSuccess }: FileImporterProps) {
   const [dragOver, setDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ImportResultResponse | null>(null);
+  const [result, setResult] = useState<ParsedFileResult | null>(null);
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Convert Excel serial date number to "yyyy-MM-dd" format
+  const convertExcelDateToString = (serialNumber: any): string => {
+    // If already a string, return as is
+    if (typeof serialNumber === "string") {
+      return serialNumber;
+    }
+
+    // If it's a number (Excel serial date)
+    if (typeof serialNumber === "number") {
+      // Excel date serial number formula: (date - 25569) * 86400000
+      // 25569 is the number of days between 1900-01-01 and 1970-01-01
+      const date = new Date((serialNumber - 25569) * 86400000);
+
+      // Format as "yyyy-MM-dd"
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+
+      return `${year}-${month}-${day}`;
+    }
+
+    return String(serialNumber);
+  };
+
+  const parseFile = useCallback((file: File) => {
+    return new Promise<ParsedFileResult>((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = (event) => {
+        try {
+          const data = event.target?.result;
+          const workbook = XLSX.read(data, { type: "binary" });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(worksheet);
+
+          const records: ConsumptionRecord[] = [];
+          const errors: string[] = [];
+
+          rows.forEach((row: any, index: number) => {
+            const rowNum = index + 2; // +2 vì dòng 1 là header, index bắt đầu từ 0
+
+            try {
+              // Validate required fields
+              if (
+                !row.product_id ||
+                !row.period_start_date ||
+                !row.period_end_date
+              ) {
+                errors.push(
+                  `Dòng ${rowNum}: Thiếu thông tin bắt buộc (product_id, period_start_date, period_end_date)`,
+                );
+                return;
+              }
+
+              const record: ConsumptionRecord = {
+                productId: String(row.product_id),
+                periodStartDate: convertExcelDateToString(
+                  row.period_start_date,
+                ),
+                periodEndDate: convertExcelDateToString(row.period_end_date),
+                actualConsumption: row.actual_consumption
+                  ? Number(row.actual_consumption)
+                  : undefined,
+                plannedConsumption: row.planned_consumption
+                  ? Number(row.planned_consumption)
+                  : undefined,
+                actualLeadTimeDays: row.actual_lead_time_days
+                  ? Number(row.actual_lead_time_days)
+                  : undefined,
+                actualSupplyRate: row.actual_supply_rate
+                  ? Number(row.actual_supply_rate)
+                  : undefined,
+                notes: row.notes ? String(row.notes) : undefined,
+              };
+
+              records.push(record);
+            } catch (err) {
+              errors.push(`Dòng ${rowNum}: Lỗi xử lý dữ liệu - ${String(err)}`);
+            }
+          });
+
+          resolve({
+            totalRows: rows.length,
+            validRows: records.length,
+            errorCount: errors.length,
+            errors,
+            records,
+          });
+        } catch (err) {
+          reject(new Error("Lỗi khi đọc file"));
+        }
+      };
+
+      reader.onerror = () => {
+        reject(new Error("Lỗi khi đọc file"));
+      };
+
+      reader.readAsBinaryString(file);
+    });
+  }, []);
 
   const processFile = useCallback(
     async (file: File) => {
@@ -48,34 +148,22 @@ export default function FileImporter({ onImportSuccess }: FileImporterProps) {
       setResult(null);
 
       try {
-        const formData = new FormData();
-        formData.append("file", file);
+        const parseResult = await parseFile(file);
+        setResult(parseResult);
 
-        const response = await api.post<{ data: ImportResultResponse }>(
-          "/consumption-history/import",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          },
-        );
-
-        const importResult = response.data;
-        setResult(importResult);
-
-        if (importResult.successCount > 0) {
-          onImportSuccess([]);
+        if (parseResult.validRows > 0) {
+          onImportSuccess(parseResult.records);
+        } else if (parseResult.errorCount > 0) {
+          setError("File không có dòng dữ liệu hợp lệ");
         }
       } catch (err: any) {
-        const errorMessage =
-          err.response?.data?.message || err.message || "Lỗi khi import file";
+        const errorMessage = err.message || "Lỗi khi import file";
         setError(errorMessage);
       } finally {
         setLoading(false);
       }
     },
-    [onImportSuccess],
+    [parseFile, onImportSuccess],
   );
 
   const handleDrop = useCallback(
@@ -178,15 +266,9 @@ export default function FileImporter({ onImportSuccess }: FileImporterProps) {
           {/* Success Summary */}
           <div className="grid grid-cols-4 gap-4">
             <div className="bg-status-success/10 border border-status-success/30 rounded-lg p-4">
-              <div className="text-sm text-muted-foreground">Thành công</div>
+              <div className="text-sm text-muted-foreground">Hợp lệ</div>
               <div className="text-2xl font-bold text-status-success">
-                {result.successCount}
-              </div>
-            </div>
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-              <div className="text-sm text-muted-foreground">Bỏ qua</div>
-              <div className="text-2xl font-bold text-yellow-600">
-                {result.skipCount}
+                {result.validRows}
               </div>
             </div>
             <div
@@ -210,9 +292,15 @@ export default function FileImporter({ onImportSuccess }: FileImporterProps) {
               </div>
             </div>
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-              <div className="text-sm text-muted-foreground">Tổng cộng</div>
+              <div className="text-sm text-muted-foreground">Tổng dòng</div>
               <div className="text-2xl font-bold text-blue-600">
                 {result.totalRows}
+              </div>
+            </div>
+            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+              <div className="text-sm text-muted-foreground">Sẵn sàng lưu</div>
+              <div className="text-2xl font-bold text-primary">
+                {result.validRows > 0 ? "✓" : "—"}
               </div>
             </div>
           </div>

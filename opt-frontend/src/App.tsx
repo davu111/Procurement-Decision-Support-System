@@ -23,6 +23,7 @@ import ConsumptionPage from "@/pages/ConsumptionPage";
 import SuppliersPage from "@/pages/SuppliersPage";
 import SupplierDetailPage from "@/pages/SupplierDetailPage";
 import EmployeesPage from "@/pages/EmployeesPage";
+import Profile from "@/pages/Profile";
 import AccessControlDebugPage from "@/pages/AccessControlDebugPage";
 import NotFound from "@/pages/NotFound";
 import { Loader, Lock } from "lucide-react";
@@ -56,7 +57,7 @@ const RouteGuard = ({ children }: { children: React.ReactNode }) => {
           </h1>
           <p className="text-gray-600">Bạn không có quyền truy cập trang này</p>
           <button
-            onClick={() => (window.location.href = "/dashboard")}
+            onClick={() => (window.location.href = "/")}
             className="mt-4 px-6 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
           >
             Về Trang chủ
@@ -126,6 +127,7 @@ const App = () => (
                     <Route path="/consumption" element={<ConsumptionPage />} />
                     <Route path="/suppliers" element={<SuppliersPage />} />
                     <Route path="/employees" element={<EmployeesPage />} />
+                    <Route path="/profile" element={<Profile />} />
                     <Route
                       path="/suppliers/:id"
                       element={<SupplierDetailPage />}

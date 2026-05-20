@@ -57,6 +57,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import ProductSelector from "@/components/product/ProductSelector";
 import {
   warehouseApi,
   inventoryTransferApi,
@@ -951,33 +952,14 @@ export default function WarehousesPage() {
                   {idx + 1}
                 </span>
                 <div className="flex-1">
-                  {products.length > 0 ? (
-                    <Select
-                      value={line.productId}
-                      onValueChange={(v) => updateLine(idx, { productId: v })}
-                    >
-                      <SelectTrigger className="rounded-xl border-gray-200 bg-white">
-                        <SelectValue placeholder="Chọn sản phẩm" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((p) => (
-                          <SelectItem key={String(p.id)} value={String(p.id)}>
-                            {p.productName ?? `SP #${p.id}`}
-                            {p.code ? ` (${p.code})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      placeholder="Mã sản phẩm"
-                      value={line.productId}
-                      onChange={(e) =>
-                        updateLine(idx, { productId: e.target.value })
-                      }
-                      className="rounded-xl"
-                    />
-                  )}
+                  <ProductSelector
+                    value={line.productId}
+                    onChange={(v) => updateLine(idx, { productId: v })}
+                    placeholder="Chọn sản phẩm"
+                    mode="combobox"
+                    products={products}
+                    loading={false}
+                  />
                 </div>
                 <Input
                   type="number"

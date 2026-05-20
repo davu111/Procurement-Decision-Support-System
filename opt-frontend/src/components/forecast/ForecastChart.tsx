@@ -155,7 +155,11 @@ export default function ForecastChart({
                     <div className="bg-white rounded-xl px-4 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-gray-100 min-w-[160px]">
                       <p className="text-xs text-gray-400 mb-2">{label}</p>
                       {payload.map((entry: any, index: number) => {
-                        if (entry.name === 'upperBound' || entry.name === 'lowerBound') return null;
+                        if (
+                          entry.name === "upperBound" ||
+                          entry.name === "lowerBound"
+                        )
+                          return null;
                         const labels: Record<string, string> = {
                           actual: "Thực tế",
                           planned: "Kế hoạch cũ",
@@ -163,9 +167,19 @@ export default function ForecastChart({
                         };
                         const name = labels[entry.name] || entry.name;
                         return (
-                          <div key={index} className="flex justify-between items-center gap-4 text-sm mb-1 last:mb-0">
-                            <span className="font-medium" style={{ color: entry.color }}>{name}</span>
-                            <span className="font-bold font-mono text-gray-900">{formatNumber(entry.value)} {result.unit}</span>
+                          <div
+                            key={index}
+                            className="flex justify-between items-center gap-4 text-sm mb-1 last:mb-0"
+                          >
+                            <span
+                              className="font-medium"
+                              style={{ color: entry.color }}
+                            >
+                              {name}
+                            </span>
+                            <span className="font-bold font-mono text-gray-900">
+                              {formatNumber(entry.value)} {result.unit}
+                            </span>
                           </div>
                         );
                       })}
@@ -251,7 +265,12 @@ export default function ForecastChart({
                 stroke="#6366F1"
                 strokeWidth={2.5}
                 dot={{ r: 4, fill: "#6366F1", strokeWidth: 2, stroke: "#fff" }}
-                activeDot={{ r: 6, fill: "#6366F1", strokeWidth: 2, stroke: "#fff" }}
+                activeDot={{
+                  r: 6,
+                  fill: "#6366F1",
+                  strokeWidth: 2,
+                  stroke: "#fff",
+                }}
                 connectNulls={false}
                 name="actual"
               />
@@ -274,7 +293,12 @@ export default function ForecastChart({
                 strokeWidth={2.5}
                 strokeDasharray="6 4"
                 dot={{ r: 4, fill: "#10B981", strokeWidth: 2, stroke: "#fff" }}
-                activeDot={{ r: 6, fill: "#10B981", strokeWidth: 2, stroke: "#fff" }}
+                activeDot={{
+                  r: 6,
+                  fill: "#10B981",
+                  strokeWidth: 2,
+                  stroke: "#fff",
+                }}
                 connectNulls={false}
                 name="forecastValue"
               />
@@ -370,29 +394,6 @@ export default function ForecastChart({
               </div>
             )}
           </div>
-        )}
-      </div>
-
-      {/* Action buttons */}
-      <div className="border-t border-border p-5 flex items-center gap-3">
-        {result.model !== "HISTORICAL_DATA_ONLY" && (
-          <Button
-            onClick={() => onUseForecast(result.forecastQ)}
-            disabled={mapeLevel === "low"}
-            className="gap-2"
-          >
-            <CheckCircle className="h-4 w-4" />
-            Dùng giá trị dự đoán: {formatNumber(result.forecastQ)} {result.unit}
-          </Button>
-        )}
-        <Button variant="outline" onClick={onManualInput} className="gap-2">
-          <Edit3 className="h-4 w-4" />
-          Nhập thủ công
-        </Button>
-        {result.model !== "HISTORICAL_DATA_ONLY" && mapeLevel === "low" && (
-          <span className="text-xs text-destructive">
-            MAPE &gt; 20% — vui lòng nhập thủ công
-          </span>
         )}
       </div>
     </div>

@@ -16,10 +16,36 @@ export const ROUTE_ACCESS_CONFIG: RouteAccess[] = [
     roles: ["admin", "planning-manager", "warehouse-manager"],
   },
 
+  // Profile - all roles
+  {
+    path: "/profile",
+    label: "Hồ sơ",
+    roles: ["admin", "planning-manager", "warehouse-manager"],
+  },
+
+  // Products - warehouse-manager, admin
+  {
+    path: "/products",
+    label: "Mặt hàng",
+    roles: ["admin", "warehouse-manager"],
+  },
+  {
+    path: "/products/:id",
+    label: "Chi tiết Mặt hàng",
+    roles: ["admin", "warehouse-manager"],
+  },
+
   // New Plan - planning-manager, admin
   {
     path: "/new-plan",
     label: "Kỳ kế hoạch mới",
+    roles: ["admin", "planning-manager"],
+  },
+
+  // Consumption - warehouse-manager, admin
+  {
+    path: "/consumption",
+    label: "Nhập tiêu thụ",
     roles: ["admin", "planning-manager"],
   },
 
@@ -49,29 +75,10 @@ export const ROUTE_ACCESS_CONFIG: RouteAccess[] = [
     roles: ["admin", "warehouse-manager"],
   },
 
-  // Products - warehouse-manager, admin
-  {
-    path: "/products",
-    label: "Mặt hàng",
-    roles: ["admin", "warehouse-manager"],
-  },
-  {
-    path: "/products/:id",
-    label: "Chi tiết Mặt hàng",
-    roles: ["admin", "warehouse-manager"],
-  },
-
   // Product Categories - warehouse-manager, admin
   {
     path: "/product-categories",
     label: "Danh mục sản phẩm",
-    roles: ["admin", "warehouse-manager"],
-  },
-
-  // Consumption - warehouse-manager, admin
-  {
-    path: "/consumption",
-    label: "Nhập tiêu thụ",
     roles: ["admin", "warehouse-manager"],
   },
 

@@ -35,7 +35,9 @@ public class EmployeeService {
      */
     public EmployeeResponse getEmployeeFromDatabase(String userId) {
         Employee employee = employeeRepository.findById(userId)
+                .or(() -> employeeRepository.findByKeycloakUserId(userId))
                 .orElseThrow(() -> new RuntimeException("Employee not found in database: " + userId));
+
         return mapToCombinedEmployeeResponse(employee);
     }
 
@@ -94,25 +96,25 @@ public class EmployeeService {
         String initialPassword = null;
 
         try {
-                // 3. Tạo user trong Keycloak (generate password)
-                initialPassword = java.util.UUID.randomUUID().toString().replaceAll("-", "").substring(0, 12);
-                keycloakUserId = createUserInKeycloak(request, request.getRoleName(), initialPassword);
+            // 3. Tạo user trong Keycloak (generate password)
+            initialPassword = java.util.UUID.randomUUID().toString().replaceAll("-", "").substring(0, 12);
+            keycloakUserId = createUserInKeycloak(request, request.getRoleName(), initialPassword);
 
-                // 4. Tạo employee entity với Keycloak ID
-                Employee employee = employeeMapper.toEntity(request);
-                employee.setKeycloakUserId(keycloakUserId); // Sử dụng Keycloak User ID
-                employee.setRoleName(request.getRoleName());
+            // 4. Tạo employee entity với Keycloak ID
+            Employee employee = employeeMapper.toEntity(request);
+            employee.setKeycloakUserId(keycloakUserId); // Sử dụng Keycloak User ID
+            employee.setRoleName(request.getRoleName());
 
-                // 5. Lưu vào database
-                Employee savedEmployee = employeeRepository.save(employee);
+            // 5. Lưu vào database
+            Employee savedEmployee = employeeRepository.save(employee);
 
-                log.info("Successfully created employee {} with Keycloak ID: {}",
+            log.info("Successfully created employee {} with Keycloak ID: {}",
                     request.getUsername(), keycloakUserId);
 
-                // 6. Return response (include initial password so UI can show it once)
-                EmployeeResponse resp = mapToCombinedEmployeeResponse(savedEmployee);
-                resp.setInitialPassword(initialPassword);
-                return resp;
+            // 6. Return response (include initial password so UI can show it once)
+            EmployeeResponse resp = mapToCombinedEmployeeResponse(savedEmployee);
+            resp.setInitialPassword(initialPassword);
+            return resp;
 
         } catch (Exception e) {
             // Rollback: Xóa user khỏi Keycloak nếu có lỗi khi lưu vào database
@@ -175,7 +177,8 @@ public class EmployeeService {
 
         // 1. Tìm employee
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
+                .or(() -> employeeRepository.findByKeycloakUserId(employeeId))
+                .orElseThrow(() -> new RuntimeException("Employee not found in database: " + employeeId));
 
         // 2. Update employee fields (roleName is stored on Employee)
         employeeMapper.updateEntityFromRequest(request, employee);
@@ -218,7 +221,7 @@ public class EmployeeService {
     /**
      * DeActive employee
      */
-    public Boolean deActive(String id){
+    public Boolean deActive(String id) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Can not find employeeId to de active" + id));
         employee.setStatus(EmployeeStatus.INACTIVE);
@@ -229,7 +232,7 @@ public class EmployeeService {
     /**
      * Active employee
      */
-    public Boolean active(String id){
+    public Boolean active(String id) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Can not find employeeId to de active" + id));
         employee.setStatus(EmployeeStatus.ACTIVE);

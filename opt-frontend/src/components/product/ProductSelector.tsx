@@ -30,6 +30,8 @@ export interface ProductSelectorProps {
   placeholder?: string;
   mode?: "select" | "combobox";
   label?: string;
+  products?: ProductLite[];
+  loading?: boolean;
 }
 
 export default function ProductSelector({
@@ -39,20 +41,29 @@ export default function ProductSelector({
   placeholder = "Chọn mặt hàng...",
   mode = "select",
   label,
+  products: externalProducts,
+  loading: externalLoading,
 }: ProductSelectorProps) {
-  const [products, setProducts] = useState<ProductLite[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [internalProducts, setInternalProducts] = useState<ProductLite[]>([]);
+  const [internalLoading, setInternalLoading] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [open, setOpen] = useState(false);
 
+  // Use external products if provided, otherwise load internally
+  const products = externalProducts ?? internalProducts;
+  const loading = externalLoading ?? internalLoading;
+
   useEffect(() => {
-    setLoading(true);
+    // Only load if no external products provided
+    if (externalProducts) return;
+
+    setInternalLoading(true);
     productApi
       .getAll()
-      .then((data) => setProducts(data))
+      .then((data) => setInternalProducts(data))
       .catch((err) => console.error("Error fetching products:", err))
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => setInternalLoading(false));
+  }, [externalProducts]);
 
   const selectedProduct = value
     ? products.find((p) => String(p.id) === value)
@@ -120,14 +131,14 @@ export default function ProductSelector({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0">
-        <Command>
+        <Command className="max-h-[300px] overflow-hidden flex flex-col">
           <CommandInput
             placeholder="Tìm mặt hàng..."
             value={searchValue}
             onValueChange={setSearchValue}
           />
           <CommandEmpty>Không tìm thấy mặt hàng nào.</CommandEmpty>
-          <CommandGroup className="max-h-[240px] overflow-y-auto">
+          <CommandGroup className="overflow-y-auto flex-1">
             {loading ? (
               <div className="p-2 text-sm text-muted-foreground">
                 Đang tải...

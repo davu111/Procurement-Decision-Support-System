@@ -15,12 +15,14 @@ import {
   History,
   Settings,
   User,
+  SquareUser,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getAccessibleRoutes } from "@/config/roleAccess";
 
 const iconMap: Record<string, any> = {
   "Trang chủ": LayoutDashboard,
+  "Hồ sơ": SquareUser,
   "Mặt hàng": Package,
   "Danh mục sản phẩm": Tag,
   "Kỳ kế hoạch mới": PlusCircle,

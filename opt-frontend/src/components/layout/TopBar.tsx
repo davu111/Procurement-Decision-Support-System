@@ -9,12 +9,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function TopBar() {
   const { logout, userInfo } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
+  };
+
+  const handleProfileClick = () => {
+    navigate("/profile");
   };
 
   return (
@@ -42,7 +48,7 @@ export default function TopBar() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => window.open("/profile", "_blank")}
+              onClick={handleProfileClick}
               className="cursor-pointer"
             >
               <User className="w-4 h-4 mr-2" />

@@ -27,7 +27,7 @@ public class WarehouseConfigService {
     // GET WAREHOUS CONFIG
     public WarehouseConfigResponse get(Long warehouseConfigId) {
         return webClientBuilder.build().get()
-                .uri(warehouseConfigServiceUrl + "/{warehouseConfigId}", warehouseConfigId)
+                .uri(warehouseConfigServiceUrl + "/warehouse-config/{warehouseConfigId}", warehouseConfigId)
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<ApiResponse<WarehouseConfigResponse>>() {
                 })

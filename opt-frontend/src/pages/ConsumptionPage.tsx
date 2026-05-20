@@ -18,6 +18,7 @@ import ProductSelector from "@/components/product/ProductSelector";
 import FileImporter from "@/components/forecast/FileImporter";
 import { Badge } from "@/components/ui/badge";
 import type { ConsumptionHistoryRequest } from "@/types/inventory-opt/consumption-history";
+import * as XLSX from "xlsx";
 
 export default function ConsumptionPage() {
   const [productId, setProductId] = useState("");
@@ -33,7 +34,8 @@ export default function ConsumptionPage() {
   );
 
   const handleImportSuccess = (records: ConsumptionRecord[]) => {
-    setImportedRecords((prev) => [...prev, ...records]);
+    const normalizedRecords = normalizeRecordDates(records);
+    setImportedRecords((prev) => [...prev, ...normalizedRecords]);
   };
 
   // 🔥 Call API khi product + month thay đổi
@@ -53,7 +55,7 @@ export default function ConsumptionPage() {
         setActualConsumption(data.demandQ ? Number(data.demandQ) : 0);
         setPlannedConsumption(data.demandQ ? Number(data.demandQ) : 0);
         setActualLeadTime(
-          data.snapshotLeadTimeL ? Number(data.snapshotLeadTimeL * 30) : 0,
+          data.snapshotLeadTimeL ? Math.ceil(data.snapshotLeadTimeL * 30) : 0,
         );
         setActualSupplyRate(
           data.snapshotSupplyRateK ? Number(data.snapshotSupplyRateK) : 0,
@@ -87,10 +89,90 @@ export default function ConsumptionPage() {
     };
   };
 
+  // Normalize date format from "dd-MM-yyyy" to "yyyy-MM-dd"
+  const normalizeDateFormat = (dateString: string): string => {
+    if (!dateString) return dateString;
+
+    // Check if already in "yyyy-MM-dd" format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+
+    // Check if in "dd-MM-yyyy" format
+    const ddMmYyyyMatch = dateString.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    if (ddMmYyyyMatch) {
+      const [, day, month, year] = ddMmYyyyMatch;
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+
+    // Check if in "dd/MM/yyyy" format
+    const ddSlashMmSlashYyyyMatch = dateString.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,
+    );
+    if (ddSlashMmSlashYyyyMatch) {
+      const [, day, month, year] = ddSlashMmSlashYyyyMatch;
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+
+    // If format is not recognized, return as is
+    return dateString;
+  };
+
+  // Normalize all date fields in records
+  const normalizeRecordDates = (
+    records: ConsumptionRecord[],
+  ): ConsumptionRecord[] => {
+    return records.map((record) => ({
+      ...record,
+      periodStartDate: normalizeDateFormat(record.periodStartDate),
+      periodEndDate: normalizeDateFormat(record.periodEndDate),
+    }));
+  };
+
+  // Convert records to Excel file for multipart upload
+  const createExcelFileFromRecords = (records: ConsumptionRecord[]): File => {
+    const headers = [
+      "product_id",
+      "period_start_date",
+      "period_end_date",
+      "actual_consumption",
+      "planned_consumption",
+      "actual_lead_time_days",
+      "actual_supply_rate",
+      "notes",
+    ];
+
+    const normalizedRecords = normalizeRecordDates(records);
+
+    const data = normalizedRecords.map((record) => ({
+      product_id: record.productId,
+      period_start_date: record.periodStartDate,
+      period_end_date: record.periodEndDate,
+      actual_consumption: record.actualConsumption || "",
+      planned_consumption: record.plannedConsumption || "",
+      actual_lead_time_days: record.actualLeadTimeDays || "",
+      actual_supply_rate: record.actualSupplyRate || "",
+      notes: record.notes || "",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data, { header: headers });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+
+    const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([wbout], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    return new File([blob], `consumption_${new Date().getTime()}.xlsx`, {
+      type: blob.type,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!productId || !yearMonth) {
+    if (importedRecords.length == 0 && (!productId || !yearMonth)) {
       toast.error("Thiếu thông tin", {
         description: "Vui lòng chọn mặt hàng và tháng",
       });
@@ -98,26 +180,48 @@ export default function ConsumptionPage() {
     }
 
     try {
-      const { periodStartDate, periodEndDate } = buildPeriodDates(yearMonth);
+      // Nếu có dữ liệu import, lưu hàng loạt qua API import
+      if (importedRecords.length > 0) {
+        console.log("Imported records:", importedRecords);
+        const file = createExcelFileFromRecords(importedRecords);
+        const formData = new FormData();
+        formData.append("file", file);
 
-      const payload: ConsumptionHistoryRequest = {
-        productId: productId,
-        periodStartDate,
-        periodEndDate,
-        actualConsumption: Number(actualConsumption),
-        plannedConsumption: plannedConsumption
-          ? Number(plannedConsumption)
-          : null,
-        actualLeadTimeDays: actualLeadTime ? Number(actualLeadTime) : null,
-        actualSupplyRate: actualSupplyRate ? Number(actualSupplyRate) : null,
-        notes,
-      };
+        await api.post("/consumption-history/import", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      } else {
+        const { periodStartDate, periodEndDate } = buildPeriodDates(yearMonth);
 
-      const res = await api.post("/consumption-history", payload);
+        const payload: ConsumptionHistoryRequest = {
+          productId: productId,
+          periodStartDate,
+          periodEndDate,
+          actualConsumption: Number(actualConsumption),
+          plannedConsumption: plannedConsumption
+            ? Number(plannedConsumption)
+            : null,
+          actualLeadTimeDays: actualLeadTime ? Number(actualLeadTime) : null,
+          actualSupplyRate: actualSupplyRate ? Number(actualSupplyRate) : null,
+          notes,
+        };
+
+        await api.post("/consumption-history", payload);
+      }
 
       toast.success("Lưu thành công", {
-        description: res.data.message,
+        description: `Đã lưu dữ liệu${importedRecords.length > 0 ? ` + ${importedRecords.length} bản ghi từ file` : ""}`,
       });
+
+      // Reset form sau khi lưu thành công
+      setActualConsumption(0);
+      setPlannedConsumption(0);
+      setActualLeadTime(0);
+      setActualSupplyRate(0);
+      setNotes("");
+      setImportedRecords([]);
     } catch (err: any) {
       toast.error("Lỗi khi lưu dữ liệu", {
         description: err?.response?.data?.message || "Lỗi hệ thống",
@@ -135,7 +239,7 @@ export default function ConsumptionPage() {
   });
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -156,13 +260,6 @@ export default function ConsumptionPage() {
           Import dữ liệu tiêu thụ
         </h2>
         <FileImporter onImportSuccess={handleImportSuccess} />
-
-        {importedRecords.length > 0 && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Badge variant="outline">{importedRecords.length} bản ghi</Badge>
-            đã có trong hệ thống
-          </div>
-        )}
       </div>
 
       <form

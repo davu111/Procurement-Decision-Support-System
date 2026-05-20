@@ -318,9 +318,6 @@ export default function TransactionHistoryPage() {
                   <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
                     Tạo lúc
                   </TableHead>
-                  <TableHead className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">
-                    Xác nhận lúc
-                  </TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -338,7 +335,7 @@ export default function TransactionHistoryPage() {
                       <>
                         <TableRow className="hover:bg-gray-50/50 transition-colors">
                           <TableCell>
-                            <span className="font-mono text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">
+                            <span className="inline-block max-w-[120px] truncate font-mono text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">
                               {t.transactionCode ?? t.id}
                             </span>
                           </TableCell>
@@ -376,9 +373,6 @@ export default function TransactionHistoryPage() {
                           </TableCell>
                           <TableCell className="text-gray-400 text-xs">
                             {formatDateTime(t.createdAt)}
-                          </TableCell>
-                          <TableCell className="text-gray-400 text-xs">
-                            {formatDateTime(t.confirmedAt)}
                           </TableCell>
                           <TableCell>
                             <CollapsibleTrigger asChild>

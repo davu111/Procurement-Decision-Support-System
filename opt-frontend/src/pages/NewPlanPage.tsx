@@ -486,9 +486,8 @@ export default function NewPlanPage() {
     }
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       {/* Header */}
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
