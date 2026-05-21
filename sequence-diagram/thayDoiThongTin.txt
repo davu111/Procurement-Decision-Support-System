@@ -1,0 +1,82 @@
+@startuml
+!theme plain
+
+actor "Người dùng" as User
+boundary "Browser\n(Trang Hồ sơ)" as Browser
+boundary "ProfileForm\nComponent" as Form
+control "EmployeeController" as Controller
+database "Database\n(Employee)" as Database
+
+User -> Browser: Truy cập trang\n"Hồ sơ cá nhân"
+activate Browser
+
+Browser -> Controller: GET /api/\nemployees/{userId}
+activate Controller
+
+Controller -> Database: Truy vấn thông tin\nnguời dùng
+activate Database
+Database --> Controller: EmployeeResponse
+deactivate Database
+
+Controller --> Browser: HTTP 200 OK
+deactivate Controller
+
+Browser -> User: Hiển thị thông tin\ncá nhân hiện tại
+
+User -> Browser: Nhấn nút "Sửa"
+
+Browser -> Form: Chuyển sang chế độ\nchỉnh sửa
+activate Form
+
+Form -> User: Hiển thị form\nchỉnh sửa\n(Họ, Tên)
+
+User -> Form: Nhập/thay đổi\nthông tin cá nhân
+
+alt Người dùng hủy thao tác
+  User -> Form: Nhấn "Hủy"
+  Form -> Form: Đóng form chỉnh sửa
+  deactivate Form
+  
+  note over Browser
+    Không lưu thay đổi
+    Quay lại chế độ xem
+    thông tin cũ
+  end note
+else Người dùng xác nhận chỉnh sửa
+  User -> Form: Nhấn "Lưu chỉnh sửa"
+  activate Form
+  
+  alt Dữ liệu không hợp lệ
+    Form -> Form: Kiểm tra validation\n(tên trống, định dạng sai,...)
+    Form -> User: Hiển thị thông báo lỗi
+    
+    User -> Form: Chỉnh sửa lại thông tin\nvà xác nhận lại
+  else Dữ liệu hợp lệ
+    Form -> Controller: PUT /api/\nemployees/{userId}
+    activate Controller
+    
+    Controller -> Database: Cập nhật thông tin\nnguời dùng
+    activate Database
+    Database -> Database: Lưu\nthay đổi
+    Database --> Controller: EmployeeResponse
+    deactivate Database
+    
+    Controller --> Form: HTTP 200 OK
+    deactivate Controller
+    
+    Form -> User: Hiển thị thông báo\n"Cập nhật thành công"
+    
+    Form -> Form: Đóng form chỉnh sửa\nQuay lại chế độ xem
+    
+    Form -> Browser: Refresh dữ liệu
+    activate Browser
+    
+    Browser -> Browser: Cập nhật thông tin\nmới trên trang
+    Browser -> User: Hiển thị thông tin\ncá nhân đã cập nhật
+    deactivate Browser
+  end
+end
+
+deactivate Form
+
+@enduml

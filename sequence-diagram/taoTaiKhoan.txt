@@ -2,106 +2,79 @@
 !theme plain
 
 actor "Quản trị viên" as Admin
-boundary "Browser\n(Trang Nhân viên)" as Browser
-boundary "EmployeesDialog\nComponent" as EmployeesDialog
-control "EmployeeController" as EmployeeController
-control "EmployeeService" as EmployeeService
-control "EmployeeRepository" as EmployeeRepository
-entity "Employee" as EmployeeEntity
-database "Database\n(Employee)" as EmployeeDatabase
-boundary "SuccessDialog\n(Hiển thị thông tin)" as SuccessDialog
+boundary "Browser\n(Trang Người dùng)" as Browser
+boundary "EmployeeForm\nComponent" as Form
+boundary "CredentialsDialog\nComponent" as CredDialog
+control "EmployeeController" as Controller
+database "Database\n(Employee)" as Database
 
-Admin -> Browser: Nhấn nút \n"Thêm nhân viên"
+Admin -> Browser: Truy cập trang\n"Người dùng"
 activate Browser
 
-Browser -> EmployeesDialog: Mở modal form
-activate EmployeesDialog
+Browser -> Admin: Hiển thị danh sách\nnhân viên
 
-EmployeesDialog -> Admin: Hiển thị form nhập
+Admin -> Browser: Nhấn nút\n"Thêm người dùng"
 
-Admin -> EmployeesDialog: Nhập đầy đủ thông tin\nvà nhấn "Xác nhận"
-activate EmployeesDialog
+Browser -> Form: Mở form tạo\ntài khoản mới
+activate Form
 
-EmployeesDialog -> EmployeeController: POST /api/employees/create\n\n(body: EmployeeRequest)
-activate EmployeeController
+Form -> Admin: Hiển thị form nhập\nthông tin nhân viên
 
-alt Dữ liệu không hợp lệ
-  EmployeeController --> EmployeesDialog: HTTP 400 Bad Request\n(Validation Error)
-  deactivate EmployeeController
-  
-  note over EmployeesDialog
-    Hiển thị thông báo lỗi
-    (thiếu thông tin, sai định dạng,\ntrùng username)
-  end note
-  
-  EmployeesDialog -> Admin: Hiển thị lỗi
-  Admin -> EmployeesDialog: Chỉnh sửa thông tin\nvà nhấn "Xác nhận" lại
-  EmployeesDialog -> EmployeeController: POST /api/employees/create\n(retry)
-  activate EmployeeController
-end
-
-EmployeeController -> EmployeeService: createEmployee\n(request)
-activate EmployeeService
-
-EmployeeService -> EmployeeEntity: Tạo Employee entity
-activate EmployeeEntity
-EmployeeEntity --> EmployeeService: EmployeeEntity
-deactivate EmployeeEntity
-
-EmployeeService -> EmployeeRepository: save(employee)
-activate EmployeeRepository
-
-EmployeeRepository -> EmployeeDatabase: INSERT tài khoản nhân viên
-activate EmployeeDatabase
-EmployeeDatabase -> EmployeeDatabase: Tạo \ntài khoản mới
-EmployeeDatabase --> EmployeeRepository: Persisted Employee
-deactivate EmployeeDatabase
-
-EmployeeRepository --> EmployeeService: Saved Employee
-deactivate EmployeeRepository
-
-EmployeeService --> EmployeeController: EmployeeResponse\n(including initialPassword)
-deactivate EmployeeService
-
-EmployeeController --> EmployeesDialog: HTTP 201 Created\n(EmployeeResponse)
-deactivate EmployeeController
-
-note over EmployeesDialog
-  Lưu thông tin tài khoản mới
-  (username, initialPassword)
-end note
-
-EmployeesDialog -> EmployeesDialog: Lưu newEmployeeInfo
-
-EmployeesDialog -> EmployeesDialog: Đóng modal tạo tài khoản\nsetDialogOpen(false)
-deactivate EmployeesDialog
-
-EmployeesDialog -> SuccessDialog: Mở dialog hiển thị\nthông tin tài khoản
-activate SuccessDialog
-
-SuccessDialog -> Admin: Hiển thị username\nvà mật khẩu tạm thời
-
-Admin -> SuccessDialog: Nhấn "Xong"
-deactivate SuccessDialog
-
-EmployeesDialog -> Browser: Gọi invalidateQueries\n(GET /api/employees)
-activate Browser
-
-Browser -> Browser: Cập nhật danh sách nhân viên\nthêm tài khoản mới
-
-Browser -> Admin: Hiển thị danh sách\nnhân viên cập nhật
-deactivate Browser
+Admin -> Form: Nhập đầy đủ\nthông tin tài khoản
 
 alt Quản trị viên hủy thao tác
-  Admin -> EmployeesDialog: Nhấn nút "Hủy"
-  activate EmployeesDialog
-  EmployeesDialog -> EmployeesDialog: Đóng modal\nsetDialogOpen(false)
-  deactivate EmployeesDialog
+  Admin -> Form: Nhấn "Hủy"
+  Form -> Form: Đóng form
+  deactivate Form
   
   note over Browser
-    Quay lại trang "Người dùng"
     Không lưu dữ liệu
+    Quay lại trang "Người dùng"
   end note
+else Quản trị viên xác nhận tạo
+  Admin -> Form: Nhấn "Xác nhận"
+  activate Form
+  
+  alt Dữ liệu không hợp lệ
+    Form -> Form: Kiểm tra validation
+    Form -> Admin: Hiển thị thông báo lỗi
+    
+    Admin -> Form: Chỉnh sửa lại thông tin\nvà xác nhận lại
+  else Dữ liệu hợp lệ
+    Form -> Controller: POST /api/employees
+    activate Controller
+    
+    Controller -> Database: Tạo tài khoản mới
+    activate Database
+    Database -> Database: Lưu thông tin nhân viên\nTạo mật khẩu tạm thời
+    Database --> Controller: EmployeeResponse
+    deactivate Database
+    
+    Controller --> Form: HTTP 201 Created
+    deactivate Controller
+    
+    Form -> Form: Đóng form
+    
+    Form -> CredDialog: Mở dialog\nhiển thị credentials
+    activate CredDialog
+    
+    CredDialog -> Admin: Hiển thị thông tin đăng nhập
+    
+    Admin -> CredDialog: Xem/sao chép\nthông tin đăng nhập
+    
+    Admin -> CredDialog: Nhấn "Xong"
+    CredDialog -> CredDialog: Đóng dialog
+    deactivate CredDialog
+    
+    Form -> Browser: Refresh danh sách
+    activate Browser
+    
+    Browser -> Browser: Cập nhật danh sách
+    Browser -> Admin: Hiển thị danh sách\nnhân viên mới
+    deactivate Browser
+  end
 end
+
+deactivate Form
 
 @enduml

@@ -1,0 +1,61 @@
+@startuml
+!theme plain
+
+actor "Quản lý kế hoạch" as Manager
+boundary "Browser\n(Trang Dự báo)" as Browser
+boundary "ForecastPage\nComponent" as FP
+control "ConsumptionHistoryController" as Controller
+database "Database\n(ConsumptionHistory)" as Database
+
+Manager -> Browser: Truy cập trang\n"Dự báo"
+activate Browser
+
+Browser -> FP: Tải trang Dự báo
+activate FP
+
+alt Manager chọn bộ lọc
+    FP -> Manager: Hiển thị form chọn\nsản phẩm và năm
+
+    Manager -> FP: Chọn sản phẩm\nvà khoảng thời gian
+
+else Manager không chọn bộ lọc
+    note over FP
+        Sử dụng tiêu chí mặc định
+        (năm hiện tại)
+    end note
+end
+
+FP -> Controller: GET /consumption-history/\n{productId}/year/{selectedYear}
+activate Controller
+
+Controller -> Database: Lấy dữ liệu tiêu thụ\ntheo năm
+activate Database
+
+Database --> Controller: ConsumptionHistory[]
+deactivate Database
+
+Controller --> FP: ConsumptionHistory[]
+deactivate Controller
+
+FP -> Controller: GET /inventory/suggest/{productId}
+activate Controller
+
+Controller -> Database: Lấy dữ liệu dự báo\ntheo sản phẩm
+activate Database
+
+Database --> Controller: ForecastSuggestionResponse
+deactivate Database
+
+Controller --> FP: ForecastSuggestionResponse
+deactivate Controller
+
+FP -> FP: Xử lý và tính toán\nDữ liệu dự báo\n(ForecastResult)
+
+FP -> Browser: Hiển thị biểu đồ\nDự báo (ForecastChart)
+deactivate FP
+
+Browser -> Manager: Hiển thị dữ liệu:\n- Biểu đồ đường (forecast)\n- Dữ liệu thực tế\n- Khoảng tin cậy\n- Thông tin mô hình
+
+deactivate Browser
+
+@enduml
