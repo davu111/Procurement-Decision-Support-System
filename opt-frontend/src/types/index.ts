@@ -29,6 +29,10 @@ export interface InventoryResult {
   storageCoefficientI: number;
   leadTimeL: number;
   kMinusQFactor: number;
+  // Lead time warning fields
+  leadTimeDeviationWarning?: boolean;
+  leadTimeDeviationMessage?: string;
+  leadTimeSourceUsed?: "COMMITTED" | "FORECAST" | "MANUAL";
 }
 
 export interface ForecastSuggestion {
@@ -83,3 +87,19 @@ export interface ConsumptionHistory {
   notes: string;
 }
 export type UrgencyLevel = "red" | "yellow" | "green";
+
+/**
+ * Kết quả đánh giá độ tin cậy nhà cung cấp
+ * Tương ứng SupplierReliabilityResponse.java
+ */
+export interface SupplierReliability {
+  productId: string;
+  committedLeadTimeDays: number | null;
+  avgActualLeadTimeDays: number | null;
+  stdDevLeadTimeDays: number | null;
+  deviationRate: number | null;           // (avg - committed) / committed
+  reliabilityLevel: "RELIABLE" | "MODERATE" | "UNRELIABLE" | "UNKNOWN";
+  dataPointsUsed: number;
+  recommendation: string;
+  forecastLeadTimeDays: number | null;    // WMA forecast (ngày)
+}

@@ -76,6 +76,14 @@ public class InventoryParameter {
     @Column(name = "snapshot_lead_time_l", nullable = false, precision = 8, scale = 4)
     private BigDecimal snapshotLeadTimeL;           // L
 
+    /**
+     * Nguồn lead time được dùng khi tính toán kế hoạch này (audit trail).
+     * COMMITTED | FORECAST | MANUAL
+     */
+    @Column(name = "lead_time_source", length = 20)
+    @Builder.Default
+    private String leadTimeSource = "COMMITTED";
+
     // Nguồn dữ liệu snapshot: SUPPLIER_SERVICE | PREVIOUS_PERIOD | MANUAL
     @Column(name = "supplier_data_source", nullable = false, length = 30)
     @Builder.Default

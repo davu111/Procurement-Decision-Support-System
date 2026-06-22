@@ -49,6 +49,27 @@ export const ROUTE_ACCESS_CONFIG: RouteAccess[] = [
     roles: ["admin", "planning-manager"],
   },
 
+  // Stocktaking - warehouse-manager, admin
+  {
+    path: "/stocktaking",
+    label: "Kiểm kê kho",
+    roles: ["admin", "warehouse-manager"],
+  },
+
+  // Analytics - Loss Rate - warehouse-manager, admin
+  {
+    path: "/analytics/loss-rate",
+    label: "Phân tích thất thoát",
+    roles: ["admin", "warehouse-manager"],
+  },
+
+  // Analytics - Service Level - warehouse-manager, admin
+  {
+    path: "/analytics/service-level",
+    label: "Phân tích Service Level",
+    roles: ["admin", "warehouse-manager"],
+  },
+
   // Warehouses - warehouse-manager, admin
   {
     path: "/warehouses",

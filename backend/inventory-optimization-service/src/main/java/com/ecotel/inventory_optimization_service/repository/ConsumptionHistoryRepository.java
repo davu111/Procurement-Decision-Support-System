@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
+
 @Repository
 public interface ConsumptionHistoryRepository extends JpaRepository<ConsumptionHistory, Long> {
 
@@ -43,4 +45,19 @@ public interface ConsumptionHistoryRepository extends JpaRepository<ConsumptionH
             LocalDate start,
             LocalDate end
     );
-}
+
+    /**
+     * Lấy N kỳ gần nhất có dữ liệu actualLeadTimeDays — dùng để tính Supplier Reliability.
+     * Sắp xếp giảm dần (mới nhất trước) để Pageable giới hạn số kỳ lấy về.
+     */
+    @Query("""
+        SELECT c FROM ConsumptionHistory c
+        WHERE c.productId = :productId
+          AND c.actualLeadTimeDays IS NOT NULL
+        ORDER BY c.periodStartDate DESC
+    """)
+    List<ConsumptionHistory> findRecentWithLeadTime(
+            @Param("productId") String productId,
+            Pageable pageable
+    );
+}

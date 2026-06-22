@@ -59,7 +59,8 @@ spring:
               predicates:
                 - Path=/api/inventory/**, /api/consumption-history/**,
                   /api/warehouse-config/**, /api/order-schedules/**,
-                  /api/inventory-results/**, /api/inventory-parameters/**,
+                  /api/inventory-results/**, /api/inventory-parameters/**, 
+                  /api/stock-counts/**, /api/analytics/**
 
             # Swagger UI routes
             - id: warehouse-service-docs

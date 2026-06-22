@@ -32,11 +32,13 @@ import {
   Lightbulb,
   PlusCircle,
   XCircle,
+  Shield,
 } from "lucide-react";
 import ProductSelector from "@/components/product/ProductSelector";
+import SupplierReliabilityPanel from "@/components/inventory/SupplierReliabilityPanel";
 import { formatCurrency, formatNumber, formatDate } from "@/utils/helpers";
 import inventoryApi from "@/api/axiosConfig";
-import type { ForecastSuggestion, InventoryResult } from "@/types";
+import type { ForecastSuggestion, InventoryResult, SupplierReliability } from "@/types";
 import type { OrderSchedule } from "@/types/inventory-opt/order-schedule";
 import { toast } from "sonner";
 
@@ -160,6 +162,14 @@ export default function NewPlanPage() {
   const [currentInventory, setCurrentInventory] = useState<number | null>(null);
   const [loadingInventory, setLoadingInventory] = useState(false);
 
+  // ── Supplier reliability ────────────────────────────────────────────────────
+  const [reliability, setReliability] = useState<SupplierReliability | null>(null);
+  const [loadingReliability, setLoadingReliability] = useState(false);
+
+  // ── Lead time source ───────────────────────────────────────────────────────
+  // "COMMITTED" | "FORECAST" | "MANUAL"
+  const [leadTimeSource, setLeadTimeSource] = useState<"COMMITTED" | "FORECAST" | "MANUAL">("COMMITTED");
+
   // ── Derived ────────────────────────────────────────────────────────────────
   const selectedProduct = productId
     ? products.find((p) => String(p.id) === productId)
@@ -213,6 +223,22 @@ export default function NewPlanPage() {
       .finally(() => setLoadingInventory(false));
   }, [productId]);
 
+  // ── Fetch supplier reliability khi productId thay đổi ─────────────────────
+  useEffect(() => {
+    if (!productId) {
+      setReliability(null);
+      return;
+    }
+    setLoadingReliability(true);
+    inventoryApi
+      .get(`/inventory/supplier-reliability/${productId}`)
+      .then((res: any) => {
+        setReliability(res.data?.data ?? res.data ?? null);
+      })
+      .catch(() => setReliability(null))
+      .finally(() => setLoadingReliability(false));
+  }, [productId]);
+
   const yearOptions = useMemo(() => getYearOptions(), []);
   const monthOptions = useMemo(() => getMonthOptions(targetYear), [targetYear]);
   const endMonthOptions = useMemo(
@@ -231,6 +257,11 @@ export default function NewPlanPage() {
   // Số tháng trong kỳ — dùng để hint Q/tháng
   const monthCount = endMonth - startMonth + 1;
 
+  // Cho phép chọn FORECAST chỉ khi có dữ liệu forecast lead time
+  const canUseForecastLeadTime =
+    reliability?.forecastLeadTimeDays != null &&
+    reliability.reliabilityLevel !== "UNKNOWN";
+
   const canSubmit =
     !!productId &&
     !!demandQ &&
@@ -248,6 +279,7 @@ export default function NewPlanPage() {
     setResolvedPeriod(null);
     setPredictedData(null);
     setInitialInventory("");
+    setLeadTimeSource("COMMITTED");
   }, []);
 
   const handleYearChange = useCallback(
@@ -450,6 +482,7 @@ export default function NewPlanPage() {
       demandQ: parseFloat(demandQ),
       storageCostCoefficientI: parseFloat(storageI),
       initialInventory: inventory,
+      leadTimeSource,  // truyền nguồn lead time lên backend
     };
   }
 
@@ -706,6 +739,24 @@ export default function NewPlanPage() {
         )}
       </div>
 
+      {/* ── Supplier Reliability Panel — tự động khi chọn sản phẩm ────────────── */}
+      {productId && (
+        <div className="space-y-2">
+          {loadingReliability && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Đang đánh giá độ tin cậy nhà cung cấp...
+            </div>
+          )}
+          {!loadingReliability && reliability && (
+            <SupplierReliabilityPanel
+              data={reliability}
+              unit={selectedProduct?.unit}
+            />
+          )}
+        </div>
+      )}
+
       {/* ── AI Suggestion panel ───────────────────────────────────────────────── */}
       {suggestion && (
         <div className="bg-card border rounded-lg p-5 space-y-4">
@@ -766,6 +817,43 @@ export default function NewPlanPage() {
               </div>
             ))}
           </div>
+
+          {/* Lead time source selector */}
+          {canUseForecastLeadTime && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Shield className="h-4 w-4 text-primary" />
+                Nguồn lead time để tính kế hoạch
+              </Label>
+              <Select
+                value={leadTimeSource}
+                onValueChange={(v) =>
+                  setLeadTimeSource(v as "COMMITTED" | "FORECAST" | "MANUAL")
+                }
+              >
+                <SelectTrigger id="lead-time-source-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="COMMITTED">
+                    Cam kết NCC ({suggestion.currentLeadTimeDays} ngày) —
+                    mặc định
+                  </SelectItem>
+                  <SelectItem value="FORECAST">
+                    Dự báo WMA (
+                    {reliability?.forecastLeadTimeDays?.toFixed(1)} ngày) —
+                    theo lịch sử thực tế
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {leadTimeSource === "FORECAST" && (
+                <p className="text-xs text-muted-foreground">
+                  Hệ thống sẽ dùng lead time dự báo từ WMA thay cho cam kết
+                  nhà cung cấp để tính toán kế hoạch.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -933,6 +1021,19 @@ export default function NewPlanPage() {
         <div className="bg-status-success/10 border border-status-success/30 rounded-md p-3 flex items-center gap-2">
           <CheckCircle className="h-5 w-5 text-status-success shrink-0" />
           <p className="text-sm text-foreground">{successMessage}</p>
+        </div>
+      )}
+
+      {/* Lead time deviation warning */}
+      {calcResult?.leadTimeDeviationWarning && (
+        <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium text-amber-800">Cảnh báo Lead Time</p>
+            <p className="text-amber-700 mt-0.5">
+              {calcResult.leadTimeDeviationMessage}
+            </p>
+          </div>
         </div>
       )}
 

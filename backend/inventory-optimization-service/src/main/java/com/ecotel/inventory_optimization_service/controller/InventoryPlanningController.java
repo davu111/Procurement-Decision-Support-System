@@ -5,6 +5,7 @@ import com.ecotel.inventory_optimization_service.dto.response.*;
 import com.ecotel.inventory_optimization_service.model.InventoryParameter;
 import com.ecotel.inventory_optimization_service.repository.InventoryParameterRepository;
 import com.ecotel.inventory_optimization_service.repository.OrderScheduleRepository;
+import com.ecotel.inventory_optimization_service.service.SupplierReliabilityService;
 import com.ecotel.inventory_optimization_service.service.impl.InventoryPlanningService;
 import com.ecotel.inventory_optimization_service.service.impl.PeriodResolver;
 import jakarta.validation.Valid;
@@ -25,9 +26,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class InventoryPlanningController {
 
-    private final InventoryPlanningService planningService;
-    private final OrderScheduleRepository  scheduleRepository;
+    private final InventoryPlanningService     planningService;
+    private final OrderScheduleRepository      scheduleRepository;
     private final InventoryParameterRepository parameterRepository;
+    private final SupplierReliabilityService   supplierReliabilityService;
 
     /**
      * POST /api/inventory/calculate
@@ -143,6 +145,19 @@ public class InventoryPlanningController {
     public ResponseEntity<ApiResponse<ForecastSuggestionResponse>> getSuggestion(
             @PathVariable String productId) {
         return ResponseEntity.ok(ApiResponse.success(planningService.getSuggestion(productId)));
+    }
+
+    /**
+     * GET /api/inventory/supplier-reliability/{productId}
+     * Tính độ tin cậy nhà cung cấp: so sánh lead time cam kết vs thực tế.
+     * Frontend hiển thị khi người dùng chọn sản phẩm để lập kế hoạch.
+     */
+    @GetMapping("/supplier-reliability/{productId}")
+    public ResponseEntity<ApiResponse<SupplierReliabilityResponse>> getSupplierReliability(
+            @PathVariable String productId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                supplierReliabilityService.calculateReliability(productId),
+                "Đánh giá độ tin cậy nhà cung cấp"));
     }
 
     @GetMapping("/schedule")

@@ -4,6 +4,7 @@ import com.ecotel.employee_service.dto.request.EmployeeRequest;
 import com.ecotel.employee_service.dto.request.EmployeeUpdateRequest;
 import com.ecotel.employee_service.dto.response.EmployeeResponse;
 import com.ecotel.employee_service.service.EmployeeService;
+import com.ecotel.employee_service.service.KeycloakService;
 import com.ecotel.shared_library.dto.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,15 @@ public class EmployeeController {
         EmployeeResponse employee = employeeService.getEmployeeFromDatabase(userId);
         return ApiResponse.<EmployeeResponse>builder()
                 .message("Get employee from database successful")
+                .data(employee)
+                .build();
+    }
+
+    @GetMapping("/full-name/{userId}")
+    public ApiResponse<String> getFullNameById(@PathVariable String userId) {
+        String employee = employeeService.getFullNameById(userId);
+        return ApiResponse.<String>builder()
+                .message("Get full name successful")
                 .data(employee)
                 .build();
     }

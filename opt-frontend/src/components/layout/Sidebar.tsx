@@ -16,6 +16,9 @@ import {
   Settings,
   User,
   SquareUser,
+  CheckSquare,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getAccessibleRoutes } from "@/config/roleAccess";
@@ -27,6 +30,9 @@ const iconMap: Record<string, any> = {
   "Danh mục sản phẩm": Tag,
   "Kỳ kế hoạch mới": PlusCircle,
   "Nhập tiêu thụ": ClipboardList,
+  "Kiểm kê kho": CheckSquare,
+  "Phân tích thất thoát": TrendingDown,
+  "Phân tích Service Level": TrendingUp,
   "Nhà cung cấp": Truck,
   "Nhân viên": User,
   "Kho hàng": Boxes,

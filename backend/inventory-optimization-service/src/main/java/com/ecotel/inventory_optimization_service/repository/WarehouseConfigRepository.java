@@ -8,4 +8,13 @@ import java.util.Optional;
 
 @Repository
 public interface WarehouseConfigRepository extends JpaRepository<WarehouseConfig, Long> {
+    Optional<WarehouseConfig> findFirstByOrderByIdDesc();
+
+    /**
+     * Lấy cấu hình kho mặc định (cấu hình duy nhất hoặc gần đây nhất).
+     * Để sử dụng trong Loss Rate Analytics để so sánh với spoilageRate.
+     */
+    default Optional<WarehouseConfig> findDefaultConfig() {
+        return findFirstByOrderByIdDesc();
+    }
 }

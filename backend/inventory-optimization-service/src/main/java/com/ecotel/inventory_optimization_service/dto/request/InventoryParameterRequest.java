@@ -71,4 +71,12 @@ public class InventoryParameterRequest {
     private BigDecimal manualFixedOrderCostA;
     private BigDecimal manualUnitPriceC;
     private BigDecimal manualLeadTimeDays;
+
+    /**
+     * Nguồn lead time được dùng để tính toán kế hoạch.
+     * - "COMMITTED" (mặc định): dùng committedLeadTimeDays từ nhà cung cấp
+     * - "FORECAST" : dùng lead time dự báo từ WMA theo lịch sử thực tế
+     * - "MANUAL"  : dùng manualLeadTimeDays do người dùng nhập
+     */
+    private String leadTimeSource; // default = "COMMITTED"
 }

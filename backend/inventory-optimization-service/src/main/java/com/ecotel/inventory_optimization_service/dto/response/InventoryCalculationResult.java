@@ -34,4 +34,12 @@ public class InventoryCalculationResult {
     private BigDecimal storageCoefficientI;
     private BigDecimal leadTimeL;
     private BigDecimal kMinusQFactor;          // (1 - Q/K)
+
+    // === Cảnh báo lead time ===
+    /** true khi độ lệch giữa forecast lead time và committed lead time > 20% */
+    private Boolean leadTimeDeviationWarning;
+    /** Mô tả cảnh báo cho người dùng */
+    private String  leadTimeDeviationMessage;
+    /** Nguồn lead time đã dùng: COMMITTED | FORECAST | MANUAL */
+    private String  leadTimeSourceUsed;
 }

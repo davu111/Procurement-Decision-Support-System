@@ -34,6 +34,7 @@ public class InventoryPlanningService {
     private final InventoryResultRepository resultRepository;
     private final OrderScheduleRepository scheduleRepository;
     private final WarehouseConfigRepository warehouseConfigRepository;
+    private final StockCountRepository stockCountRepository;
     private final InventoryCalculationService calculationService;
     private final ForecastOrchestrator forecastOrchestrator;
     private final SupplierServiceClient supplierServiceClient;
@@ -78,37 +79,48 @@ public class InventoryPlanningService {
         LocalDate effectiveReceiptDate = request.getScheduledReceiptDate();
 
         if (effectiveInitialInventory == null) {
-            // Kiểm tra có kế hoạch ACTIVE liền kề ngay trước planStartDate không
-            // "Liền kề" = planEndDate của kỳ trước nằm trong vòng 1 tháng trước planStartDate
-            LocalDate adjacentThreshold = planStartDate.minusMonths(1);
-            List<InventoryParameter> adjacent = parameterRepository.findOverlapping(
-                    request.getProductId(),
-                    adjacentThreshold,
-                    planStartDate.minusDays(1));
 
-            boolean hasAdjacentPlan = adjacent.stream()
-                    .anyMatch(p -> "ACTIVE".equals(p.getStatus()));
+            // ưu tiên 2: Kiểm tra StockCount CONFIRMED gần nhất trước planStartDate
+            // (điểm neo thực tế chính xác hơn mô phỏng)
+            StockCount latestConfirmed = stockCountRepository
+                    .findConfirmedBeforeDate(request.getProductId(), planStartDate)
+                    .stream().findFirst().orElse(null);
 
-            if (hasAdjacentPlan) {
-                log.info("Phát hiện kế hoạch liền kề, tự động tính tồn kho tại {}",
-                        planStartDate);
-                PredictedInventoryResponse predicted =
-                        predictInventory(request.getProductId(), planStartDate);
+            if (latestConfirmed != null) {
+                effectiveInitialInventory = latestConfirmed.getActualQuantity();
+                log.info("Dùng StockCount CONFIRMED id={} ngày {} làm initialInventory={}",
+                        latestConfirmed.getId(), latestConfirmed.getCountDate(), effectiveInitialInventory);
+            } else {
+                // ưu tiên 3: Kiểm tra kế hoạch ACTIVE liền kề và mô phỏng (fallback)
+                LocalDate adjacentThreshold = planStartDate.minusMonths(1);
+                List<InventoryParameter> adjacent = parameterRepository.findOverlapping(
+                        request.getProductId(),
+                        adjacentThreshold,
+                        planStartDate.minusDays(1));
 
-                if (predicted.getPredictedInventory() != null) {
-                    effectiveInitialInventory = predicted.getPredictedInventory();
-                    log.info("Auto initialInventory={} tại {}", effectiveInitialInventory, planStartDate);
-                }
+                boolean hasAdjacentPlan = adjacent.stream()
+                        .anyMatch(p -> "ACTIVE".equals(p.getStatus()));
 
-                // Lấy lô đang bay từ kỳ trước (nếu request chưa điền)
-                if (effectiveReceiptQty == null && !predicted.getPendingReceipts().isEmpty()) {
-                    // Chỉ lấy lô đầu tiên (giao sớm nhất) vì đó là lô ảnh hưởng nhất
-                    PredictedInventoryResponse.PendingReceipt firstReceipt =
-                            predicted.getPendingReceipts().get(0);
-                    effectiveReceiptQty = firstReceipt.getQuantity();
-                    effectiveReceiptDate = firstReceipt.getExpectedDeliveryDate();
-                    log.info("Auto scheduledReceipt qty={} date={}",
-                            effectiveReceiptQty, effectiveReceiptDate);
+                if (hasAdjacentPlan) {
+                    log.info("Phát hiện kế hoạch liền kề, tự động tính tồn kho tại {}",
+                            planStartDate);
+                    PredictedInventoryResponse predicted =
+                            predictInventory(request.getProductId(), planStartDate);
+
+                    if (predicted.getPredictedInventory() != null) {
+                        effectiveInitialInventory = predicted.getPredictedInventory();
+                        log.info("Auto initialInventory={} tại {}", effectiveInitialInventory, planStartDate);
+                    }
+
+                    // Lấy lô đang bay từ kỳ trước (nếu request chưa điền)
+                    if (effectiveReceiptQty == null && !predicted.getPendingReceipts().isEmpty()) {
+                        PredictedInventoryResponse.PendingReceipt firstReceipt =
+                                predicted.getPendingReceipts().get(0);
+                        effectiveReceiptQty = firstReceipt.getQuantity();
+                        effectiveReceiptDate = firstReceipt.getExpectedDeliveryDate();
+                        log.info("Auto scheduledReceipt qty={} date={}",
+                                effectiveReceiptQty, effectiveReceiptDate);
+                    }
                 }
             }
         }
@@ -128,6 +140,7 @@ public class InventoryPlanningService {
                 .snapshotFixedOrderCostA(snapshot.fixedOrderCostA)
                 .snapshotUnitPriceC(snapshot.unitPriceC)
                 .snapshotLeadTimeL(snapshot.leadTimeL)
+                .leadTimeSource(snapshot.leadTimeSource != null ? snapshot.leadTimeSource : "COMMITTED")
                 .supplierDataSource(snapshot.source)
                 .initialInventory(effectiveInitialInventory)
                 .scheduledReceiptQty(effectiveReceiptQty)
@@ -139,6 +152,14 @@ public class InventoryPlanningService {
         param = parameterRepository.save(param);
 
         InventoryCalculationResult calcResult = calculationService.calculate(param);
+
+        // Gắn thông tin lead time source và cảnh báo deviation vào kết quả
+        calcResult.setLeadTimeSourceUsed(snapshot.leadTimeSource != null ? snapshot.leadTimeSource : "COMMITTED");
+        if (snapshot.deviationWarning) {
+            calcResult.setLeadTimeDeviationWarning(true);
+            calcResult.setLeadTimeDeviationMessage(snapshot.deviationMessage);
+        }
+
         InventoryResult result = saveResult(param, calcResult);
         calcResult.setId(result.getId());
         calcResult.setInventoryParameterId(result.getInventoryParameter().getId());
@@ -469,6 +490,87 @@ public class InventoryPlanningService {
         return scheduleStart;
     }
 
+
+    /**
+     * PUBLIC: Mô phỏng tồn kho tại targetDate — dùng bởi StockCountService.
+     *
+     * KHÁC với simulateInventory() (dùng cho replan/predictInventory) ở 2 điểm:
+     *   1. Query schedules theo expectedDeliveryDate (không phải orderDate),
+     *      đảm bảo không bỏ sót lô nào có cửa sổ nhận giao với [simStart, targetDate].
+     *   2. dailyRise = (K-Q)/30 trực tiếp, không dùng maxInventoryLevel/tnDays
+     *      (tránh sai số do làm tròn tnDays).
+     *
+     * Trả về null nếu không có kế hoạch ACTIVE nào.
+     */
+    public BigDecimal simulateStockCountInventoryAt(String productId, LocalDate targetDate) {
+        Optional<InventoryParameter> activeOpt = parameterRepository.findLatestActive(productId).stream().findFirst();
+        if (activeOpt.isEmpty()) return null;
+
+        InventoryParameter active = activeOpt.get();
+        InventoryResult result = resultRepository
+                .findByInventoryParameterId(active.getId())
+                .orElse(null);
+        if (result == null) return null;
+
+        LocalDate simStart = active.getScheduleStartDate();
+
+        // Nếu targetDate <= simStart → trả về tồn kho đầu kỳ
+        if (!targetDate.isAfter(simStart)) {
+            return active.getInitialInventory() != null
+                    ? active.getInitialInventory()
+                    : result.getReorderPointB();
+        }
+
+        long totalDays = java.time.temporal.ChronoUnit.DAYS.between(simStart, targetDate);
+        long tnDays    = Math.round(result.getReplenishmentTimeTn().doubleValue() * 30);
+
+        // dailyRise = (K-Q)/30 — tốc độ tăng tồn kho ròng khi đang nhận hàng
+        double K            = active.getSnapshotSupplyRateK().doubleValue();
+        double Q            = active.getDemandQ().doubleValue();
+        double dailyConsume = Q / 30.0;
+        double dailyRise    = (K - Q) / 30.0;
+        double maxInv       = result.getMaxInventoryLevel().doubleValue();
+
+        // Query theo expectedDeliveryDate để tìm đúng các lô có cửa sổ nhận
+        // [delivDate, delivDate + tnDays - 1] giao với simulation period [simStart, targetDate].
+        // Điều kiện:
+        //   delivDate <= targetDate           (window bắt đầu trước targetDate)
+        //   delivDate + tnDays - 1 >= simStart  → delivDate >= simStart - tnDays + 1
+        LocalDate delivFrom = simStart.minusDays(Math.max(tnDays - 1, 0));
+        LocalDate delivTo   = targetDate;
+
+        List<OrderSchedule> schedules = scheduleRepository
+                .findByProductIdAndExpectedDeliveryDateBetween(productId, delivFrom, delivTo);
+
+        log.debug("simulateInventoryAt: productId={}, simStart={}, targetDate={}, "
+                        + "tnDays={}, schedules={}, delivWindow=[{},{}]",
+                productId, simStart, targetDate, tnDays, schedules.size(), delivFrom, delivTo);
+
+        double inv = result.getReorderPointB().doubleValue();
+        if (active.getInitialInventory() != null) {
+            inv = active.getInitialInventory().doubleValue();
+        }
+
+        for (long day = 0; day < totalDays; day++) {
+            LocalDate current = simStart.plusDays(day);
+
+            // isReceiving: current nằm trong cửa sổ nhận hàng của BẤT KỲ lô nào
+            boolean isReceiving = schedules.stream().anyMatch(s -> {
+                LocalDate recvStart = s.getExpectedDeliveryDate();
+                LocalDate recvEnd   = recvStart.plusDays(tnDays - 1);
+                return !current.isBefore(recvStart) && !current.isAfter(recvEnd);
+            });
+
+            if (isReceiving) {
+                inv = Math.min(inv + dailyRise, maxInv);
+            } else {
+                inv = Math.max(inv - dailyConsume, 0);
+            }
+        }
+
+        return BigDecimal.valueOf(inv).setScale(2, RoundingMode.HALF_UP);
+    }
+
     // -------------------------------------------------------
     // MÔ PHỎNG TỒN KHO
     // -------------------------------------------------------
@@ -481,6 +583,9 @@ public class InventoryPlanningService {
                                          InventoryResult result,
                                          LocalDate targetDate) {
         LocalDate simStart = param.getScheduleStartDate();
+        System.out.println("Param: " + param.getScheduleStartDate());
+        System.out.println("Result: " + result.getCalculatedAt());
+        System.out.println("TargetDate: " + targetDate);
         if (!targetDate.isAfter(simStart)) {
             return param.getInitialInventory() != null
                     ? param.getInitialInventory()
@@ -521,6 +626,29 @@ public class InventoryPlanningService {
         }
 
         return BigDecimal.valueOf(inv).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * PUBLIC wrapper của simulateInventory — dùng chung bởi:
+     *   - StockCountService (tính systemQuantity khi tạo phiếu kiểm kê)
+     *   - ServiceLevelAnalytics (đếm ngày stockout trong chu kỳ)
+     *   - predictInventory (đã dùng private, giữ nguyên)
+     *
+     * Tự tìm kế hoạch ACTIVE gần nhất và mô phỏng từ scheduleStartDate đến targetDate.
+     * Trả về null nếu không tìm thấy kế hoạch ACTIVE nào.
+     */
+    public BigDecimal simulateInventoryAt(String productId, LocalDate targetDate) {
+        Optional<InventoryParameter> activeOpt =
+                parameterRepository.findLatestActive(productId).stream().findFirst();
+        if (activeOpt.isEmpty()) return null;
+
+        InventoryParameter active = activeOpt.get();
+        InventoryResult result = resultRepository
+                .findByInventoryParameterId(active.getId())
+                .orElse(null);
+        if (result == null) return null;
+
+        return simulateInventory(active, result, targetDate);
     }
 
     // -------------------------------------------------------
@@ -601,20 +729,86 @@ public class InventoryPlanningService {
     }
 
     private SnapshotData resolveSnapshot(InventoryParameterRequest request) {
+        // Ngưỡng cảnh báo lệch lead time (20%)
+        final double DEVIATION_WARNING_THRESHOLD = 0.20;
+
         Optional<SupplierProductData> supplierOpt =
                 supplierServiceClient.getByProductId(request.getProductId());
 
         if (supplierOpt.isPresent()) {
             SupplierProductData sp = supplierOpt.get();
             log.info("Dùng SUPPLIER_SERVICE cho productId={}", request.getProductId());
+
+            // Lead time cam kết từ nhà cung cấp (tháng)
+            BigDecimal committedLeadTimeL = BigDecimal.valueOf(sp.getCommittedLeadTimeDays() / 30.0)
+                    .setScale(4, RoundingMode.HALF_UP);
+
+            // Xác định nguồn lead time
+            String leadTimeSource = request.getLeadTimeSource();
+            if (leadTimeSource == null || leadTimeSource.isBlank()) {
+                leadTimeSource = "COMMITTED";
+            }
+
+            BigDecimal effectiveLeadTimeL = committedLeadTimeL;
+            boolean deviationWarning = false;
+            String deviationMessage = null;
+
+            // Luôn lấy forecast lead time để kiểm tra deviation (nếu có dữ liệu)
+            BigDecimal forecastLeadTimeL = null;
+            try {
+                ForecastResult ltForecast = forecastOrchestrator.forecastLeadTime(request.getProductId());
+                if (!ltForecast.isRequiresManualInput() && ltForecast.getForecastValue() > 0) {
+                    forecastLeadTimeL = BigDecimal.valueOf(ltForecast.getForecastValue() / 30.0)
+                            .setScale(4, RoundingMode.HALF_UP);
+                }
+            } catch (Exception e) {
+                log.warn("Không thể forecast lead time cho productId={}: {}", request.getProductId(), e.getMessage());
+            }
+
+            // Kiểm tra deviation giữa committed và forecast
+            if (forecastLeadTimeL != null && sp.getCommittedLeadTimeDays() > 0) {
+                double committedDays = sp.getCommittedLeadTimeDays();
+                double forecastDays  = forecastLeadTimeL.doubleValue() * 30;
+                double deviation = Math.abs(forecastDays - committedDays) / committedDays;
+                if (deviation > DEVIATION_WARNING_THRESHOLD) {
+                    deviationWarning = true;
+                    deviationMessage = String.format(
+                            "Cảnh báo: Lead time dự báo (%.1f ngày) lệch %.1f%% so với cam kết NCC (%d ngày). " +
+                            "Cân nhắc chọn nguồn lead time phù hợp.",
+                            forecastDays, deviation * 100, sp.getCommittedLeadTimeDays());
+                    log.warn("Lead time deviation > {}% cho productId={}: committed={}d, forecast={}d",
+                            (int)(DEVIATION_WARNING_THRESHOLD * 100), request.getProductId(),
+                            committedDays, forecastDays);
+                }
+            }
+
+            // Chọn lead time theo nguồn người dùng yêu cầu
+            if ("FORECAST".equalsIgnoreCase(leadTimeSource) && forecastLeadTimeL != null) {
+                effectiveLeadTimeL = forecastLeadTimeL;
+                log.info("Dùng FORECAST lead time={} tháng cho productId={}",
+                        effectiveLeadTimeL, request.getProductId());
+            } else if ("MANUAL".equalsIgnoreCase(leadTimeSource) && request.getManualLeadTimeDays() != null) {
+                effectiveLeadTimeL = request.getManualLeadTimeDays()
+                        .divide(BigDecimal.valueOf(30), 4, RoundingMode.HALF_UP);
+                leadTimeSource = "MANUAL";
+                log.info("Dùng MANUAL lead time={} ngày cho productId={}",
+                        request.getManualLeadTimeDays(), request.getProductId());
+            } else {
+                leadTimeSource = "COMMITTED";
+                log.info("Dùng COMMITTED lead time={} tháng cho productId={}",
+                        effectiveLeadTimeL, request.getProductId());
+            }
+
             return SnapshotData.builder()
                     .supplierProductId(UUID.fromString(sp.getId()))
                     .supplyRateK(sp.getMaxSupplyPerMonth())
                     .fixedOrderCostA(sp.getFixedOrderCost())
                     .unitPriceC(sp.getUnitPrice())
-                    .leadTimeL(BigDecimal.valueOf(sp.getCommittedLeadTimeDays() / 30.0)
-                            .setScale(4, RoundingMode.HALF_UP))
+                    .leadTimeL(effectiveLeadTimeL)
                     .source("SUPPLIER_SERVICE")
+                    .leadTimeSource(leadTimeSource)
+                    .deviationWarning(deviationWarning)
+                    .deviationMessage(deviationMessage)
                     .build();
         }
 
@@ -631,6 +825,7 @@ public class InventoryPlanningService {
                     .unitPriceC(prev.getSnapshotUnitPriceC())
                     .leadTimeL(prev.getSnapshotLeadTimeL())
                     .source("PREVIOUS_PERIOD")
+                    .leadTimeSource("COMMITTED")
                     .build();
         }
 
@@ -646,6 +841,7 @@ public class InventoryPlanningService {
                     .leadTimeL(request.getManualLeadTimeDays()
                             .divide(BigDecimal.valueOf(30), 4, RoundingMode.HALF_UP))
                     .source("MANUAL")
+                    .leadTimeSource("MANUAL")
                     .build();
         }
 
@@ -688,6 +884,9 @@ public class InventoryPlanningService {
         BigDecimal fixedOrderCostA;
         BigDecimal unitPriceC;
         BigDecimal leadTimeL;
-        String source;
+        String source;          // SUPPLIER_SERVICE | PREVIOUS_PERIOD | MANUAL
+        String leadTimeSource;  // COMMITTED | FORECAST | MANUAL (audit trail)
+        boolean deviationWarning;
+        String deviationMessage;
     }
 }

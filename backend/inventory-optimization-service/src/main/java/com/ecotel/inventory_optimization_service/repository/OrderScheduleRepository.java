@@ -234,4 +234,15 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
             @Param("productIds") List<String> productIds,
             @Param("date") LocalDate date
     );
+
+    @Query("""
+    SELECT o FROM OrderSchedule o
+    WHERE o.productId = :productId
+      AND o.expectedDeliveryDate BETWEEN :from AND :to
+    ORDER BY o.expectedDeliveryDate ASC
+""")
+    List<OrderSchedule> findByProductIdAndExpectedDeliveryDateBetween(
+            @Param("productId") String productId,
+            @Param("from")      LocalDate from,
+            @Param("to")        LocalDate to);
 }

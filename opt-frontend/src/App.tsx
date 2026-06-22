@@ -25,6 +25,9 @@ import SupplierDetailPage from "@/pages/SupplierDetailPage";
 import EmployeesPage from "@/pages/EmployeesPage";
 import Profile from "@/pages/Profile";
 import AccessControlDebugPage from "@/pages/AccessControlDebugPage";
+import StocktakingPage from "@/pages/StocktakingPage";
+import LossRateAnalyticsPage from "@/pages/LossRateAnalyticsPage";
+import ServiceLevelAnalyticsPage from "@/pages/ServiceLevelAnalyticsPage";
 import NotFound from "@/pages/NotFound";
 import { Loader, Lock } from "lucide-react";
 import { canAccessRoute } from "@/config/roleAccess";
@@ -125,6 +128,15 @@ const App = () => (
                     />
                     <Route path="/new-plan" element={<NewPlanPage />} />
                     <Route path="/consumption" element={<ConsumptionPage />} />
+                    <Route path="/stocktaking" element={<StocktakingPage />} />
+                    <Route
+                      path="/analytics/loss-rate"
+                      element={<LossRateAnalyticsPage />}
+                    />
+                    <Route
+                      path="/analytics/service-level"
+                      element={<ServiceLevelAnalyticsPage />}
+                    />
                     <Route path="/suppliers" element={<SuppliersPage />} />
                     <Route path="/employees" element={<EmployeesPage />} />
                     <Route path="/profile" element={<Profile />} />

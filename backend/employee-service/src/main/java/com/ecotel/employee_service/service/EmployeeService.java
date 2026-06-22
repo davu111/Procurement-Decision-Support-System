@@ -41,6 +41,14 @@ public class EmployeeService {
         return mapToCombinedEmployeeResponse(employee);
     }
 
+    public String getFullNameById(String userId) {
+        Employee employee = employeeRepository.findById(userId)
+                .or(() -> employeeRepository.findByKeycloakUserId(userId))
+                .orElseThrow(() -> new RuntimeException("Employee not found in database: " + userId));
+        UserRepresentation user = keycloakService.getUserById(employee.getKeycloakUserId());
+        return user.getFirstName() + " " + user.getLastName();
+    }
+
     /**
      * Lấy tất cả employees từ database
      */
