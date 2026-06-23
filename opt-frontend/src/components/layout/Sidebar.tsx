@@ -32,7 +32,7 @@ const iconMap: Record<string, any> = {
   "Nhập tiêu thụ": ClipboardList,
   "Kiểm kê kho": CheckSquare,
   "Phân tích thất thoát": TrendingDown,
-  "Phân tích Service Level": TrendingUp,
+  // "Phân tích Service Level": TrendingUp,
   "Nhà cung cấp": Truck,
   "Nhân viên": User,
   "Kho hàng": Boxes,

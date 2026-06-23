@@ -619,7 +619,23 @@ export default function WarehousesPage() {
                           </button>
                           <button
                             title={active ? "Vô hiệu hóa" : "Kích hoạt"}
-                            onClick={() => setConfirmTarget(w)}
+                            onClick={() => {
+                              if (active) {
+                                const hasStock = w.inventories?.some(
+                                  (inv) => Number(inv.quantity ?? 0) > 0,
+                                );
+                                if (hasStock) {
+                                  toast({
+                                    title: "Không thể vô hiệu hóa",
+                                    description:
+                                      "Kho còn sản phẩm, hãy chuyển sản phẩm ra khỏi kho trước khi vô hiệu hóa",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                              }
+                              setConfirmTarget(w);
+                            }}
                             className={cn(
                               "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
                               active

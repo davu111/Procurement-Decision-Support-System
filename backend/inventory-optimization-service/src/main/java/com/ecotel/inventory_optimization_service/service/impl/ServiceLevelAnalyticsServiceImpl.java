@@ -156,7 +156,7 @@ public class ServiceLevelAnalyticsServiceImpl implements ServiceLevelAnalyticsSe
 
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             try {
-                var inventory = inventoryPlanningService.simulateInventoryAt(productId, date);
+                var inventory = inventoryPlanningService.simulateStockCountInventoryAt(productId, date);
                 if (inventory == null || inventory.signum() <= 0) {
                     stockoutDays++;
                 }

@@ -265,4 +265,22 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
         LIMIT 1
         """)
     Optional<InventoryParameter> findByParamReceipt(@Param("parameterId") Long parameterId);
+
+    /**
+     * Tìm kế hoạch bao phủ targetDate — dùng cho stock count simulation.
+     * Ưu tiên ACTIVE trước, nếu không có thì lấy SUPERSEDED.
+     * Không dùng findLatestActive vì plan ACTIVE hiện tại có thể bắt đầu sau targetDate.
+     */
+    @Query("""
+    SELECT p FROM InventoryParameter p
+    WHERE p.productId = :productId
+      AND p.planStartDate <= :targetDate
+      AND p.planEndDate   >= :targetDate
+    ORDER BY
+      CASE p.status WHEN 'ACTIVE' THEN 0 ELSE 1 END ASC,
+      p.planStartDate DESC
+""")
+    Optional<InventoryParameter> findCoveringPlan(
+            @Param("productId")  String productId,
+            @Param("targetDate") LocalDate targetDate);
 }

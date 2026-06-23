@@ -503,7 +503,7 @@ public class InventoryPlanningService {
      * Trả về null nếu không có kế hoạch ACTIVE nào.
      */
     public BigDecimal simulateStockCountInventoryAt(String productId, LocalDate targetDate) {
-        Optional<InventoryParameter> activeOpt = parameterRepository.findLatestActive(productId).stream().findFirst();
+        Optional<InventoryParameter> activeOpt = parameterRepository.findCoveringPlan(productId, targetDate);
         if (activeOpt.isEmpty()) return null;
 
         InventoryParameter active = activeOpt.get();
@@ -513,9 +513,14 @@ public class InventoryPlanningService {
         if (result == null) return null;
 
         LocalDate simStart = active.getScheduleStartDate();
+        // ── THÊM LOG NÀY ──
+        log.info("[STOCK_SIM] productId={} | simStart={} | targetDate={} | initialInventory={}",
+                productId, simStart, targetDate, active.getInitialInventory());
 
         // Nếu targetDate <= simStart → trả về tồn kho đầu kỳ
         if (!targetDate.isAfter(simStart)) {
+            log.info("[STOCK_SIM] → EARLY RETURN (targetDate <= simStart), trả về {}",
+                    active.getInitialInventory() != null ? active.getInitialInventory() : "reorderPointB");
             return active.getInitialInventory() != null
                     ? active.getInitialInventory()
                     : result.getReorderPointB();
@@ -541,6 +546,12 @@ public class InventoryPlanningService {
 
         List<OrderSchedule> schedules = scheduleRepository
                 .findByProductIdAndExpectedDeliveryDateBetween(productId, delivFrom, delivTo);
+
+        log.info("[STOCK_SIM] schedules found={}, delivWindow=[{}, {}]",
+                schedules.size(), delivFrom, delivTo);
+        if (!schedules.isEmpty()) {
+            schedules.forEach(s -> log.info("[STOCK_SIM]   → delivery={}", s.getExpectedDeliveryDate()));
+        }
 
         log.debug("simulateInventoryAt: productId={}, simStart={}, targetDate={}, "
                         + "tnDays={}, schedules={}, delivWindow=[{},{}]",

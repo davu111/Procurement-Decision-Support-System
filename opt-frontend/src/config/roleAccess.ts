@@ -16,11 +16,11 @@ export const ROUTE_ACCESS_CONFIG: RouteAccess[] = [
     roles: ["admin", "planning-manager", "warehouse-manager"],
   },
 
-  // Profile - all roles
+  // Employees - admin only
   {
-    path: "/profile",
-    label: "Hồ sơ",
-    roles: ["admin", "planning-manager", "warehouse-manager"],
+    path: "/employees",
+    label: "Nhân viên",
+    roles: ["admin"],
   },
 
   // Products - warehouse-manager, admin
@@ -64,11 +64,11 @@ export const ROUTE_ACCESS_CONFIG: RouteAccess[] = [
   },
 
   // Analytics - Service Level - warehouse-manager, admin
-  {
-    path: "/analytics/service-level",
-    label: "Phân tích Service Level",
-    roles: ["admin", "warehouse-manager"],
-  },
+  // {
+  //   path: "/analytics/service-level",
+  //   label: "Phân tích Service Level",
+  //   roles: ["admin", "warehouse-manager"],
+  // },
 
   // Warehouses - warehouse-manager, admin
   {
@@ -103,11 +103,11 @@ export const ROUTE_ACCESS_CONFIG: RouteAccess[] = [
     roles: ["admin", "warehouse-manager"],
   },
 
-  // Employees - admin only
+  // Profile - all roles
   {
-    path: "/employees",
-    label: "Nhân viên",
-    roles: ["admin"],
+    path: "/profile",
+    label: "Hồ sơ",
+    roles: ["admin", "planning-manager", "warehouse-manager"],
   },
 ];
 
