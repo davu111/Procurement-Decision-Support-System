@@ -9,6 +9,9 @@ import com.ecotel.employee_service.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +57,7 @@ public class EmployeeService {
      */
     public List<EmployeeResponse> getAllEmployeesFromDatabase() {
         return employeeRepository.findAll().stream()
+                .filter(employee -> !"admin".equalsIgnoreCase(employee.getRoleName()))
                 .map(this::mapToCombinedEmployeeResponse)
                 .collect(Collectors.toList());
     }
@@ -209,12 +213,13 @@ public class EmployeeService {
      */
     private void updateUserInKeycloak(String keycloakUserId, EmployeeRequest request, String roleName) {
         try {
-            // Update role
-            if (roleName != null) keycloakService.assignRoleToUser(keycloakUserId, roleName);
+            // Update role - xóa role cũ, gán role mới
+            if (roleName != null) {
+                keycloakService.updateUserRole(keycloakUserId, roleName);
+            }
 
             // Update custom attributes
             Map<String, List<String>> attributes = new HashMap<>();
-
             keycloakService.setUserAttributes(keycloakUserId, attributes);
 
             // Update cơ bản
@@ -232,6 +237,13 @@ public class EmployeeService {
     public Boolean deActive(String id) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Can not find employeeId to de active" + id));
+
+        // 0. Chặn tự xóa chính mình
+        String currentUserId = getCurrentUserId();
+        if (employee.getKeycloakUserId().equals(currentUserId)) {
+            throw new IllegalArgumentException("Bạn không thể tự xóa chính mình");
+        }
+
         employee.setStatus(EmployeeStatus.INACTIVE);
         employeeRepository.save(employee);
         return true;
@@ -253,17 +265,21 @@ public class EmployeeService {
      */
     @Transactional
     public void deleteEmployee(String employeeId) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new RuntimeException("Can not find employeeId to de active" + employeeId));
         log.info("Deleting employee: {}", employeeId);
 
-        // 1. Tìm employee
-        Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
+        // 0. Chặn tự xóa chính mình
+        String currentUserId = getCurrentUserId(); // lấy id user đang đăng nhập
+        if (employee.getKeycloakUserId().equals(currentUserId)) {
+            throw new IllegalArgumentException("Bạn không thể tự xóa chính mình");
+        }
 
         try {
-            // 2. Xóa khỏi database
+            // 1. Xóa khỏi database
             employeeRepository.delete(employee);
 
-            // 3. Xóa khỏi Keycloak
+            // 2. Xóa khỏi Keycloak
             keycloakService.deleteUser(employee.getKeycloakUserId());
 
             log.info("Successfully deleted employee: {}", employeeId);
@@ -272,6 +288,18 @@ public class EmployeeService {
             log.error("Error deleting employee: {}", e.getMessage());
             throw new RuntimeException("Failed to delete employee", e);
         }
+    }
+
+    private String getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new RuntimeException("Không xác định được người dùng hiện tại");
+        }
+        // Nếu principal là Jwt (resource server)
+        if (auth.getPrincipal() instanceof Jwt jwt) {
+            return jwt.getClaimAsString("sub"); // hoặc "sub", tùy claim bạn map
+        }
+        return auth.getName();
     }
 
     /**

@@ -3,18 +3,27 @@
 ############################
 # Stage 1 — Build
 ############################
-FROM maven:3.9.6-eclipse-temurin-21 AS builder
+FROM maven:3.9.8-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
-# Nếu có settings.xml (private repo) thì thêm
-# COPY settings.xml /root/.m2/settings.xml
+# Copy root pom trước để Maven nhận biết multi-module
+COPY pom.xml .
 
-# Copy toàn bộ project (QUAN TRỌNG)
-COPY . .
+# Copy pom của shared-library và transaction-service
+COPY shared-library/pom.xml ./shared-library/pom.xml
+COPY transaction-service/pom.xml ./transaction-service/pom.xml
 
-# Build luôn, KHÔNG resolve riêng
-RUN mvn -B package -DskipTests
+# Copy source shared-library và install vào local .m2
+COPY shared-library/src ./shared-library/src
+RUN mvn -B install -pl shared-library -am -DskipTests
+
+# Cache dependencies transaction-service
+RUN mvn -B dependency:go-offline -pl transaction-service
+
+# Build transaction-service
+COPY transaction-service/src ./transaction-service/src
+RUN mvn -B package -pl transaction-service -DskipTests
 
 ############################
 # Stage 2 — Runtime
@@ -26,7 +35,7 @@ RUN addgroup -S spring && adduser -S spring -G spring
 
 WORKDIR /app
 
-COPY --from=builder /app/target/*.jar app.jar
+COPY --from=builder /app/transaction-service/target/*.jar app.jar
 
 RUN chown -R spring:spring /app
 USER spring

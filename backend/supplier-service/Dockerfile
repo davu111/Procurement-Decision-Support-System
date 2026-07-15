@@ -10,20 +10,20 @@ WORKDIR /app
 # Copy root pom trước để Maven nhận biết multi-module
 COPY pom.xml .
 
-# Copy pom của shared-library và product-service
+# Copy pom của shared-library và supplier-service
 COPY shared-library/pom.xml ./shared-library/pom.xml
-COPY product-service/pom.xml ./product-service/pom.xml
+COPY supplier-service/pom.xml ./supplier-service/pom.xml
 
 # Copy source shared-library và install vào local .m2
 COPY shared-library/src ./shared-library/src
 RUN mvn -B install -pl shared-library -am -DskipTests
 
-# Cache dependencies product-service
-RUN mvn -B dependency:go-offline -pl product-service
+# Cache dependencies supplier-service
+RUN mvn -B dependency:go-offline -pl supplier-service
 
-# Build product-service
-COPY product-service/src ./product-service/src
-RUN mvn -B package -pl product-service -DskipTests
+# Build supplier-service
+COPY supplier-service/src ./supplier-service/src
+RUN mvn -B package -pl supplier-service -DskipTests
 
 ############################
 # Stage 2 — Runtime
@@ -35,15 +35,15 @@ RUN addgroup -S spring && adduser -S spring -G spring
 
 WORKDIR /app
 
-COPY --from=builder /app/product-service/target/*.jar app.jar
+COPY --from=builder /app/supplier-service/target/*.jar app.jar
 
 RUN chown -R spring:spring /app
 USER spring
 
-EXPOSE 8084
+EXPOSE 8086
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:8084/actuator/health || exit 1
+  CMD curl -f http://localhost:8086/actuator/health || exit 1
 
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75"
 

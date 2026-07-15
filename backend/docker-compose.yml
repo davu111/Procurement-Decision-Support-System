@@ -1,4 +1,5 @@
 services:
+
   # ==================== Keycloak Auth Service ====================
   keycloak-mysql:
     image: mysql:8.0.36
@@ -13,7 +14,7 @@ services:
     volumes:
       - keycloak_mysql_data:/var/lib/mysql
     networks:
-      - employee-network
+      - micro-net
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 20s
@@ -40,7 +41,7 @@ services:
       keycloak-mysql:
         condition: service_healthy
     networks:
-      - employee-network
+      - micro-net
 
   # ==================== Redis Cache ====================
   redis:
@@ -57,10 +58,81 @@ services:
       timeout: 3s
       retries: 5
 
-  # ==================== Inventory Optimization Service ====================
-  inventory_optimization_mysql:
+  # ==================== MinIO Object Storage ====================
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "8901:8901"   # API
+      - "8900:8900"   # Console UI
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-admin12345}
+    volumes:
+      - minio_data:/data
+    command: server /data --address ":8901" --console-address ":8900"
+    networks:
+      - micro-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8901/minio/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # ==================== LibreOffice Doc Converter ====================
+  doc-converter:
+    build:
+      context: ./transaction-service
+      dockerfile: Dockerfile.libreoffice
+    container_name: doc-converter
+    volumes:
+      - transaction_tmp:/tmp
+    tty: true
+    networks:
+      - micro-net
+
+  # ==================== Employee Service ====================
+  employee-mysql:
     image: mysql:8.0.36
-    container_name: inventory_optimization_mysql
+    container_name: employee-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${EMPLOYEE_MYSQL_DATABASE}
+    ports:
+      - "3343:3306"
+    volumes:
+      - employee_mysql_data:/var/lib/mysql
+    networks:
+      - micro-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  employee-service:
+    build:
+      context: .
+      dockerfile: employee-service/Dockerfile
+    container_name: employee-service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://employee-mysql:3306/${EMPLOYEE_MYSQL_DATABASE}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
+    depends_on:
+      employee-mysql:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks:
+      - micro-net
+
+  # ==================== Inventory Optimization Service ====================
+  inventory-optimization-mysql:
+    image: mysql:8.0.36
+    container_name: inventory-optimization-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${INVENTORY_OPTIMIZATION_MYSQL_DATABASE}
@@ -76,103 +148,35 @@ services:
       retries: 10
 
   inventory-optimization-service:
-    build: ./inventory-optimization-service
+    build:
+      context: .
+      dockerfile: inventory-optimization-service/Dockerfile
     container_name: inventory-optimization-service
     ports:
       - "8091:8091"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://inventory_optimization_mysql:3306/${INVENTORY_OPTIMIZATION_MYSQL_DATABASE}
+      SPRING_DATASOURCE_URL: jdbc:mysql://inventory-optimization-mysql:3306/${INVENTORY_OPTIMIZATION_MYSQL_DATABASE}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      PLAN_SERVICE_URL: http://plan-service:8081/api
+      PRODUCT_SERVICE_URL: http://product-service:8084/api
       EMPLOYEE_SERVICE_URL: http://employee-service:8083/api
-      VEHICLE_SERVICE_URL: http://vehicle-service:8080/api
+      WAREHOUSE_SERVICE_URL: http://warehouse-service:8082/api
+      SUPPLIER_SERVICE_URL: http://supplier-service:8086/api
+      TRANSACTION_SERVICE_URL: http://transaction-service:8085/api
     depends_on:
-      camera_mysql:
+      inventory-optimization-mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
       - micro-net
 
-  # ==================== Employee Service ====================
-  employee_mysql:
-    image: mysql:8.0.36
-    container_name: employee_mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${EMPLOYEE_MYSQL_DATABASE}
-    ports:
-      - "3343:3306"
-    volumes:
-      - employee_mysql_data:/var/lib/mysql
-    networks:
-      - employee-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
-
-  employee-service:
-    build: ./employee-service
-    container_name: employee-service
-    ports:
-      - "8083:8083"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://employee_mysql:3306/${EMPLOYEE_MYSQL_DATABASE}
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      KEYCLOAK_SERVER_URL: http://keycloak:8080
-    depends_on:
-      employee_mysql:
-        condition: service_healthy
-      keycloak:
-        condition: service_started
-    networks:
-      - employee-network
-
-  # ==================== Plan Service ====================
-  plan_mysql:
-    image: mysql:8.0.36
-    container_name: plan_mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${PLAN_MYSQL_DATABASE}
-    ports:
-      - "3341:3306"
-    volumes:
-      - plan_mysql_data:/var/lib/mysql
-    networks:
-      - micro-net
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
-
-  plan-service:
-    build: ./plan-service
-    container_name: plan-service
-    ports:
-      - "8081:8081"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://plan_mysql:3306/${PLAN_MYSQL_DATABASE}
-      DRIVER_SERVICE_URL: http://localhost:8080/api
-      PRODUCT_SERVICE_URL: http://localhost:8084/api
-      WAREHOUSE_SERVICE_URL: http://localhost:8082/api
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    depends_on:
-      plan_mysql:
-        condition: service_healthy
-    networks:
-      - micro-net
-
   # ==================== Product Service ====================
-  product_mysql:
+  product-mysql:
     image: mysql:8.0.36
-    container_name: product_mysql
+    container_name: product-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${PRODUCT_MYSQL_DATABASE}
@@ -188,24 +192,66 @@ services:
       retries: 10
 
   product-service:
-    build: ./product-service
+    build:
+      context: .
+      dockerfile: product-service/Dockerfile
     container_name: product-service
     ports:
       - "8084:8084"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://product_mysql:3306/${PRODUCT_MYSQL_DATABASE}
+      SPRING_DATASOURCE_URL: jdbc:mysql://product-mysql:3306/${PRODUCT_MYSQL_DATABASE}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MINIO_ENDPOINT: http://minio:8901
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-admin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-admin12345}
+    depends_on:
+      product-mysql:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - micro-net
+
+  # ==================== Supplier Service ====================
+  supplier-mysql:
+    image: mysql:8.0.36
+    container_name: supplier-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${SUPPLIER_MYSQL_DATABASE:-supplier_db}
+    ports:
+      - "3347:3306"
+    volumes:
+      - supplier_mysql_data:/var/lib/mysql
+    networks:
+      - micro-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  supplier-service:
+    build:
+      context: .
+      dockerfile: supplier-service/Dockerfile
+    container_name: supplier-service
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://supplier-mysql:3306/${SUPPLIER_MYSQL_DATABASE:-supplier_db}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     depends_on:
-      product_mysql:
+      supplier-mysql:
         condition: service_healthy
     networks:
       - micro-net
 
   # ==================== Transaction Service ====================
-  transaction_mysql:
+  transaction-mysql:
     image: mysql:8.0.36
-    container_name: transaction_mysql
+    container_name: transaction-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${TRANSACTION_MYSQL_DATABASE}
@@ -221,57 +267,31 @@ services:
       retries: 10
 
   transaction-service:
-    build: ./transaction-service
+    build:
+      context: .
+      dockerfile: transaction-service/Dockerfile
     container_name: transaction-service
     ports:
       - "8085:8085"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://transaction_mysql:3306/${TRANSACTION_MYSQL_DATABASE}
+      SPRING_DATASOURCE_URL: jdbc:mysql://transaction-mysql:3306/${TRANSACTION_MYSQL_DATABASE}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      DOC_CONVERTER_HOST: doc-converter
     depends_on:
-      transaction_mysql:
+      transaction-mysql:
         condition: service_healthy
+      doc-converter:
+        condition: service_started
     networks:
       - micro-net
-
-  # ==================== Vehicle Service ====================
-  vehicle_mysql:
-    image: mysql:8.0.36
-    container_name: vehicle_mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${VEHICLE_MYSQL_DATABASE}
-    ports:
-      - "3340:3306"
     volumes:
-      - vehicle_mysql_data:/var/lib/mysql
-    networks:
-      - micro-net
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
-
-  vehicle-service:
-    build: ./vehicle-service
-    container_name: vehicle-service
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://vehicle_mysql:3306/${VEHICLE_MYSQL_DATABASE}
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    depends_on:
-      vehicle_mysql:
-        condition: service_healthy
-    networks:
-      - micro-net
+      - transaction_tmp:/tmp
 
   # ==================== Warehouse Service ====================
-  warehouse_mysql:
+  warehouse-mysql:
     image: mysql:8.0.36
-    container_name: warehouse_mysql
+    container_name: warehouse-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${WAREHOUSE_MYSQL_DATABASE}
@@ -287,56 +307,62 @@ services:
       retries: 10
 
   warehouse-service:
-    build: ./warehouse-service
+    build:
+      context: .
+      dockerfile: warehouse-service/Dockerfile
     container_name: warehouse-service
     ports:
       - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://warehouse_mysql:3306/${WAREHOUSE_MYSQL_DATABASE}
+      SPRING_DATASOURCE_URL: jdbc:mysql://warehouse-mysql:3306/${WAREHOUSE_MYSQL_DATABASE}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_ROOT_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     depends_on:
-      warehouse_mysql:
+      warehouse-mysql:
         condition: service_healthy
     networks:
       - micro-net
 
   # ==================== API Gateway ====================
   api-gateway:
-    build: ./api-gateway-viet-bac
+    build:
+      context: .
+      dockerfile: api-gateway-viet-bac/Dockerfile
     container_name: api-gateway
     ports:
       - "9000:9000"
     environment:
-      KEYCLOAK_SERVER_URL: http://keycloak:8180
-      CAMERA_SERVICE_URL: http://camera-service:8091
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
       EMPLOYEE_SERVICE_URL: http://employee-service:8083
       PRODUCT_SERVICE_URL: http://product-service:8084
-      PLAN_SERVICE_URL: http://plan-service:8081
       TRANSACTION_SERVICE_URL: http://transaction-service:8085
-      VEHICLE_SERVICE_URL: http://vehicle-service:8080
+      SUPPLIER_SERVICE_URL: http://supplier-service:8086
       WAREHOUSE_SERVICE_URL: http://warehouse-service:8082
-      CAMERA_SERVICE_WS_URL: ws://camera-service:8091
-      FRONTEND_URL: http://localhost:5173
+      INVENTORY_OPTIMIZATION_SERVICE_URL: http://inventory-optimization-service:8091
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+    depends_on:
+      - keycloak
+      - employee-service
+      - product-service
+      - transaction-service
+      - supplier-service
+      - warehouse-service
+      - inventory-optimization-service
     networks:
       - micro-net
-      - employee-network
-    extra_hosts:
-      - "camera-service:host-gateway"
 
 volumes:
   keycloak_mysql_data:
-  camera_mysql_data:
   redis_data:
+  minio_data:
   employee_mysql_data:
-  plan_mysql_data:
+  inventory_optimization_mysql_data:
   product_mysql_data:
+  supplier_mysql_data:
   transaction_mysql_data:
-  vehicle_mysql_data:
+  transaction_tmp:
   warehouse_mysql_data:
 
 networks:
   micro-net:
-    driver: bridge
-  employee-network:
     driver: bridge

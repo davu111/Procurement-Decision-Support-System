@@ -40,7 +40,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                                 .requestMatchers(SWAGGER_WHITELIST).permitAll()
                                 .requestMatchers(PUBLIC_ENDPOINT).permitAll()
-                                .requestMatchers("/api/employees/*").hasAnyRole("warehouse-manager", "planning-manager", "admin")
+                                .requestMatchers("/api/employees", "/api/employees/**", "/api/roles", "/api/roles/**").hasAnyRole("admin-manager", "admin", "warehouse-manager", "planning-manager")
                                 .anyRequest().hasRole("admin")
 //                                .anyRequest().permitAll() // test
                 )

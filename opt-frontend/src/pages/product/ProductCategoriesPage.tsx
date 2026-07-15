@@ -83,7 +83,7 @@ export default function ProductCategoriesPage() {
     setLoading(true);
     try {
       const data = await productCategoryApi.getAll();
-      console.log("Loaded categories:", data);
+      // console.log("Loaded categories:", data);
       setCategories(data ?? []);
     } catch (e) {
       toast({

@@ -155,7 +155,7 @@ export default function WarehousesPage() {
     setLoading(true);
     try {
       const data = await warehouseApi.getFullInfo();
-      console.log("Loaded warehouses:", data);
+      // console.log("Loaded warehouses:", data);
       setWarehouses(data ?? []);
       if (!selectedId && data?.length) setSelectedId(data[0].id);
     } catch (e) {
@@ -228,7 +228,7 @@ export default function WarehousesPage() {
     setDialogOpen(true);
 
     // Load warehouse config if configId exists
-    console.log("Warehouse selected: ", w);
+    // console.log("Warehouse selected: ", w);
     if (w.configId) {
       loadWarehouseConfig(w.configId);
     }
@@ -384,7 +384,7 @@ export default function WarehousesPage() {
         workType: transferType,
         productQuantities,
       });
-      const tx = transactionApi.create({
+      const tx = await transactionApi.create({
         warehouseId: transferWarehouse.id,
         workType: transferType,
         inOutDetails,
@@ -405,9 +405,8 @@ export default function WarehousesPage() {
       setReportLoading(true);
       try {
         // 3. Generate report -> fileId
-        const fileId = await transactionApi.generateReport(
-          String((await tx).id),
-        );
+        const fileId = await transactionApi.generateReport(String(tx.id));
+
         // 4. Lấy URL view + download song song
         const [viewUrl, downloadUrl] = await Promise.all([
           fileApi.getViewUrl(fileId),

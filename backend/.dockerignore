@@ -1,0 +1,12 @@
+**/target/
+**/.mvn/
+**/.git/
+**/.gitignore
+**/.idea/
+**/*.log
+**/tmp/
+**/.env
+**/mvnw
+**/mvnw.cmd
+**/*.md
+**/HELP.md

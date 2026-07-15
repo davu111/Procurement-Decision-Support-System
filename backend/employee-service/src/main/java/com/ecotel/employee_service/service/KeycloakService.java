@@ -250,6 +250,51 @@ public class KeycloakService {
     }
 
     /**
+     * Cập nhật role cho user: xóa toàn bộ role cũ (trừ default roles) rồi gán role mới
+     */
+    public void updateUserRole(String userId, String newRoleName) {
+        try {
+            RealmResource realmResource = keycloak.realm(realm);
+            UserResource userResource = realmResource.users().get(userId);
+
+            // Lấy danh sách role hiện tại của user (chỉ role được gán trực tiếp, không phải effective/composite)
+            List<RoleRepresentation> currentRoles = userResource.roles().realmLevel().listAll();
+
+            // Lọc bỏ các default role của Keycloak (không được xóa)
+            List<RoleRepresentation> rolesToRemove = currentRoles.stream()
+                    .filter(role -> !isDefaultRole(role.getName()))
+                    .collect(Collectors.toList());
+
+            // Xóa các role cũ nếu có
+            if (!rolesToRemove.isEmpty()) {
+                userResource.roles().realmLevel().remove(rolesToRemove);
+                log.info("Removed old roles {} from user {}",
+                        rolesToRemove.stream().map(RoleRepresentation::getName).collect(Collectors.toList()),
+                        userId);
+            }
+
+            // Gán role mới
+            RoleRepresentation newRole = realmResource.roles().get(newRoleName).toRepresentation();
+            userResource.roles().realmLevel().add(Collections.singletonList(newRole));
+
+            log.info("Successfully updated role of user {} to {}", userId, newRoleName);
+
+        } catch (Exception e) {
+            log.error("Error updating role for user {}: {}", userId, e.getMessage());
+            throw new RuntimeException("Failed to update user role", e);
+        }
+    }
+
+    /**
+     * Kiểm tra role có phải default role của Keycloak không (default-roles-{realm}, offline_access, uma_authorization,...)
+     */
+    private boolean isDefaultRole(String roleName) {
+        return roleName.startsWith("default-roles-")
+                || roleName.equals("offline_access")
+                || roleName.equals("uma_authorization");
+    }
+
+    /**
      * Set custom attributes cho user
      */
     public void setUserAttributes(String userId, Map<String, List<String>> attributes) {

@@ -37,7 +37,7 @@ const queryClient = new QueryClient();
 // Route Guard Component
 const RouteGuard = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const { roles, isLoading } = useAuth();
+  const { roles, isLoading, logout } = useAuth();
 
   if (isLoading) {
     return (
@@ -56,11 +56,13 @@ const RouteGuard = ({ children }: { children: React.ReactNode }) => {
         <div className="flex flex-col items-center gap-4 text-center">
           <Lock className="h-12 w-12 text-red-500" />
           <h1 className="text-2xl font-bold text-gray-900">
-            Truy cập bị từ chối
+            Truy cập bị từ chối {userRole}
           </h1>
           <p className="text-gray-600">Bạn không có quyền truy cập trang này</p>
           <button
-            onClick={() => (window.location.href = "/")}
+            onClick={() => {
+              logout();
+            }}
             className="mt-4 px-6 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
           >
             Về Trang chủ

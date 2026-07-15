@@ -36,6 +36,8 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { isCurrentUserEmployee } from "@/utils/employeeUtils";
 
 // Roles to exclude from list
 const EXCLUDED_ROLES = [
@@ -46,7 +48,7 @@ const EXCLUDED_ROLES = [
 
 // Role name mapping to Vietnamese
 const ROLE_NAME_MAP: Record<string, string> = {
-  admin: "Quản trị viên",
+  "admin-manager": "Quản trị viên",
   "planning-manager": "Quản lý kế hoạch",
   "warehouse-manager": "Quản lý kho hàng",
 };
@@ -72,6 +74,7 @@ const emptyForm: EmployeeRequest = {
 export default function EmployeesPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { userInfo } = useAuth();
   const [search, setSearch] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -189,6 +192,8 @@ export default function EmployeesPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
 
   const activeCount = employees.filter((s) => s.status === "ACTIVE").length;
+  const currentUsername =
+    userInfo?.preferred_username || userInfo?.username || null;
 
   return (
     <div className="space-y-6">
@@ -283,80 +288,115 @@ export default function EmployeesPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((s) => (
-                <TableRow
-                  key={s.id}
-                  className={cn(
-                    "hover:bg-gray-50/50",
-                    s.status !== "ACTIVE" && "opacity-60",
-                  )}
-                >
-                  <TableCell className="font-semibold text-gray-900">
-                    {s.firstName} {s.lastName}
-                  </TableCell>
-                  <TableCell className="text-gray-600 font-mono text-sm">
-                    {s.username}
-                  </TableCell>
-                  <TableCell className="text-gray-600">
-                    {getRoleDisplayName(s.roleName)}
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full",
-                        s.status === "ACTIVE"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                          : "bg-gray-100 text-gray-400 border border-gray-200",
-                      )}
-                    >
+              filtered.map((s) => {
+                const isSelf = isCurrentUserEmployee(s, currentUsername);
+
+                return (
+                  <TableRow
+                    key={s.id}
+                    className={cn(
+                      "hover:bg-gray-50/50",
+                      s.status !== "ACTIVE" && "opacity-60",
+                    )}
+                  >
+                    <TableCell className="font-semibold text-gray-900">
+                      {s.firstName} {s.lastName}
+                    </TableCell>
+                    <TableCell className="text-gray-600 font-mono text-sm">
+                      {s.username}
+                    </TableCell>
+                    <TableCell className="text-gray-600">
+                      {getRoleDisplayName(s.roleName)}
+                    </TableCell>
+                    <TableCell>
                       <span
                         className={cn(
-                          "w-1.5 h-1.5 rounded-full",
+                          "inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full",
                           s.status === "ACTIVE"
-                            ? "bg-emerald-500"
-                            : "bg-gray-300",
-                        )}
-                      />
-                      {s.status === "ACTIVE" ? "Hoạt động" : "Vô hiệu"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-0.5">
-                      <button
-                        onClick={() => openEdit(s)}
-                        title="Sửa"
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() =>
-                          s.status === "ACTIVE"
-                            ? deactivateMut.mutate(s.id)
-                            : activateMut.mutate(s.id)
-                        }
-                        title={
-                          s.status === "ACTIVE"
-                            ? "Vô hiệu hóa"
-                            : "Kích hoạt lại"
-                        }
-                        className={cn(
-                          "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                          s.status === "ACTIVE"
-                            ? "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                            : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50",
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                            : "bg-gray-100 text-gray-400 border border-gray-200",
                         )}
                       >
-                        {s.status === "ACTIVE" ? (
-                          <PowerOff className="h-3.5 w-3.5" />
-                        ) : (
-                          <Power className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                        <span
+                          className={cn(
+                            "w-1.5 h-1.5 rounded-full",
+                            s.status === "ACTIVE"
+                              ? "bg-emerald-500"
+                              : "bg-gray-300",
+                          )}
+                        />
+                        {s.status === "ACTIVE" ? "Hoạt động" : "Vô hiệu"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-0.5">
+                        <button
+                          onClick={() => {
+                            if (isSelf) {
+                              toast.error(
+                                "Bạn không thể chỉnh sửa thông tin của chính mình",
+                              );
+                              return;
+                            }
+
+                            openEdit(s);
+                          }}
+                          title={
+                            isSelf
+                              ? "Không thể chỉnh sửa thông tin của chính mình"
+                              : "Sửa"
+                          }
+                          disabled={isSelf}
+                          className={cn(
+                            "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                            isSelf
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-gray-400 hover:text-primary hover:bg-primary/10",
+                          )}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (isCurrentUserEmployee(s, currentUsername)) {
+                              toast.error(
+                                "Bạn không thể thay đổi trạng thái của chính mình",
+                              );
+                              return;
+                            }
+
+                            s.status === "ACTIVE"
+                              ? deactivateMut.mutate(s.id)
+                              : activateMut.mutate(s.id);
+                          }}
+                          title={
+                            isSelf
+                              ? "Không thể thay đổi trạng thái của chính mình"
+                              : s.status === "ACTIVE"
+                                ? "Vô hiệu hóa"
+                                : "Kích hoạt lại"
+                          }
+                          disabled={isSelf}
+                          className={cn(
+                            "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                            isSelf
+                              ? "text-gray-300 cursor-not-allowed"
+                              : s.status === "ACTIVE"
+                                ? "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                                : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50",
+                          )}
+                        >
+                          {s.status === "ACTIVE" ? (
+                            <PowerOff className="h-3.5 w-3.5" />
+                          ) : (
+                            <Power className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

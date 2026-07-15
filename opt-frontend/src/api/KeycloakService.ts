@@ -6,7 +6,12 @@ import {
 } from "../config/keycloak.config";
 
 // Valid roles that should be used
-const VALID_ROLES = ["admin", "warehouse-manager", "planning-manager"];
+const VALID_ROLES = [
+  "admin",
+  "warehouse-manager",
+  "planning-manager",
+  "admin-manager",
+] as const;
 
 // Roles to exclude
 const EXCLUDED_ROLES = [
@@ -14,6 +19,14 @@ const EXCLUDED_ROLES = [
   "uma_authorization",
   "default-roles-optimization",
 ];
+
+export const filterRoles = (roles: string[]): string[] => {
+  return roles.filter(
+    (role) =>
+      !EXCLUDED_ROLES.includes(role) &&
+      VALID_ROLES.includes(role as (typeof VALID_ROLES)[number]),
+  );
+};
 
 class KeycloakService {
   private static instance: KeycloakService;
@@ -76,12 +89,10 @@ class KeycloakService {
     const allRoles = [...realmRoles, ...clientRoles];
 
     // Filter: Remove excluded roles, keep only valid application roles
-    const filteredRoles = allRoles.filter(
-      (role) => !EXCLUDED_ROLES.includes(role) && VALID_ROLES.includes(role),
-    );
+    const filteredRoles = filterRoles(allRoles);
 
-    console.log("All roles from token:", allRoles);
-    console.log("Filtered valid roles:", filteredRoles);
+    // console.log("All roles from token:", allRoles);
+    // console.log("Filtered valid roles:", filteredRoles);
 
     return filteredRoles;
   }

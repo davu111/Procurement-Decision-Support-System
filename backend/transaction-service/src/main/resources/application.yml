@@ -45,6 +45,7 @@ app:
     path: output/
 minio:
   url: http://localhost:8901
+  public-url: http://localhost:8901
   access-key: admin
   secret-key: admin12345
   bucket: transactionfiles

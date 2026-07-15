@@ -20,7 +20,8 @@ import {
 
 // Role name mapping to Vietnamese
 const ROLE_NAME_MAP: Record<string, string> = {
-  admin: "Quản trị viên",
+  admin: "Quản trị hệ thống",
+  "admin-manager": "Quản trị viên",
   "planning-manager": "Quản lý kế hoạch",
   "warehouse-manager": "Quản lý kho hàng",
 };

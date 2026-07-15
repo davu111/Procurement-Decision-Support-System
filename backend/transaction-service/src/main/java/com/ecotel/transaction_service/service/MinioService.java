@@ -23,6 +23,12 @@ public class MinioService {
     @Value("${minio.bucket}")
     private String bucketName;
 
+    @Value("${minio.url}")
+    private String minioInternalUrl;
+
+    @Value("${minio.public-url}")
+    private String minioPublicUrl;
+
     /**
      * Kiểm tra và tạo bucket nếu chưa tồn tại
      */
@@ -101,8 +107,24 @@ public class MinioService {
      * @param expiry     Thời gian hết hạn (giây), mặc định 7 ngày
      * @return Presigned URL
      */
+    /**
+     * Thay thế internal URL bằng public URL trong presigned URL.
+     * MinIO SDK luôn sinh URL dựa trên endpoint khi khởi tạo client.
+     * Nếu public-url khác internal url, ta cần rewrite lại để browser có thể truy cập.
+     */
+    private String toPublicUrl(String presignedUrl) {
+        if (presignedUrl == null) return null;
+        String normalizedInternal = minioInternalUrl.endsWith("/")
+                ? minioInternalUrl.substring(0, minioInternalUrl.length() - 1)
+                : minioInternalUrl;
+        String normalizedPublic = minioPublicUrl.endsWith("/")
+                ? minioPublicUrl.substring(0, minioPublicUrl.length() - 1)
+                : minioPublicUrl;
+        return presignedUrl.replace(normalizedInternal, normalizedPublic);
+    }
+
     public String getPresignedUrl(String objectName, int expiry) throws Exception {
-        return minioClient.getPresignedObjectUrl(
+        String url = minioClient.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
                         .method(io.minio.http.Method.GET)
                         .bucket(bucketName)
@@ -110,6 +132,7 @@ public class MinioService {
                         .expiry(expiry) // seconds
                         .build()
         );
+        return toPublicUrl(url);
     }
 
     /**
@@ -123,7 +146,7 @@ public class MinioService {
      * Lấy presigned URL để XEM file (inline - hiển thị trên browser)
      */
     public String getViewUrl(String objectName, int expiry) throws Exception {
-        return minioClient.getPresignedObjectUrl(
+        String url = minioClient.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
                         .method(io.minio.http.Method.GET)
                         .bucket(bucketName)
@@ -132,6 +155,7 @@ public class MinioService {
                         // KHÔNG có response-content-disposition
                         .build()
         );
+        return toPublicUrl(url);
     }
 
     /**
@@ -142,7 +166,7 @@ public class MinioService {
         reqParams.put("response-content-disposition",
                 "attachment; filename=\"" + objectName + "\"");
 
-        return minioClient.getPresignedObjectUrl(
+        String url = minioClient.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
                         .method(io.minio.http.Method.GET)
                         .bucket(bucketName)
@@ -151,6 +175,7 @@ public class MinioService {
                         .extraQueryParams(reqParams)  // Có attachment header
                         .build()
         );
+        return toPublicUrl(url);
     }
 
     /**

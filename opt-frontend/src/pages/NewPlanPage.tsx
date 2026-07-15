@@ -33,12 +33,20 @@ import {
   PlusCircle,
   XCircle,
   Shield,
+  Building2,
+  Receipt,
+  Tag,
+  Clock,
 } from "lucide-react";
 import ProductSelector from "@/components/product/ProductSelector";
 import SupplierReliabilityPanel from "@/components/inventory/SupplierReliabilityPanel";
 import { formatCurrency, formatNumber, formatDate } from "@/utils/helpers";
 import inventoryApi from "@/api/axiosConfig";
-import type { ForecastSuggestion, InventoryResult, SupplierReliability } from "@/types";
+import type {
+  ForecastSuggestion,
+  InventoryResult,
+  SupplierReliability,
+} from "@/types";
 import type { OrderSchedule } from "@/types/inventory-opt/order-schedule";
 import { toast } from "sonner";
 
@@ -163,12 +171,16 @@ export default function NewPlanPage() {
   const [loadingInventory, setLoadingInventory] = useState(false);
 
   // ── Supplier reliability ────────────────────────────────────────────────────
-  const [reliability, setReliability] = useState<SupplierReliability | null>(null);
+  const [reliability, setReliability] = useState<SupplierReliability | null>(
+    null,
+  );
   const [loadingReliability, setLoadingReliability] = useState(false);
 
   // ── Lead time source ───────────────────────────────────────────────────────
   // "COMMITTED" | "FORECAST" | "MANUAL"
-  const [leadTimeSource, setLeadTimeSource] = useState<"COMMITTED" | "FORECAST" | "MANUAL">("COMMITTED");
+  const [leadTimeSource, setLeadTimeSource] = useState<
+    "COMMITTED" | "FORECAST" | "MANUAL"
+  >("COMMITTED");
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const selectedProduct = productId
@@ -379,9 +391,12 @@ export default function NewPlanPage() {
     };
   }, [flowMode, resolvedPeriod, productId]);
 
-  // ── AI Suggest ─────────────────────────────────────────────────────────────
-  const handleGetSuggestion = () => {
-    if (!productId) return;
+  // ── Auto fetch suggestion when productId changes ───────────────────────────
+  useEffect(() => {
+    if (!productId) {
+      setSuggestion(null);
+      return;
+    }
     setLoadingSuggestion(true);
     setSuggestion(null);
 
@@ -390,16 +405,23 @@ export default function NewPlanPage() {
       .then((res: any) => {
         const data = res.data;
         setSuggestion(data);
-        // suggestedQ từ API là Q/tháng → nhân monthCount ra Q tổng kỳ
-        if (data?.suggestedQ != null) {
-          setDemandQ(
-            String(Math.round(data.suggestedQ * monthCount * 100) / 100),
-          );
-        }
       })
-      .catch(() => {})
+      .catch(() => {
+        setSuggestion(null);
+      })
       .finally(() => setLoadingSuggestion(false));
-  };
+  }, [productId]);
+
+  // ── Update demandQ when suggestion or period changes ───────────────────────
+  useEffect(() => {
+    if (suggestion?.suggestedQ != null) {
+      setDemandQ(
+        String(Math.round(suggestion.suggestedQ * monthCount * 100) / 100),
+      );
+    } else {
+      setDemandQ("");
+    }
+  }, [suggestion, monthCount]);
 
   // ── Luồng A: submit → check-overlap ───────────────────────────────────────
   const handleSubmit = async () => {
@@ -431,7 +453,7 @@ export default function NewPlanPage() {
 
   // ── Luồng B: replan ────────────────────────────────────────────────────────
   const handleReplan = async () => {
-    console.log("Replan payload:");
+    // console.log("Replan payload:");
     if (!canSubmit || !resolvedPeriod) return;
 
     const firstPendingReceipt = predictedData?.pendingReceipts?.[0];
@@ -482,7 +504,7 @@ export default function NewPlanPage() {
       demandQ: parseFloat(demandQ),
       storageCostCoefficientI: parseFloat(storageI),
       initialInventory: inventory,
-      leadTimeSource,  // truyền nguồn lead time lên backend
+      leadTimeSource, // truyền nguồn lead time lên backend
     };
   }
 
@@ -507,8 +529,8 @@ export default function NewPlanPage() {
   }
 
   async function fetchSchedules(resultId?: number) {
-    console.log("Resolved period:", resolvedPeriod);
-    console.log("Calc result:", calcResult);
+    // console.log("Resolved period:", resolvedPeriod);
+    // console.log("Calc result:", calcResult);
     if (!resolvedPeriod) return;
     try {
       const res = await inventoryApi.get(`/order-schedules/result/${resultId}`);
@@ -721,26 +743,17 @@ export default function NewPlanPage() {
           </div>
         )}
 
-        {/* AI Suggest — chỉ cần productId, không cần period */}
-        {productId && (
-          <Button
-            onClick={handleGetSuggestion}
-            disabled={loadingSuggestion}
-            variant="outline"
-            className="gap-2"
-          >
-            {loadingSuggestion ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )}
-            Thông tin nhà cung cấp
-          </Button>
+        {/* Loading suggestion */}
+        {loadingSuggestion && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted rounded-md px-3 py-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+            Đang tải nhu cầu dự báo & thông tin nhà cung cấp...
+          </div>
         )}
       </div>
 
       {/* ── Supplier Reliability Panel — tự động khi chọn sản phẩm ────────────── */}
-      {productId && (
+      {/* {productId && (
         <div className="space-y-2">
           {loadingReliability && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -755,16 +768,18 @@ export default function NewPlanPage() {
             />
           )}
         </div>
-      )}
+      )} */}
 
-      {/* ── AI Suggestion panel ───────────────────────────────────────────────── */}
+      {/* ── Supplier information panel ───────────────────────────────────────────────── */}
       {suggestion && (
-        <div className="bg-card border rounded-lg p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            {/* <h2 className="font-semibold text-foreground">Gợi ý từ AI</h2> */}
-            <Badge className="bg-status-success text-destructive-foreground">
-              Thông tin nhà cung cấp ✓
-            </Badge>
+        <div className="bg-gradient-to-br from-card to-muted/20 border rounded-xl p-6 shadow-sm space-y-5">
+          <div className="flex items-center justify-between border-b pb-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-lg text-foreground">
+                Thông tin & Đề xuất Nhà cung cấp
+              </h3>
+            </div>
           </div>
 
           {suggestion.requiresManualInput && (
@@ -785,11 +800,14 @@ export default function NewPlanPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
             {[
-              { label: "Nhà cung cấp", value: suggestion.supplierName },
               {
-                label: `Q đề xuất / tháng (${suggestion.demandForecast?.modelUsed})`,
+                label: "Nhà cung cấp",
+                value: suggestion.supplierName,
+              },
+              {
+                label: `Q đề xuất / tháng (${suggestion.demandForecast?.modelUsed || "AI"})`,
                 value: `${formatNumber(suggestion.suggestedQ)} ${selectedProduct?.unit ?? ""}`,
               },
               {
@@ -805,23 +823,32 @@ export default function NewPlanPage() {
                 value: `${formatCurrency(suggestion.currentUnitPriceC)} VNĐ/${selectedProduct?.unit ?? ""}`,
               },
               {
-                label: "L (lead time)",
+                label: "L (lead time cam kết)",
                 value: `${suggestion.currentLeadTimeDays} ngày`,
               },
             ].map((item) => (
-              <div key={item.label} className="bg-muted rounded-md p-3">
-                <p className="text-muted-foreground">{item.label}</p>
-                <p className="font-mono font-medium text-foreground">
-                  {item.value}
-                </p>
+              <div
+                key={item.label}
+                className="bg-background border border-border/60 rounded-xl p-4 flex flex-col justify-between space-y-2 hover:shadow-md transition-all duration-200"
+              >
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="font-medium text-xs tracking-wide uppercase">
+                    {item.label}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-mono text-base font-bold text-foreground">
+                    {item.value}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
 
           {/* Lead time source selector */}
           {canUseForecastLeadTime && (
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
+            <div className="space-y-2 border-t pt-4">
+              <Label className="flex items-center gap-1.5 font-medium text-foreground">
                 <Shield className="h-4 w-4 text-primary" />
                 Nguồn lead time để tính kế hoạch
               </Label>
@@ -836,20 +863,19 @@ export default function NewPlanPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="COMMITTED">
-                    Cam kết NCC ({suggestion.currentLeadTimeDays} ngày) —
-                    mặc định
+                    Cam kết NCC ({suggestion.currentLeadTimeDays} ngày) — mặc
+                    định
                   </SelectItem>
                   <SelectItem value="FORECAST">
-                    Dự báo WMA (
-                    {reliability?.forecastLeadTimeDays?.toFixed(1)} ngày) —
-                    theo lịch sử thực tế
+                    Dự báo WMA ({reliability?.forecastLeadTimeDays?.toFixed(1)}{" "}
+                    ngày) — theo lịch sử thực tế
                   </SelectItem>
                 </SelectContent>
               </Select>
               {leadTimeSource === "FORECAST" && (
                 <p className="text-xs text-muted-foreground">
-                  Hệ thống sẽ dùng lead time dự báo từ WMA thay cho cam kết
-                  nhà cung cấp để tính toán kế hoạch.
+                  Hệ thống sẽ dùng lead time dự báo từ WMA thay cho cam kết nhà
+                  cung cấp để tính toán kế hoạch.
                 </p>
               )}
             </div>

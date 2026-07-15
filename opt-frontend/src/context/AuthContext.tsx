@@ -48,11 +48,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
         setUserInfo(info);
         setRoles(userRoles);
-        console.log("=== Auth Debug Info ===");
-        console.log("User Info:", info);
-        console.log("User Roles:", userRoles);
-        console.log("Token:", keycloakService.getToken());
-        console.log("=======================");
+        // console.log("=== Auth Debug Info ===");
+        // console.log("User Info:", info);
+        // console.log("User Roles:", userRoles);
+        // console.log("Token:", keycloakService.getToken());
+        // console.log("=======================");
       }
     } catch (error) {
       console.error("Auth init failed", error);

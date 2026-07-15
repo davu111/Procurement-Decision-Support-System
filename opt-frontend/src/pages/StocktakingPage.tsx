@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Plus, AlertTriangle, Check, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import {
+  Plus,
+  AlertTriangle,
+  Check,
+  Loader2,
+  CalendarIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -22,6 +29,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -42,10 +55,11 @@ import { stocktakingApi } from "@/api/stocktakingApi";
 import { employeeApi, EmployeeResponse } from "@/api/employeeApi";
 import type { StockCount } from "@/types/inventory-opt/StockCount";
 import KpiCard from "@/components/common/KpiCard";
+import { cn } from "@/lib/utils";
 
 export default function StocktakingPage() {
   const [productId, setProductId] = useState("");
-  const [countDate, setCountDate] = useState(getTodayString());
+  const [countDate, setCountDate] = useState<Date | undefined>(new Date());
   const [countedBy, setCountedBy] = useState("");
 
   const [history, setHistory] = useState<StockCount[]>([]);
@@ -118,7 +132,7 @@ export default function StocktakingPage() {
       setCreatingDraft(true);
       const response = await stocktakingApi.createDraft({
         productId,
-        countDate,
+        countDate: format(countDate, "yyyy-MM-dd"),
         countedBy: countedBy || undefined,
       });
 
@@ -126,7 +140,7 @@ export default function StocktakingPage() {
         description: `Số lượng hệ thống: ${response.systemQuantity}`,
       });
 
-      setCountDate(getTodayString());
+      setCountDate(new Date());
       setCountedBy("");
       await loadHistory();
     } catch (error: any) {
@@ -260,14 +274,31 @@ export default function StocktakingPage() {
 
             {/* Count Date */}
             <div className="space-y-2">
-              <Label htmlFor="countDate">Ngày kiểm kê</Label>
-              <Input
-                id="countDate"
-                type="date"
-                value={countDate}
-                onChange={(e) => setCountDate(e.target.value)}
-                max={getTodayString()}
-              />
+              <Label>Ngày kiểm kê</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !countDate && "text-gray-400",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {countDate ? format(countDate, "dd/MM/yyyy") : "Chọn ngày"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={countDate}
+                    onSelect={setCountDate}
+                    initialFocus
+                    disabled={(d) => d > new Date()}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Counted By */}
@@ -552,13 +583,4 @@ export default function StocktakingPage() {
       </Dialog>
     </div>
   );
-}
-
-// Helper function
-function getTodayString(): string {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }

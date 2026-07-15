@@ -178,16 +178,16 @@ function buildSegment(
     delivDaySet.add(delivIdx);
   }
 
-  console.log("Sawtooth params:", {
-    lDays,
-    daysPerPeriod,
-    tauDays,
-    tnDays,
-    ttDays,
-    firstOrderDate: sorted[0]?.orderDate,
-    secondOrderDate: sorted[1]?.orderDate,
-    firstDeliveryDate: sorted[0]?.expectedDeliveryDate,
-  });
+  // console.log("Sawtooth params:", {
+  //   lDays,
+  //   daysPerPeriod,
+  //   tauDays,
+  //   tnDays,
+  //   ttDays,
+  //   firstOrderDate: sorted[0]?.orderDate,
+  //   secondOrderDate: sorted[1]?.orderDate,
+  //   firstDeliveryDate: sorted[0]?.expectedDeliveryDate,
+  // });
 
   const points: ChartPoint[] = [];
   let cycleIdx = 0;

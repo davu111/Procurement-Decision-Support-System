@@ -1,5 +1,9 @@
 // Role-based access control configuration
-export type UserRole = "admin" | "planning-manager" | "warehouse-manager";
+export type UserRole =
+  | "admin"
+  | "planning-manager"
+  | "warehouse-manager"
+  | "admin-manager";
 
 export interface RouteAccess {
   path: string;
@@ -13,14 +17,14 @@ export const ROUTE_ACCESS_CONFIG: RouteAccess[] = [
   {
     path: "/",
     label: "Trang chủ",
-    roles: ["admin", "planning-manager", "warehouse-manager"],
+    roles: ["admin", "planning-manager", "warehouse-manager", "admin-manager"],
   },
 
   // Employees - admin only
   {
     path: "/employees",
     label: "Nhân viên",
-    roles: ["admin"],
+    roles: ["admin", "admin-manager"],
   },
 
   // Products - warehouse-manager, admin
@@ -107,7 +111,7 @@ export const ROUTE_ACCESS_CONFIG: RouteAccess[] = [
   {
     path: "/profile",
     label: "Hồ sơ",
-    roles: ["admin", "planning-manager", "warehouse-manager"],
+    roles: ["admin", "planning-manager", "warehouse-manager", "admin-manager"],
   },
 ];
 

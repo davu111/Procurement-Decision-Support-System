@@ -1,8 +1,21 @@
-import { useState, useEffect } from "react";
-import { AlertTriangle, TrendingDown, DollarSign, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { format } from "date-fns";
+import {
+  AlertTriangle,
+  TrendingDown,
+  DollarSign,
+  Loader2,
+  CalendarIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Card,
   CardContent,
@@ -22,12 +35,17 @@ import {
 import ProductSelector from "@/components/product/ProductSelector";
 import KpiCard from "@/components/common/KpiCard";
 import { analyticsApi } from "@/api/analyticsApi";
+import { cn } from "@/lib/utils";
 import type { LossRateAnalysis } from "@/types/inventory-opt/Analytics";
 
 export default function LossRateAnalyticsPage() {
   const [productId, setProductId] = useState("");
-  const [fromDate, setFromDate] = useState(getDateMonthAgo());
-  const [toDate, setToDate] = useState(getTodayString());
+  const [fromDate, setFromDate] = useState<Date | undefined>(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 1);
+    return date;
+  });
+  const [toDate, setToDate] = useState<Date | undefined>(new Date());
 
   const [analysis, setAnalysis] = useState<LossRateAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -43,12 +61,15 @@ export default function LossRateAnalyticsPage() {
       return;
     }
 
+    const fromDateValue = format(fromDate, "yyyy-MM-dd");
+    const toDateValue = format(toDate, "yyyy-MM-dd");
+
     try {
       setLoading(true);
       const result = await analyticsApi.getLossRateAnalysis(
         productId,
-        fromDate,
-        toDate,
+        fromDateValue,
+        toDateValue,
       );
       setAnalysis(result);
       if (result.stockCountsUsed === 0) {
@@ -96,23 +117,61 @@ export default function LossRateAnalyticsPage() {
             {/* From Date */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Từ ngày</label>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !fromDate && "text-gray-400",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {fromDate ? format(fromDate, "dd/MM/yyyy") : "Chọn ngày"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={fromDate}
+                    onSelect={setFromDate}
+                    initialFocus
+                    disabled={(d) => d > new Date()}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* To Date */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Đến ngày</label>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !toDate && "text-gray-400",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {toDate ? format(toDate, "dd/MM/yyyy") : "Chọn ngày"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={toDate}
+                    onSelect={setToDate}
+                    initialFocus
+                    disabled={(d) =>
+                      (fromDate ? d < fromDate : false) || d > new Date()
+                    }
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Analyze Button */}
@@ -278,16 +337,4 @@ export default function LossRateAnalyticsPage() {
       )}
     </div>
   );
-}
-
-// Helper functions
-function getTodayString(): string {
-  const today = new Date();
-  return today.toISOString().split("T")[0];
-}
-
-function getDateMonthAgo(): string {
-  const date = new Date();
-  date.setMonth(date.getMonth() - 1);
-  return date.toISOString().split("T")[0];
 }

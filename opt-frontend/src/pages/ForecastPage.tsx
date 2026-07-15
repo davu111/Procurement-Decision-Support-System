@@ -80,9 +80,9 @@ export default function ForecastPage() {
       setForecastResult(null);
 
       try {
-        console.log(
-          `🔄 Fetching consumption history for product ${productId}, year ${selectedYear}`,
-        );
+        // console.log(
+        //   `🔄 Fetching consumption history for product ${productId}, year ${selectedYear}`,
+        // );
 
         // 🔥 Lấy history theo năm
         const historyRes = await api.get(
@@ -96,23 +96,23 @@ export default function ForecastPage() {
           throw new Error("API trả về dữ liệu không hợp lệ");
         }
 
-        console.log(
-          `✅ History fetched:`,
-          consumptionRecords.length,
-          "records",
-        );
+        // console.log(
+        //   `✅ History fetched:`,
+        //   consumptionRecords.length,
+        //   "records",
+        // );
         setConsumptionHistory(consumptionRecords);
 
         // ❗ CHỈ gọi forecast cho năm hiện tại
         if (selectedYear === currentYear) {
-          console.log(`📊 Current year detected, fetching forecast...`);
+          // console.log(`📊 Current year detected, fetching forecast...`);
 
           try {
             const suggestionRes = await api.get(
               `/inventory/suggest/${productId}`,
             );
 
-            console.log(`✅ Suggestion API response:`, suggestionRes.data);
+            // console.log(`✅ Suggestion API response:`, suggestionRes.data);
 
             const suggestion: ForecastSuggestionResponse = suggestionRes.data;
 
@@ -138,7 +138,7 @@ export default function ForecastPage() {
               },
             );
 
-            console.log(`✅ Forecast result:`, result);
+            // console.log(`✅ Forecast result:`, result);
             setForecastResult(result);
           } catch (suggestionErr) {
             console.error("❌ Error fetching suggestion:", suggestionErr);
@@ -152,7 +152,7 @@ export default function ForecastPage() {
             setForecastResult(null);
           }
         } else {
-          console.log(`📅 Past year selected, showing historical data only`);
+          // console.log(`📅 Past year selected, showing historical data only`);
 
           const recordsForForecast = consumptionRecords.map((item) => ({
             productId: item.productId,

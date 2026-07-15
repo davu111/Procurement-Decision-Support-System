@@ -43,7 +43,7 @@ export default function ConsumptionPage() {
     if (!productId || !yearMonth) return;
 
     const fetchData = async () => {
-      console.log("Fetching data for", productId, yearMonth);
+      // console.log("Fetching data for", productId, yearMonth);
       try {
         const res = await api.get(`/inventory/parameters/${productId}`, {
           params: { yearMonth },
@@ -182,7 +182,7 @@ export default function ConsumptionPage() {
     try {
       // Nếu có dữ liệu import, lưu hàng loạt qua API import
       if (importedRecords.length > 0) {
-        console.log("Imported records:", importedRecords);
+        // console.log("Imported records:", importedRecords);
         const file = createExcelFileFromRecords(importedRecords);
         const formData = new FormData();
         formData.append("file", file);

@@ -35,6 +35,7 @@ public class RoleService {
         try {
             RealmResource realmResource = keycloak.realm(realm);
             return realmResource.roles().list().stream()
+                    .filter(role -> !"admin".equalsIgnoreCase(role.getName()))
                     .map(r -> new RoleResponse(r.getId(), r.getName(), r.getDescription()))
                     .toList();
         } catch (Exception e) {
