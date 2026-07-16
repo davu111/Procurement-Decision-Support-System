@@ -53,4 +53,21 @@ public class WarehouseServiceClient {
             throw e;
         }
     }
+
+    // GET REAL-TIME QUANTITY BY PRODUCT ID FROM WAREHOUSE-SERVICE
+    public java.math.BigDecimal getInventoryQuantityByProductId(String productId) {
+        try {
+            log.info("Fetching real-time inventory quantity by productId: {}", productId);
+            return webClientBuilder.build().get()
+                    .uri(warehouseServiceUrl + "/inventories/quantity/{productId}", productId)
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<com.ecotel.shared_library.dto.response.ApiResponse<java.math.BigDecimal>>() {
+                    })
+                    .map(ApiResponse::getData)  // ⚡ Lấy data từ wrapper
+                    .block();
+        } catch (Exception e) {
+            log.error("Error fetching inventory quantity by productId: {}, URL: {}", productId, warehouseServiceUrl + "/inventories/quantity/" + productId, e);
+            return null;
+        }
+    }
 }

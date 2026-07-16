@@ -60,7 +60,7 @@ spring:
                 - Path=/api/inventory/**, /api/consumption-history/**,
                   /api/warehouse-config/**, /api/order-schedules/**,
                   /api/inventory-results/**, /api/inventory-parameters/**, 
-                  /api/stock-counts/**, /api/analytics/**
+                  /api/stock-counts/**, /api/analytics/**, /api/dashboard/**
 
             # Swagger UI routes
             - id: warehouse-service-docs

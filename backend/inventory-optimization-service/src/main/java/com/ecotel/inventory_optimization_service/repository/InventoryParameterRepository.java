@@ -283,4 +283,11 @@ public interface InventoryParameterRepository extends JpaRepository<InventoryPar
     Optional<InventoryParameter> findCoveringPlan(
             @Param("productId")  String productId,
             @Param("targetDate") LocalDate targetDate);
+
+    /**
+     * Lấy tất cả productId đang có ít nhất 1 kế hoạch ACTIVE.
+     * Dùng cho Supply Status Dashboard khi không có filter productIds/categoryId.
+     */
+    @Query("SELECT DISTINCT ip.productId FROM InventoryParameter ip WHERE ip.status = 'ACTIVE'")
+    List<String> findAllActiveProductIds();
 }

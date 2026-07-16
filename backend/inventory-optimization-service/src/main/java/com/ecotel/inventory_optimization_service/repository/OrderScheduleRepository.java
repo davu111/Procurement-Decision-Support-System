@@ -136,8 +136,8 @@ public interface OrderScheduleRepository extends JpaRepository<OrderSchedule, Lo
         SELECT o FROM OrderSchedule o
         WHERE o.productId = :productId
           AND o.actualDeliveryDate IS NULL
-          AND o.orderDate < :fromDate
-          AND o.expectedDeliveryDate > :fromDate
+          AND o.orderDate <= :fromDate
+          AND o.expectedDeliveryDate >= :fromDate
         ORDER BY o.expectedDeliveryDate ASC
     """)
     List<OrderSchedule> findPendingReceipts(

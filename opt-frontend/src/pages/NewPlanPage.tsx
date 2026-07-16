@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { productApi } from "@/api/productApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,8 +120,12 @@ function validatePeriod(
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function NewPlanPage() {
+  const [searchParams] = useSearchParams();
+  const queryProductId = searchParams.get("productId") || "";
+  const queryMode = searchParams.get("mode") === "replan" ? "replan" : "create";
+
   // ── Form state ─────────────────────────────────────────────────────────────
-  const [productId, setProductId] = useState("");
+  const [productId, setProductId] = useState(queryProductId);
   const [startMonth, setStartMonth] = useState(CURRENT_MONTH);
   const [endMonth, setEndMonth] = useState(CURRENT_MONTH);
   const [targetYear, setTargetYear] = useState(CURRENT_YEAR);
@@ -132,7 +137,7 @@ export default function NewPlanPage() {
   );
 
   // ── Flow mode ──────────────────────────────────────────────────────────────
-  const [flowMode, setFlowMode] = useState<FlowMode>("create");
+  const [flowMode, setFlowMode] = useState<FlowMode>(queryMode);
 
   // ── Resolve period ─────────────────────────────────────────────────────────
   const [resolvedPeriod, setResolvedPeriod] = useState<ResolvedPeriod | null>(
